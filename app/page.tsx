@@ -1,65 +1,96 @@
-import Image from "next/image";
+'use client'
+import { useState, useMemo } from 'react'
+import { CompactCard } from './components/CompactCard'
+import { DetailsForm } from './components/DetailsForm'
+import { Column } from './components/Column'
+import { NewsletterEvent, ListId } from './types/event'
+import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
 
-export default function Home() {
+type Tab = 'triage' | 'newsletter'
+
+interface ColumnDef {
+  id: ListId;
+  label: string;
+}
+
+const TRIAGE_COLUMNS: ColumnDef[] = [
+  { id: 'incoming', label: 'Incoming' },
+  { id: 'review', label: 'To Review' },
+  { id: 'error', label: 'Errors' }
+]
+
+const NEWSLETTER_COLUMNS: ColumnDef[] = [
+  { id: 'upcoming', label: 'Upcoming Events' },
+  { id: 'newsletter', label: 'Next Newsletter' }
+]
+
+// app/page.tsx logic update
+
+export default function Board() {
+  const [activeTab, setActiveTab] = useState<Tab>('triage')
+  const [events, setEvents] = useState<NewsletterEvent[]>(MOCK_EVENTS)
+  const [selectedEvent, setSelectedEvent] = useState<NewsletterEvent | null>(null)
+  const [openCol, setOpenCol] = useState<ListId | null>('review'); // Default to 'review' open
+
+  // 1. Handlers
+  const handleUpdateEvent = (updated: NewsletterEvent) => {
+    setEvents(prev => prev.map(e => e.id === updated.id ? updated : e))
+    setSelectedEvent(null) // Close form after save
+  }
+
+  const handleMoveEvent = (id: string, targetList: ListId) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, list_id: targetList } : e))
+  }
+
+  // 2. Determine which columns to show
+  const currentColumns = activeTab === 'triage' ? TRIAGE_COLUMNS : NEWSLETTER_COLUMNS
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      {/* Tab Navigation */}
+      <header className="bg-white border-b shadow-sm z-10">
+        <h1 className="m-4 mb-2 text-2xl font-black text-slate-900 italic">The APP Desk</h1>
+        <div className="flex px-4 gap-8">
+          {(['triage', 'newsletter'] as Tab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-4 text-sm font-black uppercase tracking-widest border-b-2 transition-all ${
+                activeTab === tab 
+                ? 'border-blue-600 text-blue-600' 
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* The Board Area */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100">
+        {currentColumns.map((col) => (
+          <Column 
+            key={col.id}
+            col={col}
+            isOpen={openCol === col.id}
+            onToggle={() => setOpenCol(openCol === col.id ? null : col.id)}
+            events={events.filter(e => e.list_id === col.id)}
+            onDetails={setSelectedEvent}
+            onMove={handleMoveEvent}
+          />
+        ))}
+      </div>
+
+      {/* Detail Overlay */}
+      {selectedEvent && (
+        <DetailsForm 
+          event={selectedEvent} 
+          onSave={handleUpdateEvent} 
+          onClose={() => setSelectedEvent(null)}
+          onMove={handleMoveEvent} // Optional: allow moving from inside the form
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+      )}
+    </main>
+  )
 }
