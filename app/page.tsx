@@ -3,10 +3,10 @@ import { useState, useMemo } from 'react'
 import { Column } from './components/Column'
 import { NewsletterEvent } from './types/event'
 import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
-import { NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
+import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
 import { DetailsForm } from './components/DetailsForm'
 
-type Tab = 'triage' | 'newsletter'
+type Tab = 'capture' |'triage' | 'newsletter'
 
 export default function Board() {
   const [activeTab, setActiveTab] = useState<Tab>('triage')
@@ -33,8 +33,7 @@ export default function Board() {
   }
 
   // 2. Determine which columns to show
-  const currentColumns =
-    activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
+  const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
 
   return (
     <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
@@ -44,7 +43,7 @@ export default function Board() {
           The APP Desk
         </h1>
         <div className="flex px-4 gap-8">
-          {(['triage', 'newsletter'] as Tab[]).map((tab) => (
+          {(['capture', 'triage', 'newsletter'] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}

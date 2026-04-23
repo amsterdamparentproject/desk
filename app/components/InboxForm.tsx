@@ -9,7 +9,7 @@ interface OnAddArgs {
   list_id: ListId
 }
 
-export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
+export function InboxForm({ onAdd, listId }: { onAdd: (data: OnAddArgs) => void; listId: ListId }) {
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
 
@@ -33,7 +33,7 @@ export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
       description,
       file, // This matches File | null now
       id: crypto.randomUUID(),
-      list_id: 'incoming',
+      list_id: listId,
     })
 
     // Reset state

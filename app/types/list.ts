@@ -1,5 +1,6 @@
 export type ListId =
-  | 'incoming'
+  | 'ideas'
+  | 'capture'
   | 'review'
   | 'newsletter'
   | 'archive'
@@ -11,8 +12,12 @@ export interface ListProps {
   label: string
 }
 
+export const CAPTURE_LISTS: ListProps[] = [
+  { id: 'ideas', label: 'Ideas' },
+  { id: 'capture', label: 'Capture' },
+]
+
 export const TRIAGE_LISTS: ListProps[] = [
-  { id: 'incoming', label: 'Incoming' },
   { id: 'review', label: 'To Review' },
   { id: 'error', label: 'Errors' },
 ]

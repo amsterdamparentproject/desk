@@ -33,7 +33,7 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
   // Logic: Time range
   const displayTime = `${event.startTime} - ${event.endTime}`
 
-  const isTriage = ['incoming', 'review', 'error'].includes(event.list_id)
+  const isTriage = ['ideas', 'capture', 'review', 'error'].includes(event.list_id)
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all">

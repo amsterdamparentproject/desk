@@ -85,10 +85,9 @@ export function Column({
         }`}
       >
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent border-t border-slate-200 md:border-t-0 h-full overflow-y-auto">
-          {/* Inbox Form: Option B implementation */}
-          {list.id === 'incoming' && (
-            <div className="sticky top-0 z-10 pb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <InboxForm onAdd={handleInboxAdd} />
+          {(list.id === 'ideas' || list.id === 'capture') && (
+            <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
+              <InboxForm onAdd={handleInboxAdd} listId={list.id} />
             </div>
           )}
 
