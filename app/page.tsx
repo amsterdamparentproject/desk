@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Column } from './components/Column'
 import { NewsletterEvent } from './types/event'
 import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
@@ -9,12 +9,22 @@ import { DetailsForm } from './components/DetailsForm'
 type Tab = 'capture' |'triage' | 'newsletter'
 
 export default function Board() {
-  const [activeTab, setActiveTab] = useState<Tab>('triage')
+  // Responsive default tab: capture on mobile, triage on desktop
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 ? 'capture' : 'triage'
+    }
+    return 'triage' // fallback for SSR
+  })
   const [events, setEvents] = useState<NewsletterEvent[]>(MOCK_EVENTS)
   const [selectedEvent, setSelectedEvent] = useState<NewsletterEvent | null>(
     null
   )
-  const [openCol, setOpenCol] = useState<ListId | null>('review') // Default to 'review' open
+  const [openCols, setOpenCols] = useState<Set<ListId>>(() => {
+    // All columns expanded by default
+    const allIds = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map(col => col.id)
+    return new Set(allIds)
+  })
 
   // 1. Handlers
   const handleUpdateEvent = (updated: NewsletterEvent) => {
@@ -47,10 +57,10 @@ export default function Board() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-4 text-sm font-black uppercase tracking-widest border-b-2 transition-all ${
+              className={`py-4 text-sm font-black uppercase tracking-widest transition-all ${
                 activeTab === tab
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-400 hover:text-slate-600'
+                  ? 'text-blue-600'
+                  : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               {tab}
@@ -60,13 +70,23 @@ export default function Board() {
       </header>
 
       {/* The Board Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
         {currentColumns.map((col) => (
           <Column
             key={col.id}
             list={col}
-            isOpen={openCol === col.id}
-            onToggle={() => setOpenCol(openCol === col.id ? null : col.id)}
+            isOpen={typeof window !== 'undefined' && window.innerWidth >= 768 ? true : openCols.has(col.id)}
+            onToggle={() => {
+              setOpenCols(prev => {
+                const newSet = new Set(prev)
+                if (newSet.has(col.id)) {
+                  newSet.delete(col.id) // Close this column
+                } else {
+                  newSet.add(col.id) // Open this column
+                }
+                return newSet
+              })
+            }}
             events={events.filter((e) => e.list_id === col.id)}
             onDetails={setSelectedEvent}
             onMove={handleMoveEvent}

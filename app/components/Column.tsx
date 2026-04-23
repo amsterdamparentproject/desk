@@ -45,13 +45,19 @@ export function Column({
   }
 
   return (
-    <section className="flex flex-col border-b border-slate-200 md:border-r md:w-[350px] md:flex-shrink-0 md:border-b-0">
+    <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
       {/* Header */}
       <button
         type="button"
-        onClick={() => onToggle()} // Wrapped to avoid TS MouseEvent mismatch
+        onClick={() => {
+          // Only allow toggle on mobile
+          if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            onToggle()
+          }
+        }}
+        disabled={typeof window !== 'undefined' && window.innerWidth >= 768}
         className={`w-full flex items-center justify-between p-4 transition-colors md:cursor-default ${
-          isOpen ? 'bg-white' : 'bg-slate-50 md:bg-white'
+          isOpen ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-700'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -62,7 +68,7 @@ export function Column({
               <ChevronRight size={16} className="text-slate-400" />
             )}
           </div>
-          <h2 className="font-black text-xs uppercase tracking-tighter text-slate-700">
+          <h2 className="font-black text-xs uppercase tracking-tighter">
             {list.label}
           </h2>
         </div>
@@ -84,7 +90,7 @@ export function Column({
           isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent border-t border-slate-200 md:border-t-0 h-full overflow-y-auto">
+        <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {(list.id === 'ideas' || list.id === 'capture') && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
               <InboxForm onAdd={handleInboxAdd} listId={list.id} />

@@ -61,6 +61,6 @@ export const MOCK_EVENTS: NewsletterEvent[] = [
     newsletterDescription:
       "Buurtgezinnen connects families needing extra support with local 'support families.' This free volunteering opportunity allows you to offer or receive practical help (like meal prep and babysitting) and a listening ear, with flexible time commitments. Thanks to APP community member Markus for the tip!",
     is_highlight: false,
-    list_id: 'review',
+    list_id: 'error',
   },
 ]
