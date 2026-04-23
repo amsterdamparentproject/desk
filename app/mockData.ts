@@ -19,7 +19,7 @@ export const MOCK_EVENTS: NewsletterEvent[] = [
       age: "0-6 years",
       newsletterDescription: "Experience a playful musical journey across the Atlantic at Munganga Theater.",
       is_highlight: false,
-      list_id: 'incoming',
+      list_id: 'review',
       repeat: null,
       repeatFrequency: null
   },
@@ -42,7 +42,7 @@ export const MOCK_EVENTS: NewsletterEvent[] = [
       "repeatFrequency": "Weekly",
       "age": "2-4 years",
       "newsletterDescription": "A fun storytime for toddlers and their families, hosted by the OBA. The stories are relatable, simple, and rich in visual stimuli, meant to foster an early love of reading and connection. For ages 2-4 years.",
-      list_id: 'incoming',
+      list_id: 'review',
       is_highlight: false
   }
 ]

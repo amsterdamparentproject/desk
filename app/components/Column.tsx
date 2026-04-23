@@ -1,6 +1,9 @@
 // components/Column.tsx
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { CompactCard } from './CompactCard'
+import { AddCard } from './AddCard'
+import { NewsletterEvent } from '../types/event'
+import { InboxForm } from './InboxForm'
 
 export function Column({ col, isOpen, onToggle, events, onDetails, onMove }) {
   return (
@@ -35,6 +38,7 @@ export function Column({ col, isOpen, onToggle, events, onDetails, onMove }) {
         isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
       }`}>
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent border-t border-slate-200 md:border-t-0 h-full overflow-y-auto">
+          {col.id === 'incoming' && <InboxForm onAdd={onMove} />}
           {events.length === 0 ? (
             <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase italic">
               No Events

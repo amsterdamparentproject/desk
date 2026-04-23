@@ -1,6 +1,6 @@
 // components/CompactCard.tsx
 import { NewsletterEvent, ListId } from '../types/event'
-import { Check, Trash2, Info, MapPin, Clock, NotepadText } from 'lucide-react'
+import { Check, Trash2, Edit, MapPin, Clock, NotepadText } from 'lucide-react'
 
 interface Props {
   event: NewsletterEvent;
@@ -31,8 +31,8 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
             onClick={() => onDetails(event)}
             className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase flex items-center gap-1"
           >
-            <Info size={12} />
-            Details
+            <Edit size={12} />
+            Edit
           </button>
         </div>
 
