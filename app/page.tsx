@@ -70,30 +70,37 @@ export default function Board() {
       </header>
 
       {/* The Board Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
-        {currentColumns.map((col) => (
-          <Column
-            key={col.id}
-            list={col}
-            isOpen={typeof window !== 'undefined' && window.innerWidth >= 768 ? true : openCols.has(col.id)}
-            onToggle={() => {
-              setOpenCols(prev => {
-                const newSet = new Set(prev)
-                if (newSet.has(col.id)) {
-                  newSet.delete(col.id) // Close this column
-                } else {
-                  newSet.add(col.id) // Open this column
-                }
-                return newSet
-              })
-            }}
-            events={events.filter((e) => e.list_id === col.id)}
-            onDetails={setSelectedEvent}
-            onMove={handleMoveEvent}
-            onAddEvent={handleAddEvent}
-          />
-        ))}
-      </div>
+<div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
+  {currentColumns.map((col) => (
+    <div 
+      key={col.id} 
+      // w-full makes them stack on mobile
+      // md:flex-1 md:basis-0 makes them 50/50 on desktop
+      // min-w-0 prevents content from pushing the width out
+      className="w-full md:flex-1 md:basis-0 min-w-0"
+    >
+      <Column
+        list={col}
+        isOpen={typeof window !== 'undefined' && window.innerWidth >= 768 ? true : openCols.has(col.id)}
+        onToggle={() => {
+          setOpenCols(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(col.id)) {
+              newSet.delete(col.id)
+            } else {
+              newSet.add(col.id)
+            }
+            return newSet
+          })
+        }}
+        events={events.filter((e) => e.list_id === col.id)}
+        onDetails={setSelectedEvent}
+        onMove={handleMoveEvent}
+        onAddEvent={handleAddEvent}
+      />
+    </div>
+  ))}
+</div>
 
       {/* Detail Overlay */}
       {selectedEvent && (
