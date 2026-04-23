@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { Paperclip, X, Send } from 'lucide-react'
-import { ListId } from '../types/list';
+import { ListId } from '../types/list'
 
 interface OnAddArgs {
-    description: string;
-    file: File | null;
-    id: string;
-    list_id: ListId;
+  description: string
+  file: File | null
+  id: string
+  list_id: ListId
 }
 
 export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -42,8 +42,8 @@ export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
   }
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      onSubmit={handleSubmit}
       className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm mb-4"
     >
       <textarea
@@ -63,8 +63,8 @@ export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
               {file.name}
             </span>
           </div>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => setFile(null)}
             className="text-blue-400 hover:text-blue-600 p-0.5"
           >
@@ -75,10 +75,10 @@ export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
 
       <div className="flex items-center justify-between border-t border-slate-50 pt-2">
         <div className="flex items-center gap-2">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
           <button
@@ -87,7 +87,9 @@ export function InboxForm({ onAdd }: { onAdd: (data: OnAddArgs) => void }) {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <Paperclip size={14} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Attach</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">
+              Attach
+            </span>
           </button>
         </div>
 

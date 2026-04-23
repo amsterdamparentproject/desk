@@ -1,39 +1,39 @@
 // components/CompactCard.tsx
 import { NewsletterEvent } from '../types/event'
 import { Check, Trash2, Edit, MapPin, Clock, NotepadText } from 'lucide-react'
-import { ListId } from '../types/list';
+import { ListId } from '../types/list'
 
 interface Props {
-  event: NewsletterEvent;
-  onDetails: (event: NewsletterEvent) => void;
-  onMove: (id: string, target: ListId) => void;
+  event: NewsletterEvent
+  onDetails: (event: NewsletterEvent) => void
+  onMove: (id: string, target: ListId) => void
 }
 
 export function CompactCard({ event, onDetails, onMove }: Props) {
+  const formatDate = (dateStr: string | undefined) => {
+    if (!dateStr) return ''
 
-    const formatDate = (dateStr: string | undefined) => {
-        if (!dateStr) return '';
-        
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const date = new Date(year, month - 1, day); 
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
 
-        return date.toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-        });
-    };
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+    })
+  }
 
-    const startFormatted = formatDate(event.startDate);
-    const endFormatted = formatDate(event.endDate);
+  const startFormatted = formatDate(event.startDate)
+  const endFormatted = formatDate(event.endDate)
 
-    const displayDate = event.startDate === event.endDate 
-    ? startFormatted 
-    : `${startFormatted} – ${endFormatted}`; 
+  const displayDate =
+    event.startDate === event.endDate
+      ? startFormatted
+      : `${startFormatted} – ${endFormatted}`
 
   // Logic: Time range
-  const displayTime = `${event.startTime} - ${event.endTime}`;
+  const displayTime = `${event.startTime} - ${event.endTime}`
 
-  const isTriage = ['incoming', 'review', 'error'].includes(event.list_id);
+  const isTriage = ['incoming', 'review', 'error'].includes(event.list_id)
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all">
@@ -43,7 +43,7 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
           <span className="text-[9px] font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
             {displayDate ? displayDate : 'No date'}
           </span>
-          <button 
+          <button
             onClick={() => onDetails(event)}
             className="text-[10px] font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
           >
@@ -56,14 +56,16 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
         <h3 className="font-black text-slate-900 text-sm leading-tight uppercase tracking-tight">
           {event.title}
         </h3>
-        
+
         {/* 3. New Metadata Rows */}
         <div className="space-y-2">
           {/* Time Range */}
-          {event.startTime && <div className="flex items-center gap-1.5 text-slate-500">
-            <Clock size={10} className="flex-shrink-0" />
-            <span className="text-[10px] font-bold">{displayTime}</span>
-          </div> }
+          {event.startTime && (
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Clock size={10} className="flex-shrink-0" />
+              <span className="text-[10px] font-bold">{displayTime}</span>
+            </div>
+          )}
 
           {/* Neighborhood & Address */}
           <div className="flex items-start gap-1.5 text-slate-500">
@@ -100,7 +102,7 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
             <Trash2 size={12} />
             Archive
           </button>
-          
+
           <button
             onClick={() => onMove(event.id, 'upcoming')}
             className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-[10px] font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
