@@ -1,13 +1,20 @@
 // components/DetailsForm.tsx
-import { useState, useRef, useEffect, ReactNode } from 'react'
-import { X, Calendar, MapPin, ExternalLink, Save, Clock, Star, NotebookPen } from 'lucide-react'
+import { useState, ReactNode } from 'react'
+import { X, Calendar, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check } from 'lucide-react'
 import { NewsletterEvent } from '../types/event'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 const FREQUENCIES = ['none', 'daily', 'weekly', 'monthly', 'annually']
 
-export function DetailsForm({ event, onSave, onClose }: { event: NewsletterEvent, onSave: (data: NewsletterEvent) => void, onClose: () => void }) {
+interface DetailsFormProps {
+    event: NewsletterEvent, 
+    onSave: (data: NewsletterEvent) => void, 
+    onClose: () => void,
+    onMove?: () => void
+}
+
+export function DetailsForm({ event, onSave, onClose, onMove }: DetailsFormProps) {
   // SANITIZE: Ensure no nulls hit the inputs
   const [formData, setFormData] = useState<NewsletterEvent>({
     ...event,
@@ -66,14 +73,14 @@ export function DetailsForm({ event, onSave, onClose }: { event: NewsletterEvent
       <div className="w-full max-w-4xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-slate-100 p-4 flex items-center justify-between z-20">
+        <div className="sticky top-0 bg-blue-600 border-b border-slate-100 p-4 flex items-center justify-between z-20">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-0.5 rounded uppercase">
-              {formData.list_id}
+            <Edit size={18} className="text-white ml-3" />
+            <span className="text-lg tracking-wide text-white font-bold pl-2 py-1 rounded">
+              Edit record
             </span>
-            <h2 className="font-black text-xs uppercase tracking-widest text-slate-400">Editor</h2>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 text-white hover:text-slate-200 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -110,7 +117,7 @@ export function DetailsForm({ event, onSave, onClose }: { event: NewsletterEvent
               uncheckedLabel="No highlight"
               icon={<Star size={14} className="fill-current"/>}
               checked={formData.is_highlight}
-              onChange={(v) => handleChange('is_highlight', v)}
+              onChange={(value: boolean) => handleChange('is_highlight', value)}
             />
           </section>
 
@@ -159,13 +166,13 @@ export function DetailsForm({ event, onSave, onClose }: { event: NewsletterEvent
                     uncheckedLabel="Skip calendar"
                     icon={<Calendar size={14}/>}
                     checked={formData.add_to_calendar}
-                    onChange={(v) => handleChange('add_to_calendar', v)}
+                    onChange={(value: boolean) => handleChange('add_to_calendar', value)}
                 />
              </div>
           </section>
 
           {/* Location */}
-          <section className="space-y-8 pt-8 border-t border-slate-100">
+          <section className="space-y-8">
             <div className="flex flex-row items-center gap-2 mb-4">
               <MapPin size={18} className="text-slate-700" />
               <h2 className="text-slate-700 text-xl font-black">Location</h2>
@@ -187,7 +194,7 @@ export function DetailsForm({ event, onSave, onClose }: { event: NewsletterEvent
           </section>
 
           {/* Other */}
-          <section className="space-y-8 pt-8 border-t border-slate-100">
+          <section className="space-y-8">
             <div className="flex flex-row items-center gap-2 mb-4">
               <NotebookPen size={18} className="text-slate-700" />
               <h2 className="text-slate-700 text-xl font-black">Details</h2>
@@ -215,9 +222,12 @@ export function DetailsForm({ event, onSave, onClose }: { event: NewsletterEvent
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20">
-          <button onClick={() => onSave(formData)} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-            <Save size={18} strokeWidth={3} /> Update Event
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 grid grid-cols-2 gap-8">
+          <button onClick={() => onSave(formData)} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+            <Save size={18} strokeWidth={3} /> Save
+          </button>
+          <button onClick={() => onSave(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+            <Check size={18} strokeWidth={3} /> Looks good
           </button>
         </div>
       </div>

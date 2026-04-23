@@ -50,13 +50,13 @@ export function EventCard({ event, onUpdate, onMove }: {
         </div>
           <div className="grid grid-cols-2 gap-3">
             {/* Newsletter Description */}
-            <EditableInput label="Date" value={event.startDate} onChange={(v) => handleChange('startDate', v)} />
-            <EditableInput label="Time" value={event.startTime} onChange={(v) => handleChange('startTime', v)} />
-            <EditableInput label="Neighborhood" value={event.neighborhood} onChange={(v) => handleChange('neighborhood', v)} />
-            <EditableInput label="Age Group" value={event.age} onChange={(v) => handleChange('age', v)} />
+            {event.startDate && <EditableInput label="Date" value={event.startDate} onChange={(v) => handleChange('startDate', v)} />}
+            { event.startTime && <EditableInput label="Time" value={event.startTime} onChange={(v) => handleChange('startTime', v)} />}
+            { event.neighborhood && <EditableInput label="Neighborhood" value={event.neighborhood} onChange={(v) => handleChange('neighborhood', v)} />}
+            { event.age && <EditableInput label="Age Group" value={event.age} onChange={(v) => handleChange('age', v)} />}
           </div>
-          <EditableInput label="Location" value={event.location} onChange={(v) => handleChange('location', v)} />
-          <EditableInput label="Organization" value={event.organization} onChange={(v) => handleChange('organization', v)} />
+          { event.location && <EditableInput label="Location" value={event.location} onChange={(v) => handleChange('location', v)} />}
+          { event.organization && <EditableInput label="Organization" value={event.organization} onChange={(v) => handleChange('organization', v)} />}
         </div>
       )}
 
@@ -64,8 +64,8 @@ export function EventCard({ event, onUpdate, onMove }: {
       <div className="p-3 bg-white flex items-center gap-2">
         {/* Toggle Calendar - Simplified Icon Style */}
         <button 
-          onClick={() => handleChange('addToCalendar', !event.addToCalendar)}
-          className={`p-2 rounded-lg border transition-colors ${event.addToCalendar ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-300'}`}
+          onClick={() => handleChange('add_to_calendar', !event.add_to_calendar)}
+          className={`p-2 rounded-lg border transition-colors ${event.add_to_calendar ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-300'}`}
           title="Toggle Google Calendar"
         >
           <Calendar size={18} />

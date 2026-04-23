@@ -44,5 +44,16 @@ export const MOCK_EVENTS: NewsletterEvent[] = [
       "newsletterDescription": "A fun storytime for toddlers and their families, hosted by the OBA. The stories are relatable, simple, and rich in visual stimuli, meant to foster an early love of reading and connection. For ages 2-4 years.",
       list_id: 'review',
       is_highlight: false
-  }
+  },
+    {
+      id: '3',
+      title: "Become a Support Family with Buurtgezinnen",
+      area: "Everywhere",
+      description: "Buurtgezinnen connects families needing extra support with local 'support families.' This free volunteering opportunity allows you to offer or receive practical help (like meal prep and babysitting) and a listening ear, with flexible time commitments. Thanks to APP community member Markus for the tip!",
+      url: "https://www.buurtgezinnen.nl/steungezin/",
+      organization: "Buurtgezinnen",
+      newsletterDescription: "Buurtgezinnen connects families needing extra support with local 'support families.' This free volunteering opportunity allows you to offer or receive practical help (like meal prep and babysitting) and a listening ear, with flexible time commitments. Thanks to APP community member Markus for the tip!",
+      is_highlight: false,
+      list_id: 'review',
+  },
 ]

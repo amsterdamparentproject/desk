@@ -1,30 +1,13 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { CompactCard } from './components/CompactCard'
-import { DetailsForm } from './components/DetailsForm'
 import { Column } from './components/Column'
-import { NewsletterEvent, ListId } from './types/event'
+import { NewsletterEvent } from './types/event'
 import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
+import { NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
+import { DetailsForm } from './components/DetailsForm'
 
 type Tab = 'triage' | 'newsletter'
 
-interface ColumnDef {
-  id: ListId;
-  label: string;
-}
-
-const TRIAGE_COLUMNS: ColumnDef[] = [
-  { id: 'incoming', label: 'Incoming' },
-  { id: 'review', label: 'To Review' },
-  { id: 'error', label: 'Errors' }
-]
-
-const NEWSLETTER_COLUMNS: ColumnDef[] = [
-  { id: 'upcoming', label: 'Upcoming Events' },
-  { id: 'newsletter', label: 'Next Newsletter' }
-]
-
-// app/page.tsx logic update
 
 export default function Board() {
   const [activeTab, setActiveTab] = useState<Tab>('triage')
@@ -42,8 +25,12 @@ export default function Board() {
     setEvents(prev => prev.map(e => e.id === id ? { ...e, list_id: targetList } : e))
   }
 
+  const handleAddEvent = (event: NewsletterEvent) => {
+    setEvents(prev => [...prev, event])
+  }
+
   // 2. Determine which columns to show
-  const currentColumns = activeTab === 'triage' ? TRIAGE_COLUMNS : NEWSLETTER_COLUMNS
+  const currentColumns = activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
 
   return (
     <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
@@ -72,12 +59,13 @@ export default function Board() {
         {currentColumns.map((col) => (
           <Column 
             key={col.id}
-            col={col}
+            list={col}
             isOpen={openCol === col.id}
             onToggle={() => setOpenCol(openCol === col.id ? null : col.id)}
             events={events.filter(e => e.list_id === col.id)}
             onDetails={setSelectedEvent}
             onMove={handleMoveEvent}
+            onAddEvent={handleAddEvent}
           />
         ))}
       </div>
@@ -88,7 +76,6 @@ export default function Board() {
           event={selectedEvent} 
           onSave={handleUpdateEvent} 
           onClose={() => setSelectedEvent(null)}
-          onMove={handleMoveEvent} // Optional: allow moving from inside the form
         />
       )}
     </main>

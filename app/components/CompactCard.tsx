@@ -1,6 +1,7 @@
 // components/CompactCard.tsx
-import { NewsletterEvent, ListId } from '../types/event'
+import { NewsletterEvent } from '../types/event'
 import { Check, Trash2, Edit, MapPin, Clock, NotepadText } from 'lucide-react'
+import { ListId } from '../types/list';
 
 interface Props {
   event: NewsletterEvent;
@@ -9,10 +10,25 @@ interface Props {
 }
 
 export function CompactCard({ event, onDetails, onMove }: Props) {
-  // Logic: Single date vs Date range
-  const displayDate = event.startDate === event.endDate 
-    ? event.startDate 
-    : `${event.startDate} — ${event.endDate}`;
+
+    const formatDate = (dateStr: string | undefined) => {
+        if (!dateStr) return '';
+        
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day); 
+
+        return date.toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'short',
+        });
+    };
+
+    const startFormatted = formatDate(event.startDate);
+    const endFormatted = formatDate(event.endDate);
+
+    const displayDate = event.startDate === event.endDate 
+    ? startFormatted 
+    : `${startFormatted} – ${endFormatted}`; 
 
   // Logic: Time range
   const displayTime = `${event.startTime} - ${event.endTime}`;
@@ -24,12 +40,12 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
       <div className="p-3 space-y-2">
         {/* 1. Header: Date & Details Button */}
         <div className="flex justify-between items-start">
-          <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded tracking-wider">
-            {displayDate}
+          <span className="text-[9px] font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
+            {displayDate ? displayDate : 'No date'}
           </span>
           <button 
             onClick={() => onDetails(event)}
-            className="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase flex items-center gap-1"
+            className="text-[10px] font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
           >
             <Edit size={12} />
             Edit
@@ -44,10 +60,10 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
         {/* 3. New Metadata Rows */}
         <div className="space-y-2">
           {/* Time Range */}
-          <div className="flex items-center gap-1.5 text-slate-500">
+          {event.startTime && <div className="flex items-center gap-1.5 text-slate-500">
             <Clock size={10} className="flex-shrink-0" />
             <span className="text-[10px] font-bold">{displayTime}</span>
-          </div>
+          </div> }
 
           {/* Neighborhood & Address */}
           <div className="flex items-start gap-1.5 text-slate-500">
@@ -76,10 +92,10 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
 
       {/* 4. Triage Action Footer */}
       {isTriage && (
-        <div className="flex border-t border-slate-100 h-10">
+        <div className="flex h-10 px-2 py-1.5 gap-1">
           <button
             onClick={() => onMove(event.id, 'archive')}
-            className="flex-1 flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors border-r border-slate-100 uppercase"
+            className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-colors uppercase"
           >
             <Trash2 size={12} />
             Archive
@@ -87,7 +103,7 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
           
           <button
             onClick={() => onMove(event.id, 'upcoming')}
-            className="flex-1 flex items-center justify-center gap-1.5 text-[10px] font-bold text-green-600 hover:bg-green-50 transition-colors uppercase"
+            className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-[10px] font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
           >
             <Check size={14} strokeWidth={3} />
             Looks Good
