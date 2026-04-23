@@ -30,6 +30,7 @@ export interface NewsletterEvent {
   // Metadata
   day_of_week: string;      // "Sunday"
   is_highlight: boolean;
+  add_to_calendar?: boolean;
   repeat: string | null;
   repeatFrequency: string | null;
 }
