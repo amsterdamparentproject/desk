@@ -91,15 +91,15 @@ export function Column({
         }`}
       >
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
-          {(list.id === 'ideas' || list.id === 'capture') && (
+          {(list.id === 'capture') && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
               <InboxForm onAdd={handleInboxAdd} listId={list.id} />
             </div>
           )}
 
           {events.length === 0 ? (
-            <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase italic">
-              No Events
+            <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
+              Nothing to see here 🌬️ 🛼
             </div>
           ) : (
             events.map((event) => (

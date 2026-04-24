@@ -13,8 +13,8 @@ export interface ListProps {
 }
 
 export const CAPTURE_LISTS: ListProps[] = [
-  { id: 'ideas', label: 'Ideas' },
   { id: 'capture', label: 'Capture' },
+  { id: 'ideas', label: 'Ideas' },
 ]
 
 export const TRIAGE_LISTS: ListProps[] = [
@@ -26,3 +26,5 @@ export const NEWSLETTER_LISTS: ListProps[] = [
   { id: 'upcoming', label: 'Upcoming Events' },
   { id: 'newsletter', label: 'Next Newsletter' },
 ]
+
+export const ALL_LISTS = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS];

@@ -1,7 +1,9 @@
 // components/CompactCard.tsx
 import { NewsletterEvent } from '../types/event'
-import { Check, Trash2, Edit, MapPin, Clock, NotepadText } from 'lucide-react'
-import { ListId } from '../types/list'
+import { Check, Trash2, Edit, MapPin, Clock, NotepadText, MoreHorizontal, ArrowBigRight, ArrowRight } from 'lucide-react'
+import { ALL_LISTS, ListId } from '../types/list'
+import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Props {
   event: NewsletterEvent
@@ -10,6 +12,10 @@ interface Props {
 }
 
 export function CompactCard({ event, onDetails, onMove }: Props) {
+  const isTriage = ['ideas', 'capture', 'review', 'error'].includes(event.list_id)
+
+  // Display date & time
+  
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return ''
 
@@ -30,26 +36,88 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
       ? startFormatted
       : `${startFormatted} – ${endFormatted}`
 
-  // Logic: Time range
   const displayTime = `${event.startTime} - ${event.endTime}`
 
-  const isTriage = ['ideas', 'capture', 'review', 'error'].includes(event.list_id)
+
+  // Handle move dropdown
+
+  const [showMoveMenu, setShowMoveMenu] = useState(false)
+
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+
+  const handleMove = (listId: ListId) => {
+    onMove(event.id, listId)
+    setShowMoveMenu(false)
+  }
+
+  const handleMoveClick = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX })
+    }
+    setShowMoveMenu(!showMoveMenu)
+  }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all">
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all ${showMoveMenu ? 'z-[100]' : 'z-0'}`}>
       <div className="p-3 space-y-2">
         {/* 1. Header: Date & Details Button */}
         <div className="flex justify-between items-start">
           <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
             {displayDate ? displayDate : 'No date'}
           </span>
-          <button
-            onClick={() => onDetails(event)}
-            className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
-          >
-            <Edit size={12} />
-            Edit
-          </button>
+
+        <div className="flex flex-row gap-3">
+          {/* Move action */}
+          <div className="relative">
+            <button
+              ref={buttonRef}
+              onClick={handleMoveClick}
+              className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+            >
+              <ArrowRight size={12} />
+              Move
+            </button>
+
+            {/* Move dropdown */}
+           {showMoveMenu && menuPos && createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-[110] cursor-default"
+                  onClick={(e) => { e.stopPropagation(); setShowMoveMenu(false); }}
+                />
+                <div
+                  className="absolute w-40 bg-white border border-slate-200 rounded-lg shadow-xl z-[120] py-1 animate-in fade-in zoom-in-95 duration-100"
+                  style={{ top: menuPos.top, left: menuPos.left }}
+                >
+                  {ALL_LISTS.map((list) => (
+                    <button
+                      key={list.id}
+                      type="button"
+                      disabled={event.list_id === list.id}
+                      onClick={() => handleMove(list.id as ListId)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      {list.label}
+                      {event.list_id === list.id && <div className="w-1 h-1 bg-blue-600 rounded-full" />}
+                    </button>
+                  ))}
+                </div>
+              </>,
+              document.body
+            )}
+            </div>
+            
+            {/* Edit action */}
+            <button
+              onClick={() => onDetails(event)}
+              className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+            >
+              <Edit size={12} />
+              Edit
+            </button>
+          </div>
         </div>
 
         {/* 2. Title: Bold & Uppercase */}
