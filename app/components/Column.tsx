@@ -2,17 +2,18 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { CompactCard } from './CompactCard'
 import { InboxForm } from './InboxForm'
-import { NewsletterEvent } from '../types/event'
+import { NewsletterEvent, CaptureEvent } from '../types/event'
 import { ListProps, ListId } from '../types/list'
+import { useEffect, useState } from 'react'
 
 interface ColumnProps {
   list: ListProps
   isOpen: boolean
   onToggle: () => void
-  events: NewsletterEvent[]
+  events: (CaptureEvent | NewsletterEvent)[]
   onDetails: (event: NewsletterEvent) => void
   onMove: (id: string, targetList: ListId) => void
-  onAddEvent: (event: NewsletterEvent) => void
+  onAddEvent: (event: CaptureEvent) => void
 }
 
 export function Column({
@@ -34,15 +35,24 @@ export function Column({
     onAddEvent({
       id: data.id,
       list_id: data.list_id,
-      title: data.description.split('\n')[0].substring(0, 50) || 'New Event',
       description: data.description,
-      newsletterDescription: data.description,
-      url: '',
-      area: '',
-      add_to_calendar: true,
-      is_highlight: false,
+      file: data.file,
     })
   }
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // This only runs in the browser
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    
+    // Set initial value
+    checkMobile();
+
+    // Optional: Listen for resize so it stays reactive
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
     <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
@@ -55,7 +65,7 @@ export function Column({
             onToggle()
           }
         }}
-        disabled={typeof window !== 'undefined' && window.innerWidth >= 768}
+        disabled={isMobile ? false : true}
         className={`w-full flex items-center justify-between p-4 transition-colors md:cursor-default ${
           isOpen ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-700'
         }`}

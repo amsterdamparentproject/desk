@@ -1,8 +1,13 @@
 import { ListId } from './list'
 
-// types/event.ts
+export interface CaptureEvent {
+  id: string
+  list_id: ListId
+  description: string
+  file: File | null
+}
+
 export interface NewsletterEvent {
-  // Logic Fields (Required for the UI)
   id: string
   list_id: ListId
 
@@ -32,4 +37,5 @@ export interface NewsletterEvent {
   add_to_calendar?: boolean
   repeat?: string | null
   repeatFrequency?: string | null
+  file?: File | null
 }

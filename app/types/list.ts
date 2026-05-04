@@ -2,10 +2,12 @@ export type ListId =
   | 'ideas'
   | 'capture'
   | 'review'
-  | 'newsletter'
-  | 'archive'
   | 'error'
-  | 'upcoming'
+  | 'next_newsletter'
+  | 'upcoming_events'
+  | 'new_resources'
+
+export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'archived' | 'snoozed';
 
 export interface ListProps {
   id: ListId
@@ -17,14 +19,15 @@ export const CAPTURE_LISTS: ListProps[] = [
   { id: 'ideas', label: 'Ideas' },
 ]
 
-export const TRIAGE_LISTS: ListProps[] = [
-  { id: 'review', label: 'To Review' },
+export const TRIAGE_LISTS: ListProps[] = [ 
+  { id: 'review', label: 'To review' },
   { id: 'error', label: 'Errors' },
 ]
 
-export const NEWSLETTER_LISTS: ListProps[] = [
-  { id: 'upcoming', label: 'Upcoming Events' },
-  { id: 'newsletter', label: 'Next Newsletter' },
+export const NEWSLETTER_LISTS: ListProps[] = [ // Actions: Accept, snooze, archive
+  { id: 'upcoming_events', label: 'Upcoming events' },
+  { id: 'new_resources', label: 'New resources' },
+  { id: 'next_newsletter', label: 'Next newsletter' },
 ]
 
-export const ALL_LISTS = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS];
+export const ALL_LISTS: ListProps[] = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS];

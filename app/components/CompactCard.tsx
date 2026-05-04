@@ -1,21 +1,21 @@
 // components/CompactCard.tsx
-import { NewsletterEvent } from '../types/event'
+import { NewsletterEvent, CaptureEvent } from '../types/event'
 import { Check, Trash2, Edit, MapPin, Clock, NotepadText, MoreHorizontal, ArrowBigRight, ArrowRight } from 'lucide-react'
 import { ALL_LISTS, ListId } from '../types/list'
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 interface Props {
-  event: NewsletterEvent
+  event: CaptureEvent | NewsletterEvent
   onDetails: (event: NewsletterEvent) => void
   onMove: (id: string, target: ListId) => void
 }
 
 export function CompactCard({ event, onDetails, onMove }: Props) {
   const isTriage = ['ideas', 'capture', 'review', 'error'].includes(event.list_id)
+  const isCaptureEvent = 'title' in event === false // CaptureEvent doesn't have title
 
-  // Display date & time
-  
+  // Display date & time - only for NewsletterEvent
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return ''
 
@@ -28,17 +28,13 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
     })
   }
 
-  const startFormatted = formatDate(event.startDate)
-  const endFormatted = formatDate(event.endDate)
+  const displayDate = isCaptureEvent ? '' : (
+    (event as NewsletterEvent).startDate === (event as NewsletterEvent).endDate
+      ? formatDate((event as NewsletterEvent).startDate)
+      : `${formatDate((event as NewsletterEvent).startDate)} – ${formatDate((event as NewsletterEvent).endDate)}`
+  )
 
-  const displayDate =
-    event.startDate === event.endDate
-      ? startFormatted
-      : `${startFormatted} – ${endFormatted}`
-
-  const displayTime = `${event.startTime} - ${event.endTime}`
-
-
+  const displayTime = isCaptureEvent ? '' : `${(event as NewsletterEvent).startTime} - ${(event as NewsletterEvent).endTime}`
   // Handle move dropdown
 
   const [showMoveMenu, setShowMoveMenu] = useState(false)
@@ -109,44 +105,58 @@ export function CompactCard({ event, onDetails, onMove }: Props) {
             )}
             </div>
             
-            {/* Edit action */}
-            <button
-              onClick={() => onDetails(event)}
-              className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
-            >
-              <Edit size={12} />
-              Edit
-            </button>
+            {/* Edit action - only show for NewsletterEvent */}
+            {!isCaptureEvent && (
+              <button
+                onClick={() => onDetails(event as NewsletterEvent)}
+                className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+              >
+                <Edit size={12} />
+                Edit
+              </button>
+            )}
           </div>
         </div>
 
         {/* 2. Title: Bold & Uppercase */}
         <h3 className="font-black text-slate-900 text-sm leading-tight uppercase tracking-tight">
-          {event.title}
+          {isCaptureEvent ? '✨ Processing...' : (event as NewsletterEvent).title}
         </h3>
 
         {/* 3. New Metadata Rows */}
         <div className="space-y-2">
-          {/* Time Range */}
-          {event.startTime && (
+          {/* Description for CaptureEvent */}
+          {isCaptureEvent && event.description && (
+            <div className="flex items-start gap-1.5 text-slate-500">
+              <NotepadText size={10} className="flex-shrink-0 mt-0.5" />
+              <span className="text-[10px] italic text-slate-400 leading-tight">
+                {event.description}
+              </span>
+            </div>
+          )}
+
+          {/* Time Range - only for NewsletterEvent */}
+          {!isCaptureEvent && (event as NewsletterEvent).startTime && (
             <div className="flex items-center gap-1.5 text-slate-500">
               <Clock size={10} className="flex-shrink-0" />
               <span className="text-[10px] font-bold">{displayTime}</span>
             </div>
           )}
 
-          {/* Neighborhood & Address */}
-          <div className="flex items-start gap-1.5 text-slate-500">
-            <MapPin size={10} className="flex-shrink-0 mt-0.5" />
-            <div className="flex flex-col leading-tight overflow-hidden">
-              <span className="text-[10px] font-bold text-slate-700 uppercase">
-                {event.neighborhood} ({event.area})
-              </span>
-              <span className="text-[10px] truncate italic text-slate-400">
-                {event.location}
-              </span>
+          {/* Neighborhood & Address - only for NewsletterEvent */}
+          {!isCaptureEvent && (
+            <div className="flex items-start gap-1.5 text-slate-500">
+              <MapPin size={10} className="flex-shrink-0 mt-0.5" />
+              <div className="flex flex-col leading-tight overflow-hidden">
+                <span className="text-[10px] font-bold text-slate-700 uppercase">
+                  {(event as NewsletterEvent).neighborhood} ({(event as NewsletterEvent).area})
+                </span>
+                <span className="text-[10px] truncate italic text-slate-400">
+                  {(event as NewsletterEvent).location}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Description */}
           <div className="flex items-start gap-1.5 text-slate-500">

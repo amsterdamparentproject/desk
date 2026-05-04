@@ -1,22 +1,29 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import { Column } from './components/Column'
-import { NewsletterEvent } from './types/event'
+import { CaptureEvent, NewsletterEvent } from './types/event'
 import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
 import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
 import { DetailsForm } from './components/DetailsForm'
+import { postDesk } from './components/PostToWebhook'
 
 type Tab = 'capture' |'triage' | 'newsletter'
 
 export default function Board() {
   // Responsive default tab: capture on mobile, triage on desktop
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768 ? 'capture' : 'triage'
+  const [activeTab, setActiveTab] = useState<Tab>('triage');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // NOW it is safe to check the window size
+    if (window.innerWidth < 768) {
+      setActiveTab('capture');
     }
-    return 'triage' // fallback for SSR
-  })
-  const [events, setEvents] = useState<NewsletterEvent[]>(MOCK_EVENTS)
+  }, []);
+
+  const [events, setEvents] = useState<(CaptureEvent | NewsletterEvent)[]>(MOCK_EVENTS)
   const [selectedEvent, setSelectedEvent] = useState<NewsletterEvent | null>(
     null
   )
@@ -38,8 +45,36 @@ export default function Board() {
     )
   }
 
-  const handleAddEvent = (event: NewsletterEvent) => {
-    setEvents((prev) => [...prev, event])
+  const handleAddEvent = async (inboxData: any) => {
+    const optimisticId = crypto.randomUUID()
+    const newEvent: CaptureEvent = {
+      id: optimisticId,
+      list_id: 'capture',
+      description: inboxData.description || '',
+      file: inboxData.file,
+    }
+
+    // 2. Update UI immediately
+    setEvents((prev) => [newEvent, ...prev])
+
+    try {
+      const postData = { 
+        ...inboxData,
+        action: 'add'
+      }
+      const result = await postDesk(inboxData);
+      if (result.success) {
+        // For now, keep the CaptureEvent since webhook doesn't return hydrated data
+        // In the future, we might need polling or webhook callback to get NewsletterEvent
+        console.log('Event submitted successfully');
+      } else {
+        throw new Error(`Webhook failed with status ${result.status}`);
+      }
+    } catch (err) {
+      console.error('Capture Error:', err)
+      // 5. Rollback on failure
+      setEvents((prev) => prev.filter((e) => e.id !== optimisticId))
+    }
   }
 
   // 2. Determine which columns to show
