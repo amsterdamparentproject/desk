@@ -1,7 +1,6 @@
 // components/Column.tsx
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { CompactCard } from './CompactCard'
-import { InboxForm } from './InboxForm'
+import { CaptureCard, TriageCard, ReviewCard } from './card'
 import { NewsletterEvent, CaptureEvent } from '../types/event'
 import { ListProps, ListId } from '../types/list'
 import { useEffect, useState } from 'react'
@@ -103,7 +102,7 @@ export function Column({
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {(list.id === 'capture') && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <InboxForm onAdd={handleInboxAdd} listId={list.id} />
+              <CaptureCard onAdd={handleInboxAdd} listId={list.id} />
             </div>
           )}
 
@@ -112,14 +111,41 @@ export function Column({
               Nothing to see here 🌬️ 🛼
             </div>
           ) : (
-            events.map((event) => (
-              <CompactCard
-                key={event.id}
-                event={event}
-                onDetails={onDetails}
-                onMove={onMove}
-              />
-            ))
+            events.map((event) => {
+              // Determine which card component to use based on list type
+              const isTriageList = ['ideas', 'capture', 'error'].includes(list.id)
+              const isReviewList = ['review', 'upcoming_events', 'new_resources', 'next_newsletter'].includes(list.id)
+
+              if (isTriageList) {
+                return (
+                  <TriageCard
+                    key={event.id}
+                    event={event}
+                    onDetails={onDetails}
+                    onMove={onMove}
+                  />
+                )
+              } else if (isReviewList) {
+                return (
+                  <ReviewCard
+                    key={event.id}
+                    event={event}
+                    onDetails={onDetails}
+                    onMove={onMove}
+                  />
+                )
+              } else {
+                // Fallback - shouldn't happen with current lists
+                return (
+                  <ReviewCard
+                    key={event.id}
+                    event={event}
+                    onDetails={onDetails}
+                    onMove={onMove}
+                  />
+                )
+              }
+            })
           )}
         </div>
       </div>

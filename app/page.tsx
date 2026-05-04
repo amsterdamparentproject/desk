@@ -5,7 +5,7 @@ import { CaptureEvent, NewsletterEvent } from './types/event'
 import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
 import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
 import { DetailsForm } from './components/DetailsForm'
-import { postDesk } from './components/PostToWebhook'
+import { postDesk } from '../lib/PostToWebhook'
 
 type Tab = 'capture' |'triage' | 'newsletter'
 
