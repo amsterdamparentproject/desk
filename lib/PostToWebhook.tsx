@@ -22,17 +22,22 @@ const postToWebhook = async (webhookURL: string | undefined, data: any) => {
     if (data instanceof FormData) {
       body = data;
     } else if (typeof data === 'object' && data !== null && Object.values(data).some((v) => v instanceof File)) {
-      // Has File objects - use FormData
-      body = new FormData();
+      // 1. Create a local instances explicitly typed as FormData
+      const formData = new FormData();
+      
+      // 2. Loop and append securely to the guaranteed local FormData instance
       Object.entries(data).forEach(([key, value]) => {
         if (value instanceof File) {
-          body.append(key, value);
+          formData.append(key, value);
         } else if (value !== null && value !== undefined) {
-          body.append(key, String(value));
+          formData.append(key, String(value));
         }
       });
+
+      // 3. Assign the complete FormData bundle to your wide-scope body variable
+      body = formData;
     } else {
-      // No files - use JSON
+      // Fallback for regular objects without files
       body = JSON.stringify(data);
       headers["Content-Type"] = "application/json";
     }
