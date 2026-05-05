@@ -3,19 +3,19 @@ import { Card } from './Card'
 import { CardProps } from '../../types/card'
 import { TriageActionFooter } from './TriageActionFooter'
 
-export function TriageCard({ activity, onDetails, onMove, onArchive }: CardProps) {
+export function TriageCard({ activity, onDetails, onMove, onArchive, showApproveButton }: CardProps) {
   return (
     <Card
       activity={activity}
       onDetails={onDetails}
       onMove={onMove}
       onArchive={onArchive}
-      showEditButton={true}
     >
       <TriageActionFooter
         activity={activity}
         onMove={onMove}
         onArchive={onArchive}
+        showApproveButton={showApproveButton}
        />
     </Card>
   )
