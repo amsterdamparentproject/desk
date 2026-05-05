@@ -77,7 +77,7 @@ export default function Board() {
       const postData = { 
         ...captureData,
         id: optimisticActivity.id,
-        action: 'add'
+        action: 'add' as const
       };
 
       const result = await postDesk(postData);
@@ -87,20 +87,19 @@ export default function Board() {
       }
       
       if (result.success) {
-        console.log('Event submitted successfully');
+        console.log(result.data)
+
+        let processedData = result.data as DeskActivity
+        processedData.list_id = 'review'
         
-        // TODO: Extract the hydrated activity returned by your server
-        // const savedActivity = result.data; // e.g., contains the real database file_url
-        
-        // 2. Map through state and swap out the optimistic stub with the real record
         setActivities((prev) => 
           prev.map((e) => {
             if (e.id === optimisticActivity.id) {
               // Clean up the local blob URL memory before discarding the stub
-              if (optimisticActivity.preview_url) {
+              if (optimisticActivity.preview_url && e.file_url) {
                 URL.revokeObjectURL(optimisticActivity.preview_url);
               }
-              // return savedActivity; // The card now switches to the official DB data
+              return processedData; // Replace the stub with the real server data
             }
             return e;
           })

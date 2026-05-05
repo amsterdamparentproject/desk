@@ -1,5 +1,7 @@
 "use server";
 
+import { CaptureDataProps } from "@/app/types/activity";
+
 const isLocal = process.env.NODE_ENV === "development";
 
 const postToWebhook = async (webhookURL: string | undefined, data: any) => {
@@ -41,18 +43,34 @@ const postToWebhook = async (webhookURL: string | undefined, data: any) => {
       body,
     });
 
+    // 1. Safely extract the parsed JSON body data from the network response stream
+    let responseData = null;
+    if (response.ok) {
+      responseData = await response.json();
+    } else {
+      responseData = { message: await response.text() };
+    }
+
     const isOk = !!response.ok;
     const statusCode = Number(response.status);
 
-    return { success: isOk, status: statusCode };
+    return { success: isOk, status: statusCode, data: responseData};
   } catch (error: any) {
     console.error("postToWebhook error:", error);
     return { success: false, error: error.message || "Unknown error" };
   }
 };
 
-export const postDesk = async (data: any) => {
-  const url = isLocal ? process.env.TEST_N8N_DESK_WEBHOOK_URL : process.env.N8N_DESK_WEBHOOK_URL;
+interface PostDeskProps extends CaptureDataProps {
+  id: string
+  action: 'add' | 'update' | 'archive'
+}
+
+export const postDesk = async (data: PostDeskProps) => {
+  const action = data.action ?? 'add'
+  const baseUrl = isLocal ? process.env.TEST_N8N_DESK_WEBHOOK_URL : process.env.N8N_DESK_WEBHOOK_URL;
+  const url = `${baseUrl}/${action}`
+
   console.info('Posting to webhook URL:', url);
   return postToWebhook(url, data);
 };
