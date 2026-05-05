@@ -11,6 +11,7 @@ CREATE TABLE activities.resources (
   snooze_until timestamptz,
   last_triaged_at timestamptz,
   triage_notes text,
+  file_url text,
   
   -- Core Content (AI Parser Output)
   title text NOT NULL,

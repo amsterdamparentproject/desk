@@ -7,8 +7,6 @@ export type ListId =
   | 'upcoming_events'
   | 'new_resources'
 
-export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'archived' | 'snoozed';
-
 export interface ListProps {
   id: ListId
   label: string

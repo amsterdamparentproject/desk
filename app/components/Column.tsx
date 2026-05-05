@@ -1,7 +1,7 @@
 // components/Column.tsx
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { CaptureCard, TriageCard, ReviewCard } from './card'
-import { NewsletterEvent, CaptureEvent } from '../types/event'
+import { CaptureCard, TriageCard, NewsletterCard } from './card'
+import { CaptureDataProps, DeskActivity } from '../types/activity'
 import { ListProps, ListId } from '../types/list'
 import { useEffect, useState } from 'react'
 
@@ -9,30 +9,25 @@ interface ColumnProps {
   list: ListProps
   isOpen: boolean
   onToggle: () => void
-  events: (CaptureEvent | NewsletterEvent)[]
-  onDetails: (event: NewsletterEvent) => void
+  activities: DeskActivity[]
+  onDetails: (activity: DeskActivity) => void
   onMove: (id: string, targetList: ListId) => void
-  onAddEvent: (event: CaptureEvent) => void
+  onArchive: (id: string) => void
+  onAddEvent: (activity: CaptureDataProps) => void
 }
 
 export function Column({
   list,
   isOpen,
   onToggle,
-  events,
+  activities,
   onDetails,
   onMove,
+  onArchive,
   onAddEvent,
 }: ColumnProps) {
-  // Bridge the InboxForm data to our global event state
-  const handleInboxAdd = (data: {
-    id: string
-    list_id: ListId
-    description: string
-    file: File | null
-  }) => {
+  const handleCaptureAdd = (data: CaptureDataProps) => {
     onAddEvent({
-      id: data.id,
       list_id: data.list_id,
       description: data.description,
       file: data.file,
@@ -42,13 +37,10 @@ export function Column({
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // This only runs in the browser
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    
-    // Set initial value
     checkMobile();
 
-    // Optional: Listen for resize so it stays reactive
+    // Listen for resize so it stays reactive
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
@@ -89,7 +81,7 @@ export function Column({
               : 'bg-slate-200 text-slate-500 md:bg-slate-100'
           }`}
         >
-          {events.length}
+          {activities.length}
         </span>
       </button>
 
@@ -102,16 +94,16 @@ export function Column({
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {(list.id === 'capture') && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <CaptureCard onAdd={handleInboxAdd} listId={list.id} />
+              <CaptureCard onAdd={handleCaptureAdd} listId={list.id} />
             </div>
           )}
 
-          {events.length === 0 ? (
+          {activities.length === 0 ? (
             <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
               Nothing to see here 🌬️ 🛼
             </div>
           ) : (
-            events.map((event) => {
+            activities.map((activity) => {
               // Determine which card component to use based on list type
               const isTriageList = ['ideas', 'capture', 'error'].includes(list.id)
               const isReviewList = ['review', 'upcoming_events', 'new_resources', 'next_newsletter'].includes(list.id)
@@ -119,29 +111,32 @@ export function Column({
               if (isTriageList) {
                 return (
                   <TriageCard
-                    key={event.id}
-                    event={event}
+                    key={activity.id}
+                    activity={activity}
                     onDetails={onDetails}
                     onMove={onMove}
+                    onArchive={onArchive}
                   />
                 )
               } else if (isReviewList) {
                 return (
-                  <ReviewCard
-                    key={event.id}
-                    event={event}
+                  <NewsletterCard
+                    key={activity.id}
+                    activity={activity}
                     onDetails={onDetails}
                     onMove={onMove}
+                    onArchive={onArchive}
                   />
                 )
               } else {
                 // Fallback - shouldn't happen with current lists
                 return (
-                  <ReviewCard
-                    key={event.id}
-                    event={event}
+                  <NewsletterCard
+                    key={activity.id}
+                    activity={activity}
                     onDetails={onDetails}
                     onMove={onMove}
+                    onArchive={onArchive}
                   />
                 )
               }

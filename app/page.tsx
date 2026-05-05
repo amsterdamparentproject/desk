@@ -1,13 +1,13 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import { Column } from './components/Column'
-import { CaptureEvent, NewsletterEvent } from './types/event'
-import { MOCK_EVENTS } from './mockData' // Replace with Supabase fetch later
+import { CaptureDataProps, createNewActivity, DeskActivity } from './types/activity'
+import { MOCK_ACTIVITIES } from './mockData' // Replace with Supabase fetch later
 import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
-import { DetailsForm } from './components/DetailsForm'
+import { ActivityDrawer } from './components/ActivityDrawer'
 import { postDesk } from '../lib/PostToWebhook'
 
-type Tab = 'capture' |'triage' | 'newsletter'
+type Tab = 'capture' | 'triage' | 'newsletter' 
 
 export default function Board() {
   // Responsive default tab: capture on mobile, triage on desktop
@@ -23,8 +23,8 @@ export default function Board() {
     }
   }, []);
 
-  const [events, setEvents] = useState<(CaptureEvent | NewsletterEvent)[]>(MOCK_EVENTS)
-  const [selectedEvent, setSelectedEvent] = useState<NewsletterEvent | null>(
+  const [activities, setActivities] = useState<(DeskActivity)[]>(MOCK_ACTIVITIES)
+  const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(
     null
   )
   const [openCols, setOpenCols] = useState<Set<ListId>>(() => {
@@ -34,48 +34,94 @@ export default function Board() {
   })
 
   // 1. Handlers
-  const handleUpdateEvent = (updated: NewsletterEvent) => {
-    setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
-    setSelectedEvent(null) // Close form after save
+  const handleUpdateEvent = (updated: DeskActivity) => {
+    setActivities((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
+    setSelectedActivity(null) // Close form after save
   }
 
   const handleMoveEvent = (id: string, targetList: ListId) => {
-    setEvents((prev) =>
+    setActivities((prev) =>
       prev.map((e) => (e.id === id ? { ...e, list_id: targetList } : e))
     )
   }
 
-  const handleAddEvent = async (inboxData: any) => {
-    const optimisticId = crypto.randomUUID()
-    const newEvent: CaptureEvent = {
-      id: optimisticId,
-      list_id: 'capture',
-      description: inboxData.description || '',
-      file: inboxData.file,
-    }
+  // TODO
+  const handleArchiveEvent = (id: string) => {
+    setActivities((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, } : e))
+    )
+  }
 
-    // 2. Update UI immediately
-    setEvents((prev) => [newEvent, ...prev])
+ const handleAddEvent = async (captureData: CaptureDataProps) => {
+    // 1. Generate local blob URL for instant UI image rendering (if a file exists)
+    const preview_url = captureData.file 
+      ? URL.createObjectURL(captureData.file) 
+      : null;
+
+    // 2. Leverage your factory to create the perfect optimistic activity
+    // We explicitly pass the description, and tuck everything else into overrides
+    const optimisticActivity: DeskActivity = createNewActivity(
+      captureData.description || '', 
+      {
+        list_id: captureData.list_id || 'capture',
+        file: captureData.file,
+        preview_url: preview_url
+      }
+    );
+
+    // 3. Update UI instantly with the clean object
+    setActivities((prev) => [optimisticActivity, ...prev]);
 
     try {
+      // 4. Package up data for your postDesk handler
+      // Since postDesk likely handles the network fetch under the hood, 
+      // pass the stable optimistic ID along so n8n can map back to it!
       const postData = { 
-        ...inboxData,
+        ...captureData,
+        id: optimisticActivity.id,
         action: 'add'
-      }
-      const result = await postDesk(inboxData);
-      if (result.success) {
-        // For now, keep the CaptureEvent since webhook doesn't return hydrated data
-        // In the future, we might need polling or webhook callback to get NewsletterEvent
-        console.log('Event submitted successfully');
-      } else {
+      };
+
+      const result = await postDesk(postData);
+      
+      if (!result.success) {
         throw new Error(`Webhook failed with status ${result.status}`);
       }
+      
+      if (result.success) {
+        console.log('Event submitted successfully');
+        
+        // TODO: Extract the hydrated activity returned by your server
+        // const savedActivity = result.data; // e.g., contains the real database file_url
+        
+        // 2. Map through state and swap out the optimistic stub with the real record
+        setActivities((prev) => 
+          prev.map((e) => {
+            if (e.id === optimisticActivity.id) {
+              // Clean up the local blob URL memory before discarding the stub
+              if (optimisticActivity.preview_url) {
+                URL.revokeObjectURL(optimisticActivity.preview_url);
+              }
+              // return savedActivity; // The card now switches to the official DB data
+            }
+            return e;
+          })
+        );
+      }
     } catch (err) {
-      console.error('Capture Error:', err)
-      // 5. Rollback on failure
-      setEvents((prev) => prev.filter((e) => e.id !== optimisticId))
+      console.error('Capture Error:', err);
+      
+      // 5. Rollback UI on failure
+      setActivities((prev) => prev.filter((e) => e.id !== optimisticActivity.id));
+      
+      // 6. Memory Cleanup: Immediately free up browser memory if a blob was created
+      if (preview_url) {
+        URL.revokeObjectURL(preview_url);
+      }
+      
+      // Optional: add a toast notification or alert here for the user
     }
-  }
+  };
 
   // 2. Determine which columns to show
   const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
@@ -128,21 +174,22 @@ export default function Board() {
             return newSet
           })
         }}
-        events={events.filter((e) => e.list_id === col.id)}
-        onDetails={setSelectedEvent}
+        activities={activities.filter((e) => e.list_id === col.id)}
+        onDetails={setSelectedActivity}
         onMove={handleMoveEvent}
         onAddEvent={handleAddEvent}
+        onArchive={handleArchiveEvent}
       />
     </div>
   ))}
 </div>
 
       {/* Detail Overlay */}
-      {selectedEvent && (
-        <DetailsForm
-          event={selectedEvent}
+      {selectedActivity && (
+        <ActivityDrawer
+          activity={selectedActivity}
           onSave={handleUpdateEvent}
-          onClose={() => setSelectedEvent(null)}
+          onClose={() => setSelectedActivity(null)}
         />
       )}
     </main>
