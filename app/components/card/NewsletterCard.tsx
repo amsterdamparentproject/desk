@@ -2,7 +2,7 @@ import { Card } from './Card'
 import { CardProps } from '../../types/card'
 import { TriageActionFooter } from './TriageActionFooter'
 
-export function NewsletterCard({ activity, onDetails, onMove, onArchive, showApproveButton }: CardProps) {
+export function NewsletterCard({ activity, onDetails, onMove, onArchive }: CardProps) {
   return (
     <Card
       activity={activity}
@@ -14,7 +14,7 @@ export function NewsletterCard({ activity, onDetails, onMove, onArchive, showApp
         activity={activity}
         onMove={onMove}
         onArchive={onArchive}
-        showApproveButton={showApproveButton}
+        showApproveButton={false} // Already approved
        /> 
     </Card>
   )

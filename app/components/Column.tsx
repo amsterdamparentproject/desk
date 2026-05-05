@@ -115,7 +115,6 @@ export function Column({
                     onDetails={onDetails}
                     onMove={onMove}
                     onArchive={onArchive}
-                    showApproveButton={true}
                   />
                 )
               } else if (listTab === 'newsletter') {
@@ -126,7 +125,6 @@ export function Column({
                     onDetails={onDetails}
                     onMove={onMove}
                     onArchive={onArchive}
-                    showApproveButton={false}
                   />
                 )
               } else {
