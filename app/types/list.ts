@@ -1,3 +1,5 @@
+export type Tab = 'capture' | 'triage' | 'newsletter' 
+
 export type ListId =
   | 'ideas'
   | 'capture'
@@ -29,3 +31,20 @@ export const NEWSLETTER_LISTS: ListProps[] = [ // Actions: Accept, snooze, archi
 ]
 
 export const ALL_LISTS: ListProps[] = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS];
+
+export function getListTab(listId: ListId): Tab {
+  if (CAPTURE_LISTS.some(list => list.id === listId)) {
+    return 'capture';
+  }
+  
+  if (TRIAGE_LISTS.some(list => list.id === listId)) {
+    return 'triage';
+  }
+  
+  if (NEWSLETTER_LISTS.some(list => list.id === listId)) {
+    return 'newsletter';
+  }
+
+  // Default to capture
+  return 'capture';
+}

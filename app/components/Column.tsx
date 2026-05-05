@@ -1,8 +1,8 @@
 // components/Column.tsx
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { CaptureCard, TriageCard, NewsletterCard } from './card'
+import { CaptureCard, TriageCard, NewsletterCard, CaptureCardForm } from './card'
 import { CaptureDataProps, DeskActivity } from '../types/activity'
-import { ListProps, ListId } from '../types/list'
+import { ListProps, ListId, TRIAGE_LISTS, NEWSLETTER_LISTS, CAPTURE_LISTS, getListTab } from '../types/list'
 import { useEffect, useState } from 'react'
 
 interface ColumnProps {
@@ -94,7 +94,7 @@ export function Column({
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {(list.id === 'capture') && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <CaptureCard onAdd={handleCaptureAdd} listId={list.id} />
+              <CaptureCardForm onAdd={handleCaptureAdd} listId={list.id} />
             </div>
           )}
 
@@ -105,10 +105,9 @@ export function Column({
           ) : (
             activities.map((activity) => {
               // Determine which card component to use based on list type
-              const isTriageList = ['ideas', 'capture', 'error'].includes(list.id)
-              const isReviewList = ['review', 'upcoming_events', 'new_resources', 'next_newsletter'].includes(list.id)
+              const listTab = getListTab(list.id);
 
-              if (isTriageList) {
+              if (listTab === 'triage') {
                 return (
                   <TriageCard
                     key={activity.id}
@@ -118,7 +117,7 @@ export function Column({
                     onArchive={onArchive}
                   />
                 )
-              } else if (isReviewList) {
+              } else if (listTab === 'newsletter') {
                 return (
                   <NewsletterCard
                     key={activity.id}
@@ -131,12 +130,9 @@ export function Column({
               } else {
                 // Fallback - shouldn't happen with current lists
                 return (
-                  <NewsletterCard
+                  <CaptureCard
                     key={activity.id}
                     activity={activity}
-                    onDetails={onDetails}
-                    onMove={onMove}
-                    onArchive={onArchive}
                   />
                 )
               }

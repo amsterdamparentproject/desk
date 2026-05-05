@@ -13,12 +13,11 @@ export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'arch
 
 // Base card component props
 export interface CardProps {
-  activity: BaseActivity | DeskActivity
-  onDetails: (activity: DeskActivity) => void // Only cards that have been processed can access the Edit pane
-  onMove: (id: string, target: ListId) => void
-  onArchive: (id: string) => void
+  activity: DeskActivity
+  onDetails?: (activity: DeskActivity) => void // Only cards that have been processed can access the Edit pane
+  onMove?: (id: string, target: ListId) => void
+  onArchive?: (id: string) => void
   showApproveButton?: boolean
-  showEditButton?: boolean
   children?: React.ReactNode // For extending components to add custom footers
 }
 

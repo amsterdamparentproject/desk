@@ -9,9 +9,7 @@ export function NewsletterCard({ activity, onDetails, onMove, onArchive }: CardP
       onMove={onMove}
       onArchive={onArchive}
       showApproveButton={false} // Already approved
-      showEditButton={true} // Review cards show edit button
     >
-      {/* No footer for review cards */}
     </Card>
   )
 }

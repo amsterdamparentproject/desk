@@ -3,11 +3,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { Column } from './components/Column'
 import { CaptureDataProps, createNewActivity, DeskActivity } from './types/activity'
 import { MOCK_ACTIVITIES } from './mockData' // Replace with Supabase fetch later
-import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId } from './types/list'
+import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from './types/list'
 import { ActivityDrawer } from './components/ActivityDrawer'
 import { postDesk } from '../lib/PostToWebhook'
-
-type Tab = 'capture' | 'triage' | 'newsletter' 
 
 export default function Board() {
   // Responsive default tab: capture on mobile, triage on desktop
