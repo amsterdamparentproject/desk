@@ -1,39 +1,25 @@
 // components/DetailsForm.tsx
 import { useState, ReactNode, useEffect } from 'react'
 import { X, Calendar, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon } from 'lucide-react'
-import { DeskActivity } from '../types/activity' // Adjust paths based on your architecture
+import { DeskActivity, DEFAULT_DESK_ACTIVITY } from '../types/activity' // Adjust paths based on your architecture
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 
-/**
- * Sanitizes a DeskActivity object to ensure no null values break controlled React inputs or array loops.
- */
-function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
-  // Define fields that require specific primitive/structural defaults
-  const numberFields = ['duration_minutes'];
-  const booleanFields = ['calendar_skip', 'calendar_sent', 'newsletter_highlight'];
-  const arrayFields = ['categories'];
 
-  const sanitized = Object.entries(activity).reduce((acc, [key, value]) => {
-    // If the value is completely valid, keep it
-    if (value !== null && value !== undefined) {
+export function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
+  // 1. Convert the incoming activity into clean key/value entries, filtering out explicit nulls
+  const cleanIncomingFields = Object.entries(activity).reduce<Record<string, any>>((acc, [key, value]) => {
+    if (value !== null) {
       acc[key] = value;
-    } 
-    // Fallbacks for null/undefined database values
-    else if (numberFields.includes(key)) {
-      acc[key] = 0;
-    } else if (booleanFields.includes(key)) {
-      acc[key] = false;
-    } else if (arrayFields.includes(key)) {
-      acc[key] = [];
-    } else {
-      acc[key] = '';
     }
     return acc;
-  }, {} as any);
+  }, {});
 
-  return sanitized as DeskActivity;
+  return {
+    ...DEFAULT_DESK_ACTIVITY,
+    ...cleanIncomingFields,
+  } as DeskActivity;
 }
 
 interface ActivityDrawerProps {

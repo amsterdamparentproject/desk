@@ -104,54 +104,58 @@ export type DeskActivity = BaseActivity & {
  * 5. SEED DATA FACTORY
  * Generates a clean template matching our flexible DeskActivity type.
  */
+export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
+  id: '',
+  created_at: '',
+  updated_at: '',
+  list_id: 'capture',
+  status: 'new',
+  source: 'manual',
+  snooze_until: '',
+  last_triaged_at: '',
+  triage_notes: '',
+  file_url: '',
+  file: null,
+  preview_url: '',
+  title: '✨ Processing...',
+  description: '',
+  url: '',
+  organization: '',
+  age_range: '',
+  categories: [],
+  newsletter_description: '',
+  newsletter_last: '',
+  newsletter_highlight: false,
+  location: '',
+  neighborhood: '',
+  area: '',
+  
+  // Event specific properties defaulted to safe non-null primitives
+  start_date: '',
+  end_date: '',
+  start_time: '',
+  end_time: '',
+  day_of_week: null, // Select dropdown can handle null or '' safely depending on setup
+  duration_minutes: 0,
+  repeat_rrule: '',
+  repeat_frequency: null,
+  repeat_next_date: '',
+  calendar_skip: false,
+  calendar_sent: false,
+};
+
 export const createNewActivity = (
   description: string,
   overrides?: Partial<DeskActivity>
 ): DeskActivity => {
   const now = new Date().toISOString();
 
-  const {
-    file = null,
-    preview_url = null,
-    list_id = 'capture',
-    ...remainingOverrides
-  } = overrides || {};
-
   return {
-    // Structural Defaults
+    ...DEFAULT_DESK_ACTIVITY,
     id: crypto.randomUUID(),
     created_at: now,
     updated_at: now,
-    status: 'new',
-    source: 'app_desk',
-    title: '✨ Processing...',
-    description: description,
-    newsletter_description: '',
-    categories: [],
-    
-    // In-flight Local Attachments
-    list_id,
-    file,
-    preview_url,
-
-    // Database Fields Defaults
-    file_url: null,
-    url: null,
-    organization: null,
-    age_range: null,
-    location: null,
-    neighborhood: null,
-    area: null,
-    snooze_until: null,
-    last_triaged_at: null,
-    triage_notes: null,
-    newsletter_last: null,
-    newsletter_highlight: false,
-
-    // Optional Event fields default state safely assigned if not overwritten
-    calendar_skip: false,
-    calendar_sent: false,
-
-    ...remainingOverrides, 
+    description,
+    ...overrides,
   };
 };
