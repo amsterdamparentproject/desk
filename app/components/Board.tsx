@@ -129,7 +129,7 @@ export default function Board({ initialActivities } : BoardProps) {
   const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
 
   return (
-    <main className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
       {/* Tab Navigation */}
       <header className="m-4 mb-2 bg-white border-b shadow-sm z-10">
         <div>
