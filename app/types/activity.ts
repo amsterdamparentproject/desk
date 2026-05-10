@@ -136,7 +136,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   
   // Event specific properties defaulted to safe non-null primitives
   start_date: '',
-  end_date: '',
+  end_date: null,
   start_time: '',
   end_time: '',
   day_of_week: null, // Select dropdown can handle null or '' safely depending on setup

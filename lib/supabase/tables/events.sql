@@ -23,7 +23,7 @@ CREATE TABLE activities.events (
   
   -- Date & Time Logic
   start_date date NOT NULL DEFAULT CURRENT_DATE,
-  end_date date DEFAULT CURRENT_DATE,
+  end_date date,
   start_time time,
   end_time time,
   day_of_week activities.day_name,

@@ -5,6 +5,18 @@ import { CaptureDataProps, DeskActivity } from '../types/activity'
 import { ListProps, ListId, TRIAGE_LISTS, NEWSLETTER_LISTS, CAPTURE_LISTS, getListTab } from '../types/list'
 import { useEffect, useState } from 'react'
 
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+function isInNewsletterWindow(activity: DeskActivity, windowStart: string, windowEnd: string): boolean {
+  const date = activity.start_date
+  if (!date) return false
+  return date >= windowStart && date <= windowEnd
+}
+
 interface ColumnProps {
   list: ListProps
   isOpen: boolean
@@ -14,6 +26,7 @@ interface ColumnProps {
   onMove: (id: string, targetList: ListId) => void
   onArchive: (id: string) => void
   onAddEvent: (activity: CaptureDataProps) => void
+  publishDate: string
 }
 
 export function Column({
@@ -25,6 +38,7 @@ export function Column({
   onMove,
   onArchive,
   onAddEvent,
+  publishDate,
 }: ColumnProps) {
   const handleCaptureAdd = (data: CaptureDataProps) => {
     onAddEvent({
@@ -102,22 +116,19 @@ export function Column({
             <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
               Nothing to see here 🌬️ 🛼
             </div>
+          ) : list.id === 'upcoming_events' ? (
+            <UpcomingEventsContent
+              activities={activities}
+              onDetails={onDetails}
+              onMove={onMove}
+              onArchive={onArchive}
+              publishDate={publishDate}
+            />
           ) : (
             activities.map((activity) => {
-              // Determine which card component to use based on list type
               const listTab = getListTab(list.id);
 
-              if (list.id === 'ideas') {
-                return (
-                  <TriageCard
-                    key={activity.id}
-                    activity={activity}
-                    onDetails={onDetails}
-                    onMove={onMove}
-                    onArchive={onArchive}
-                  />
-                )
-              } else if (listTab === 'triage') {
+              if (list.id === 'ideas' || listTab === 'triage') {
                 return (
                   <TriageCard
                     key={activity.id}
@@ -138,17 +149,74 @@ export function Column({
                   />
                 )
               } else {
-                return (
-                  <CaptureCard
-                    key={activity.id}
-                    activity={activity}
-                  />
-                )
+                return <CaptureCard key={activity.id} activity={activity} />
               }
             })
           )}
         </div>
       </div>
     </section>
+  )
+}
+
+interface UpcomingEventsContentProps {
+  activities: DeskActivity[]
+  onDetails: (activity: DeskActivity) => void
+  onMove: (id: string, targetList: ListId) => void
+  onArchive: (id: string) => void
+  publishDate: string
+}
+
+function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publishDate }: UpcomingEventsContentProps) {
+  const [showFuture, setShowFuture] = useState(false)
+
+  const windowStart = publishDate
+  const windowEnd = addDays(publishDate, 14)
+
+  const windowActivities = activities.filter(a => isInNewsletterWindow(a, windowStart, windowEnd))
+  const futureActivities = activities.filter(a => !isInNewsletterWindow(a, windowStart, windowEnd))
+
+  const renderCard = (activity: DeskActivity) => (
+    <NewsletterCard
+      key={activity.id}
+      activity={activity}
+      onDetails={onDetails}
+      onMove={onMove}
+      onArchive={onArchive}
+    />
+  )
+
+  return (
+    <>
+      {windowActivities.length === 0 ? (
+        <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
+          Nothing in this newsletter window 🌬️
+        </div>
+      ) : (
+        windowActivities.map(renderCard)
+      )}
+
+      {futureActivities.length > 0 && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowFuture(prev => !prev)}
+            className="w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            {showFuture ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            Future events
+            <span className="ml-auto bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+              {futureActivities.length}
+            </span>
+          </button>
+
+          {showFuture && (
+            <div className="space-y-3 mt-1">
+              {futureActivities.map(renderCard)}
+            </div>
+          )}
+        </div>
+      )}
+    </>
   )
 }

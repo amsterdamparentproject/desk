@@ -1,9 +1,9 @@
 // components/ActivityDrawer.tsx
-import { ReactNode } from 'react'
-import { useState } from 'react'
-import { X, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward } from 'lucide-react'
-import { DeskActivity, DEFAULT_DESK_ACTIVITY } from '../types/activity'
+import { ReactNode, useEffect, useRef, useState } from 'react'
+import { X, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar } from 'lucide-react'
+import { DeskActivity, DEFAULT_DESK_ACTIVITY, RepeatFrequency } from '../types/activity'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
+import { parseRrule, buildRrule, computeNextDate, parsePositionalDay } from '../utils/rrule';
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 
@@ -30,8 +30,92 @@ interface ActivityDrawerProps {
   onClose: () => void,
 }
 
+const WEEKDAYS = [
+  { label: 'Mon', abbr: 'MO' },
+  { label: 'Tue', abbr: 'TU' },
+  { label: 'Wed', abbr: 'WE' },
+  { label: 'Thu', abbr: 'TH' },
+  { label: 'Fri', abbr: 'FR' },
+  { label: 'Sat', abbr: 'SA' },
+  { label: 'Sun', abbr: 'SU' },
+]
+
 export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
+
+  const parsed = parseRrule(activity.repeat_rrule)
+  const parsedMonthly = parsed.frequency === 'monthly' && parsed.days[0] ? parsePositionalDay(parsed.days[0]) : null
+  const [repeatFrequency, setRepeatFrequency] = useState<string>(parsed.frequency ?? '')
+  const [repeatDays, setRepeatDays] = useState<string[]>(parsed.frequency === 'weekly' ? parsed.days : [])
+  const [repeatUntil, setRepeatUntil] = useState<string>(() => {
+    // Only pre-fill until if it's meaningfully after the start_date (not just the event's own end date)
+    if (!parsed.untilDate || !activity.start_date) return parsed.untilDate
+    return parsed.untilDate > activity.start_date ? parsed.untilDate : ''
+  })
+  const [repeatMonthlyPos, setRepeatMonthlyPos] = useState<string>(parsedMonthly ? String(parsedMonthly.pos) : '')
+  const [repeatMonthlyDay, setRepeatMonthlyDay] = useState<string>(parsedMonthly ? parsedMonthly.abbr : '')
+  const [deriveDate, setDeriveDate] = useState<string>('')
+
+  const DOW_TO_ABBR = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+
+  const handleDeriveRrule = () => {
+    const dateStr = deriveDate || repeatNextDate
+    if (!dateStr) return
+    const [y, m, day] = dateStr.split('-').map(Number)
+    const d = new Date(y, m - 1, day)
+    const abbr = DOW_TO_ABBR[d.getDay()]
+    const effectiveFreq = repeatFrequency || 'weekly'
+    setRepeatFrequency(effectiveFreq)
+    if (effectiveFreq === 'weekly') {
+      setRepeatDays([abbr])
+      setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
+    } else if (effectiveFreq === 'monthly') {
+      const dayOfMonth = d.getDate()
+      const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+      const isLast = dayOfMonth + 7 > daysInMonth
+      const pos = isLast ? -1 : Math.ceil(dayOfMonth / 7)
+      setRepeatMonthlyPos(String(pos)); setRepeatMonthlyDay(abbr)
+      setRepeatDays([])
+    } else {
+      setRepeatDays([]); setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
+    }
+  }
+
+  const effectiveDays =
+    repeatFrequency === 'monthly' && repeatMonthlyPos && repeatMonthlyDay
+      ? [`${repeatMonthlyPos}${repeatMonthlyDay}`]
+      : repeatFrequency === 'weekly'
+        ? repeatDays
+        : []
+
+  useEffect(() => {
+    const rrule = buildRrule({ frequency: repeatFrequency, days: effectiveDays, untilDate: repeatUntil })
+    setFormData(prev => ({
+      ...prev,
+      repeat_rrule: rrule || null,
+      repeat_frequency: (repeatFrequency as RepeatFrequency) || null,
+    }))
+  }, [repeatFrequency, repeatDays, repeatUntil, repeatMonthlyPos, repeatMonthlyDay])
+
+  const toggleRepeatDay = (abbr: string) => {
+    setRepeatDays(prev =>
+      prev.includes(abbr) ? prev.filter(d => d !== abbr) : [...prev, abbr]
+    )
+  }
+
+  const repeatNextDate = computeNextDate(repeatFrequency, effectiveDays, '', formData.start_date)
+  const rrulePreview = buildRrule({ frequency: repeatFrequency, days: effectiveDays, untilDate: repeatUntil })
+
+  const [isMultiDay, setIsMultiDay] = useState(() => {
+    const s = activity.start_date, e = activity.end_date
+    return !!(s && e && e > s)
+  })
+
+  const handleMultiDayToggle = (on: boolean) => {
+    setIsMultiDay(on)
+    if (!on) handleChange('end_date', null)
+    else if (!formData.end_date) handleChange('end_date', formData.start_date)
+  }
 
   const blurbRef = useAutosizeTextArea(formData.newsletter_description);
   const rawDescRef = useAutosizeTextArea(formData.description);
@@ -50,8 +134,6 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const handleDateChange = (field: keyof DeskActivity, value: any) => {
     setFormData(prev => {
       let updated = { ...prev, [field]: value };
-
-      if (field === 'start_date') updated.end_date = value;
 
       if (field === 'start_time' || field === 'end_time') {
         if (updated.start_time && updated.end_time) {
@@ -128,7 +210,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 )}
               </div>
             </Field>
-
+            <Field label="Host Organization">
+              <input value={formData.organization ?? ''} onChange={(e) => handleChange('organization', e.target.value)} className={inputStyle} />
+            </Field>
             <Field label="Newsletter blurb">
               <textarea
                 ref={blurbRef}
@@ -152,21 +236,30 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <div className="flex flex-row items-center gap-2 mb-2">
               <Clock size={18} className="text-slate-700" />
               <h2 className="text-slate-700 text-xl font-black">Date & time</h2>
+              <div className="ml-auto">
+                <Toggle
+                  label="Multi-day"
+                  checked={isMultiDay}
+                  onChange={handleMultiDayToggle}
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${isMultiDay ? 'grid-cols-2' : 'grid-cols-1'}`}>
               <Field label="Start Date">
-                <input type="date" value={formData.start_date} onChange={(e) => handleDateChange('start_date', e.target.value)} className={inputStyle} />
+                <DateInput value={formData.start_date ?? ''} onChange={(v) => handleDateChange('start_date', v)} />
               </Field>
-              <Field label="End Date">
-                <input type="date" value={formData.end_date ?? ''} onChange={(e) => handleDateChange('end_date', e.target.value)} className={inputStyle} />
-              </Field>
+              {isMultiDay && (
+                <Field label="End Date">
+                  <DateInput value={formData.end_date ?? ''} onChange={(v) => handleDateChange('end_date', v)} />
+                </Field>
+              )}
             </div>
             <div className="grid grid-cols-3 gap-4">
               <Field label="Start Time">
-                <input type="time" value={formData.start_time ?? ''} onChange={(e) => handleDateChange('start_time', e.target.value)} className={inputStyle} />
+                <TimeInput value={formData.start_time ?? ''} onChange={(v) => handleDateChange('start_time', v)} />
               </Field>
               <Field label="End Time">
-                <input type="time" value={formData.end_time ?? ''} onChange={(e) => handleDateChange('end_time', e.target.value)} className={inputStyle} />
+                <TimeInput value={formData.end_time ?? ''} onChange={(v) => handleDateChange('end_time', v)} />
               </Field>
               <Field label="Duration (min)">
                 <input type="number" value={formData.duration_minutes ?? 0} onChange={(e) => handleDateChange('duration_minutes', e.target.value)} className={inputStyle} />
@@ -182,6 +275,131 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               />
             )}
           </section>
+
+          {/* Repeat */}
+          {formData.type === 'event' && (
+            <section className="space-y-4 py-2">
+              <div className="flex flex-row items-center gap-2 mb-2">
+                <RefreshCw size={18} className="text-slate-700" />
+                <h2 className="text-slate-700 text-xl font-black">Repeat</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Frequency">
+                  <select
+                    value={repeatFrequency}
+                    onChange={(e) => {
+                      const next = e.target.value
+                      setRepeatFrequency(next)
+                      if (next !== 'weekly') {
+                        setRepeatDays([])
+                      } else if (formData.start_date) {
+                        const [wy, wm, wd] = formData.start_date.split('-').map(Number)
+                        setRepeatDays([DOW_TO_ABBR[new Date(wy, wm - 1, wd).getDay()]])
+                      }
+                      if (next !== 'monthly') {
+                        setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
+                      } else if (formData.start_date) {
+                        const [sy, sm, sd] = formData.start_date.split('-').map(Number)
+                        const d = new Date(sy, sm - 1, sd)
+                        const abbr = DOW_TO_ABBR[d.getDay()]
+                        const dom = d.getDate()
+                        const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+                        const pos = dom + 7 > daysInMonth ? -1 : Math.ceil(dom / 7)
+                        setRepeatMonthlyPos(String(pos)); setRepeatMonthlyDay(abbr)
+                      }
+                    }}
+                    className={selectStyle}
+                  >
+                    <option value="">None</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </Field>
+                <Field label="Next occurrence">
+                  <div className="flex gap-2">
+                    <DateInput
+                      value={deriveDate || repeatNextDate || ''}
+                      onChange={setDeriveDate}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleDeriveRrule}
+                      disabled={!(deriveDate || repeatNextDate)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors text-xs font-black whitespace-nowrap"
+                    >
+                      <RefreshCw size={12} /> Derive
+                    </button>
+                  </div>
+                </Field>
+              </div>
+
+              {repeatFrequency === 'monthly' && (
+                <Field label="On">
+                  <div className="flex gap-2">
+                    <select
+                      value={repeatMonthlyPos}
+                      onChange={(e) => setRepeatMonthlyPos(e.target.value)}
+                      className={selectStyle}
+                    >
+                      <option value="">Day of month</option>
+                      <option value="1">1st</option>
+                      <option value="2">2nd</option>
+                      <option value="3">3rd</option>
+                      <option value="4">4th</option>
+                      <option value="-1">Last</option>
+                    </select>
+                    {repeatMonthlyPos && (
+                      <select
+                        value={repeatMonthlyDay}
+                        onChange={(e) => setRepeatMonthlyDay(e.target.value)}
+                        className={selectStyle}
+                      >
+                        <option value="">Weekday</option>
+                        {WEEKDAYS.map(({ label, abbr }) => (
+                          <option key={abbr} value={abbr}>{label}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                </Field>
+              )}
+
+              {repeatFrequency === 'weekly' && (
+                <Field label="Days of week">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {WEEKDAYS.map(({ label, abbr }) => (
+                      <button
+                        key={abbr}
+                        type="button"
+                        onClick={() => toggleRepeatDay(abbr)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
+                          repeatDays.includes(abbr)
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
+
+              {repeatFrequency && (
+                <Field label="Repeat ends (until date)">
+                  <DateInput value={repeatUntil} onChange={setRepeatUntil} />
+                </Field>
+              )}
+
+              {rrulePreview && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] text-green-600 font-black uppercase tracking-widest">RRULE</span>
+                  <code className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg font-mono break-all">{rrulePreview}</code>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Location */}
           <section className="space-y-4">
@@ -201,9 +419,6 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Host Organization">
-                <input value={formData.organization ?? ''} onChange={(e) => handleChange('organization', e.target.value)} className={inputStyle} />
-              </Field>
               <Field label="Address">
                 <input value={formData.location ?? ''} onChange={(e) => handleChange('location', e.target.value)} className={inputStyle} />
               </Field>
@@ -288,6 +503,34 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DateInput({ value, onChange }: { value: string, onChange: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  return (
+    <div className="relative">
+      <button type="button" tabIndex={-1} onClick={() => ref.current?.showPicker()}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
+        <Calendar size={14} />
+      </button>
+      <input ref={ref} type="date" value={value} onChange={e => onChange(e.target.value)}
+        className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
+    </div>
+  )
+}
+
+function TimeInput({ value, onChange }: { value: string, onChange: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  return (
+    <div className="relative">
+      <button type="button" tabIndex={-1} onClick={() => ref.current?.showPicker()}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
+        <Clock size={14} />
+      </button>
+      <input ref={ref} type="time" value={value} onChange={e => onChange(e.target.value)}
+        className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
     </div>
   )
 }

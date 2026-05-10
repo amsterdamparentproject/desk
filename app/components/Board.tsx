@@ -7,6 +7,10 @@ import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../t
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
 import { moveActivity, saveActivity } from '../actions/activities'
+import { Calendar } from 'lucide-react'
+
+const LS_KEY = 'app_desk_newsletter_publish_date'
+const DEFAULT_PUBLISH_DATE = '2026-05-18'
 
 interface BoardProps {
   initialActivities: DeskActivity[];
@@ -14,12 +18,18 @@ interface BoardProps {
 
 export default function Board({ initialActivities } : BoardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('triage');
+  const [publishDate, setPublishDate] = useState<string>(DEFAULT_PUBLISH_DATE);
 
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      setActiveTab('capture');
-    }
+    if (window.innerWidth < 768) setActiveTab('capture');
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) setPublishDate(saved);
   }, []);
+
+  const handlePublishDateChange = (date: string) => {
+    setPublishDate(date);
+    localStorage.setItem(LS_KEY, date);
+  };
 
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(null)
@@ -133,20 +143,32 @@ export default function Board({ initialActivities } : BoardProps) {
             </p>
           </div>
         </div>
-        <div className="flex px-4 gap-8">
-          {(['capture', 'triage', 'newsletter'] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-4 text-sm font-black uppercase tracking-widest transition-all ${
-                activeTab === tab
-                  ? 'text-blue-600'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="flex px-4 gap-8 items-center justify-between">
+          <div className="flex gap-8">
+            {(['capture', 'triage', 'newsletter'] as Tab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 text-sm font-black uppercase tracking-widest transition-all ${
+                  activeTab === tab
+                    ? 'text-blue-600'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar size={12} className="text-slate-400" />
+            <label className="text-[9px] font-black uppercase tracking-widest text-green-600">Next newsletter</label>
+            <input
+              type="date"
+              value={publishDate}
+              onChange={(e) => handlePublishDateChange(e.target.value)}
+              className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
         </div>
       </header>
 
@@ -167,11 +189,20 @@ export default function Board({ initialActivities } : BoardProps) {
                   return newSet
                 })
               }}
-              activities={activities.filter(e => e.list_id === col.id)}
+              activities={activities
+                .filter(e => e.list_id === col.id)
+                .sort((a, b) => {
+                  if (!a.start_date && !b.start_date) return 0
+                  if (!a.start_date) return 1
+                  if (!b.start_date) return -1
+                  return a.start_date.localeCompare(b.start_date)
+                })
+              }
               onDetails={setSelectedActivity}
               onMove={handleMoveEvent}
               onAddEvent={handleAddEvent}
               onArchive={handleArchiveEvent}
+              publishDate={publishDate}
             />
           </div>
         ))}

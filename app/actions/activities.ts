@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/app/utils/supabase/server'
 import { DeskActivity } from '@/app/types/activity'
 import { ListId } from '@/app/types/list'
+import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 
 const EVENT_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
@@ -46,10 +47,18 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'
   const fields = type === 'event' ? EVENT_FIELDS : RESOURCE_FIELDS
-  const update = {
+  const update: Record<string, any> = {
     ...pickFields(data, fields),
     updated_at: new Date().toISOString(),
   }
+
+  if (type === 'event') {
+    const { frequency, days, untilDate } = parseRrule(data.repeat_rrule)
+    update.repeat_next_date = frequency
+      ? computeNextDate(frequency, days, untilDate, data.start_date)
+      : null
+  }
+
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 }
