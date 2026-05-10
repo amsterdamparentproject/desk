@@ -72,26 +72,38 @@ export default function Board({ initialActivities } : BoardProps) {
   const handleFinishEditing = async (updated: DeskActivity) => {
     const list = ALL_LISTS.find(l => l.id === updated.list_id)
     const targetList: ListId = list?.finishTarget?.(updated.type) ?? (updated.type === 'event' ? 'upcoming_events' : 'new_resources')
-    const withListAndStatus = { ...updated, list_id: targetList, status: 'edited' as const }
+
+    const today = new Date().toISOString().split('T')[0]
+    const isTriageApproval = updated.list_id === 'review' || updated.list_id === 'error'
+    const isPastEvent = updated.type === 'event' && !updated.repeat_frequency && updated.start_date && updated.start_date < today
+    const shouldArchive = isTriageApproval && isPastEvent
+
+    const withListAndStatus = shouldArchive
+      ? { ...updated, status: 'archived' as const }
+      : { ...updated, list_id: targetList, status: 'edited' as const }
     setActivities(prev => prev.map(e => e.id === updated.id ? withListAndStatus : e))
     setSelectedActivity(null)
     try {
-      await saveActivity(updated.id, updated.type, withListAndStatus)
+      if (shouldArchive) {
+        await archiveActivity(updated.id, updated.type)
+      } else {
+        await saveActivity(updated.id, updated.type, withListAndStatus)
+      }
     } catch (err) {
       console.error('Finish editing failed:', err)
     }
   }
 
   const handleMoveEvent = async (id: string, targetList: ListId) => {
-    setActivities(prev => prev.map(e => e.id === id ? { ...e, list_id: targetList } : e))
     const activity = activities.find(e => e.id === id)
     if (!activity) return
+    const newStatus = targetList === 'capture' ? 'processing' as const : activity.status
+    setActivities(prev => prev.map(e => e.id === id ? { ...e, list_id: targetList, status: newStatus } : e))
     try {
-      await moveActivity(id, activity.type, targetList)
+      await moveActivity(id, activity.type, targetList, targetList === 'capture' ? 'processing' : undefined)
     } catch (err) {
       console.error('Move failed:', err)
-      // Roll back optimistic update
-      setActivities(prev => prev.map(e => e.id === id ? { ...e, list_id: activity.list_id } : e))
+      setActivities(prev => prev.map(e => e.id === id ? { ...e, list_id: activity.list_id, status: activity.status } : e))
     }
   }
 
@@ -128,6 +140,7 @@ export default function Board({ initialActivities } : BoardProps) {
       captureData.description || '',
       {
         list_id: captureData.list_id || 'capture',
+        status: 'processing',
         file: captureData.file,
         preview_url: preview_url,
       }
@@ -164,8 +177,12 @@ export default function Board({ initialActivities } : BoardProps) {
       );
     } catch (err) {
       console.error('Capture Error:', err);
-      setActivities(prev => prev.filter(e => e.id !== optimisticActivity.id));
       if (preview_url) URL.revokeObjectURL(preview_url);
+      setActivities(prev => prev.map(e =>
+        e.id === optimisticActivity.id
+          ? { ...e, status: 'new' as const, title: captureData.description || '' }
+          : e
+      ));
     }
   };
 

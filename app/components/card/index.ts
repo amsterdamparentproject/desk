@@ -1,7 +1,5 @@
-export { CaptureCard } from './CaptureCard'
+export { ActivityCard } from './ActivityCard'
 export { CaptureCardForm } from './CaptureCardForm'
-export { TriageCard } from './TriageCard'
-export { NewsletterCard } from './NewsletterCard'
 
 export type {
   CardProps,

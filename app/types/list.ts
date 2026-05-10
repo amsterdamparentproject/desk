@@ -17,18 +17,18 @@ export interface ListProps {
 }
 
 export const CAPTURE_LISTS: ListProps[] = [
-  { id: 'capture', label: 'Capture' },
-  { id: 'ideas', label: 'Ideas', finishLabel: 'Looks good', finishTarget: () => 'capture' },
+  { id: 'capture', label: 'Capture', finishLabel: 'Looks good', finishTarget: () => 'review' },
+  { id: 'ideas',   label: 'Ideas',   finishLabel: 'Looks good', finishTarget: () => 'capture' },
 ]
 
 export const TRIAGE_LISTS: ListProps[] = [
-  { id: 'review', label: 'To review', finishLabel: 'Finish editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
-  { id: 'error',  label: 'Errors',    finishLabel: 'Finish editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'review', label: 'To review', finishLabel: 'Done editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'error',  label: 'Errors',    finishLabel: 'Done editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
 ]
 
 export const NEWSLETTER_LISTS: ListProps[] = [
-  { id: 'upcoming_events', label: 'Upcoming events', finishLabel: 'Include in next newsletter', finishTarget: () => 'next_newsletter' },
-  { id: 'new_resources',   label: 'New resources',   finishLabel: 'Include in next newsletter', finishTarget: () => 'next_newsletter' },
+  { id: 'upcoming_events', label: 'Upcoming events', finishLabel: 'Add to newsletter', finishTarget: () => 'next_newsletter' },
+  { id: 'new_resources',   label: 'New resources',   finishLabel: 'Add to newsletter', finishTarget: () => 'next_newsletter' },
   { id: 'next_newsletter', label: 'Next newsletter' },
 ]
 

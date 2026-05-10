@@ -44,13 +44,12 @@ export async function archiveActivity(id: string, type: 'event' | 'resource') {
   if (error) throw new Error(error.message)
 }
 
-export async function moveActivity(id: string, type: 'event' | 'resource', list_id: ListId) {
+export async function moveActivity(id: string, type: 'event' | 'resource', list_id: ListId, status?: string) {
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'
-  const { error } = await supabase
-    .from(table)
-    .update({ list_id, updated_at: new Date().toISOString() })
-    .eq('id', id)
+  const update: Record<string, any> = { list_id, updated_at: new Date().toISOString() }
+  if (status) update.status = status
+  const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 }
 

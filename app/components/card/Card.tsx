@@ -25,7 +25,7 @@ export function Card({
   const [calTooltipPos, setCalTooltipPos] = useState<{ top: number; left: number } | null>(null)
 
   // 1. Derivations & Status Flag Checks
-  const isNewActivity = activity.title === '✨ Processing...'
+  const isNewActivity = activity.status === 'processing'
   const hasDate = Boolean(activity.start_date)
 
   // 2. Formatting Display Strings cleanly using our unified DeskActivity properties
@@ -52,7 +52,7 @@ export function Card({
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all ${showMoveMenu ? 'z-[100]' : 'z-0'}`}>
+    <div className={`relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all ${showMoveMenu ? 'z-[100]' : 'z-0'}`}>
       <div className="p-3 space-y-2">
         
         {/* Header: Date Badge & Action Buttons */}
@@ -87,7 +87,7 @@ export function Card({
 
           <div className="flex flex-row gap-3">
             {/* Move Column Dropdown Action */}
-            { onMove && (
+            { onMove && !isNewActivity && (
               <div className="relative">
                 <button
                   ref={buttonRef}
@@ -143,16 +143,6 @@ export function Card({
 
         {/* Structural Descriptive Meta Rows */}
         <div className="space-y-2">
-          {/* Raw Text Output Layer for In-Flight processing items */}
-          {isNewActivity && activity.description && (
-            <div className="flex items-start gap-1.5 text-slate-500">
-              <NotepadText size={10} className="mt-0.5" />
-              <span className="text-[10px] italic text-slate-400 leading-tight">
-                {activity.description}
-              </span>
-            </div>
-          )}
-
           {/* Time Span Row */}
           {activity.start_time && (
             <div className="flex items-center gap-1.5 text-slate-500">
@@ -188,6 +178,13 @@ export function Card({
         </div>
       </div>
       {children}
+
+      {isNewActivity && (
+        <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-10">
+          <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing</span>
+        </div>
+      )}
     </div>
   )
 }

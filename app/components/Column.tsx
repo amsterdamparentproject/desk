@@ -1,8 +1,8 @@
 // components/Column.tsx
 import { ChevronDown, ChevronRight } from 'lucide-react'
-import { CaptureCard, TriageCard, NewsletterCard, CaptureCardForm } from './card'
+import { ActivityCard, CaptureCardForm } from './card'
 import { CaptureDataProps, DeskActivity } from '../types/activity'
-import { ListProps, ListId, TRIAGE_LISTS, NEWSLETTER_LISTS, CAPTURE_LISTS, getListTab } from '../types/list'
+import { ListProps, ListId } from '../types/list'
 import { useEffect, useState } from 'react'
 
 function addDays(dateStr: string, days: number): string {
@@ -125,33 +125,15 @@ export function Column({
               publishDate={publishDate}
             />
           ) : (
-            activities.map((activity) => {
-              const listTab = getListTab(list.id);
-
-              if (list.id === 'ideas' || listTab === 'triage') {
-                return (
-                  <TriageCard
-                    key={activity.id}
-                    activity={activity}
-                    onDetails={onDetails}
-                    onMove={onMove}
-                    onArchive={onArchive}
-                  />
-                )
-              } else if (listTab === 'newsletter') {
-                return (
-                  <NewsletterCard
-                    key={activity.id}
-                    activity={activity}
-                    onDetails={onDetails}
-                    onMove={onMove}
-                    onArchive={onArchive}
-                  />
-                )
-              } else {
-                return <CaptureCard key={activity.id} activity={activity} />
-              }
-            })
+            activities.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                onDetails={onDetails}
+                onMove={onMove}
+                onArchive={onArchive}
+              />
+            ))
           )}
         </div>
       </div>
@@ -177,7 +159,7 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publi
   const futureActivities = activities.filter(a => !isInNewsletterWindow(a, windowStart, windowEnd))
 
   const renderCard = (activity: DeskActivity) => (
-    <NewsletterCard
+    <ActivityCard
       key={activity.id}
       activity={activity}
       onDetails={onDetails}
