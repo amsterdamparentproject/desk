@@ -18,6 +18,9 @@ export function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
     return acc;
   }, {});
   const result = { ...DEFAULT_DESK_ACTIVITY, ...cleanIncomingFields } as DeskActivity;
+  // Strip seconds from time fields — DB returns HH:MM:SS, inputs expect HH:MM
+  if (result.start_time) result.start_time = result.start_time.substring(0, 5)
+  if (result.end_time) result.end_time = result.end_time.substring(0, 5)
   // Default highlight to true for APP's own events, but only if not explicitly set in the DB
   if (result.organization === 'Amsterdam Parent Project' && activity.newsletter_highlight === null) {
     result.newsletter_highlight = true;
@@ -139,8 +142,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
 
       if (field === 'start_time' || field === 'end_time') {
         if (updated.start_time && updated.end_time) {
+          const endDate = updated.end_date || updated.start_date;
           const start = new Date(`${updated.start_date}T${updated.start_time}`);
-          const end = new Date(`${updated.end_date}T${updated.end_time}`);
+          const end = new Date(`${endDate}T${updated.end_time}`);
           if (end < start) updated.duration_minutes = 0;
           else updated.duration_minutes = Math.round((end.getTime() - start.getTime()) / 60000);
         }
@@ -545,14 +549,13 @@ function DateInput({ value, onChange }: { value: string, onChange: (v: string) =
 
 function TimeInput({ value, onChange }: { value: string, onChange: (v: string) => void }) {
   const ref = useRef<HTMLInputElement>(null)
-  const displayValue = value ? value.slice(0, 5) : value
   return (
     <div className="relative">
       <button type="button" tabIndex={-1} onClick={() => ref.current?.showPicker()}
         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
         <Clock size={14} />
       </button>
-      <input ref={ref} type="time" step={60} value={displayValue} onChange={e => onChange(e.target.value.slice(0, 5))}
+      <input ref={ref} type="time" lang="nl" value={value} onChange={e => onChange(e.target.value)}
         className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
     </div>
   )
