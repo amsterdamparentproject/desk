@@ -8,6 +8,7 @@ import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 const EVENT_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
   'title', 'description', 'url', 'organization', 'age_range', 'categories',
+  'tagline',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
   'location', 'neighborhood', 'area',
   'start_date', 'end_date', 'start_time', 'end_time', 'day_of_week', 'duration_minutes',
@@ -31,6 +32,16 @@ function pickFields(data: Partial<DeskActivity>, fields: readonly string[]) {
         return [f, v === '' ? null : v]
       })
   )
+}
+
+export async function archiveActivity(id: string, type: 'event' | 'resource') {
+  const supabase = createAdminClient()
+  const table = type === 'event' ? 'events' : 'resources'
+  const { error } = await supabase
+    .from(table)
+    .update({ status: 'archived', updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 export async function moveActivity(id: string, type: 'event' | 'resource', list_id: ListId) {

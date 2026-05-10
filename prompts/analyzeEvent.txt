@@ -65,6 +65,9 @@ Translate to English if needed.
 #### Description
 Use `input.jsonLd.description` if available. Otherwise derive from all source data. Translate to English if needed.
 
+#### Tagline
+Only for events where `organization` is `"Amsterdam Parent Project"`. A single punchy sentence (max ~15 words) for displaying the event on the APP website. Focus on what makes it special or fun. If not an APP event, omit this field (null).
+
 #### Newsletter description
 1–3 sentences covering: what the activity is, who hosts it, whether it's free (from `input.jsonLd.price`), and the target age. Match the tone of these examples:
 - "The Fatherhood Circle provides a space to find depth and connection with other dads, a sense of brotherhood, and genuine support. It includes meditation and discussions centering fathers' unique experiences in new parenthood."

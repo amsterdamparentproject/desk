@@ -7,8 +7,9 @@ import { parseRrule, buildRrule, computeNextDate, parsePositionalDay } from '../
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 
-const inputStyle = "w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-white"
-const selectStyle = `${inputStyle} cursor-pointer`
+const baseInputStyle = "w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-white"
+const inputStyle = `${baseInputStyle} px-3`
+const selectStyle = `${baseInputStyle} pl-3 pr-8 cursor-pointer`
 
 export function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
   const cleanIncomingFields = Object.entries(activity).reduce<Record<string, any>>((acc, [key, value]) => {
@@ -213,6 +214,17 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <Field label="Host Organization">
               <input value={formData.organization ?? ''} onChange={(e) => handleChange('organization', e.target.value)} className={inputStyle} />
             </Field>
+            {formData.organization === 'Amsterdam Parent Project' && (
+              <Field label="Website tagline">
+                <input
+                  value={formData.tagline ?? ''}
+                  onChange={(e) => handleChange('tagline', e.target.value)}
+                  placeholder="One sentence for the APP website..."
+                  className={descriptionStyle}
+                />
+              </Field>
+            )}
+
             <Field label="Newsletter blurb">
               <textarea
                 ref={blurbRef}
@@ -418,7 +430,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 <input value={formData.neighborhood ?? ''} onChange={(e) => handleChange('neighborhood', e.target.value)} className={inputStyle} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4">
               <Field label="Address">
                 <input value={formData.location ?? ''} onChange={(e) => handleChange('location', e.target.value)} className={inputStyle} />
               </Field>
@@ -482,6 +494,12 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               <NotebookPen size={18} className="text-slate-700" />
               <h2 className="text-slate-700 text-xl font-black">Triage notes</h2>
             </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-500">Added to calendar</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.calendar_sent ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
+                {formData.calendar_sent ? 'Yes' : 'No'}
+              </span>
+            </div>
             <textarea
               ref={notesRef}
               value={formData.triage_notes || ""}
@@ -523,13 +541,14 @@ function DateInput({ value, onChange }: { value: string, onChange: (v: string) =
 
 function TimeInput({ value, onChange }: { value: string, onChange: (v: string) => void }) {
   const ref = useRef<HTMLInputElement>(null)
+  const displayValue = value ? value.slice(0, 5) : value
   return (
     <div className="relative">
       <button type="button" tabIndex={-1} onClick={() => ref.current?.showPicker()}
         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
         <Clock size={14} />
       </button>
-      <input ref={ref} type="time" value={value} onChange={e => onChange(e.target.value)}
+      <input ref={ref} type="time" step={60} value={displayValue} onChange={e => onChange(e.target.value.slice(0, 5))}
         className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
     </div>
   )

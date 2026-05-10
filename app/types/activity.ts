@@ -53,6 +53,9 @@ export interface EventActivity extends BaseActivity {
   day_of_week: DayName | null;
   duration_minutes: number | null;
 
+  // APP Website
+  tagline: string | null;
+
   // Repeat
   repeat_rrule: string | null;
   repeat_frequency: RepeatFrequency | null;
@@ -90,6 +93,7 @@ export type DeskActivity = BaseActivity & {
   preview_url: string | null;
 
   // Event specific properties made optional for staging
+  tagline?: string | null;
   start_date?: string;
   end_date?: string | null;
   start_time?: string | null;
@@ -135,6 +139,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   area: '',
   
   // Event specific properties defaulted to safe non-null primitives
+  tagline: null,
   start_date: '',
   end_date: null,
   start_time: '',

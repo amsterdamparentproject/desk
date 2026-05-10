@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit, MapPin, Clock, NotepadText, ArrowRight } from 'lucide-react'
+import { Edit, MapPin, Clock, NotepadText, ArrowRight, CalendarCheck } from 'lucide-react'
 import { ALL_LISTS, ListId } from '../../types/list'
 import { CardProps } from '../../types/card'
 
@@ -21,6 +21,8 @@ export function Card({
   const [showMoveMenu, setShowMoveMenu] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const calIconRef = useRef<HTMLDivElement>(null)
+  const [calTooltipPos, setCalTooltipPos] = useState<{ top: number; left: number } | null>(null)
 
   // 1. Derivations & Status Flag Checks
   const isNewActivity = activity.title === '✨ Processing...'
@@ -55,9 +57,33 @@ export function Card({
         
         {/* Header: Date Badge & Action Buttons */}
         <div className="flex justify-between items-start">
-          <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
-            {displayDate}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
+              {displayDate}
+            </span>
+            <div
+              ref={calIconRef}
+              onMouseEnter={() => {
+                const rect = calIconRef.current?.getBoundingClientRect()
+                if (rect) setCalTooltipPos({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+              }}
+              onMouseLeave={() => setCalTooltipPos(null)}
+            >
+              <CalendarCheck
+                size={12}
+                className={activity.calendar_sent ? 'text-green-500' : 'text-slate-300'}
+              />
+            </div>
+            {calTooltipPos && createPortal(
+              <div
+                className="fixed -translate-x-1/2 -translate-y-full -mt-1.5 whitespace-nowrap bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none z-[200]"
+                style={{ top: calTooltipPos.top, left: calTooltipPos.left }}
+              >
+                {activity.calendar_sent ? 'Added to calendar' : 'Not yet added to calendar'}
+              </div>,
+              document.body
+            )}
+          </div>
 
           <div className="flex flex-row gap-3">
             {/* Move Column Dropdown Action */}

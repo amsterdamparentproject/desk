@@ -6,7 +6,7 @@ import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/acti
 import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
-import { moveActivity, saveActivity } from '../actions/activities'
+import { archiveActivity, moveActivity, saveActivity } from '../actions/activities'
 import { Calendar } from 'lucide-react'
 
 const LS_KEY = 'app_desk_newsletter_publish_date'
@@ -74,8 +74,16 @@ export default function Board({ initialActivities } : BoardProps) {
     }
   }
 
-  const handleArchiveEvent = (id: string) => {
-    setActivities(prev => prev.map(e => e.id === id ? { ...e, status: 'archived' } : e))
+  const handleArchiveEvent = async (id: string) => {
+    const activity = activities.find(e => e.id === id)
+    if (!activity) return
+    setActivities(prev => prev.map(e => e.id === id ? { ...e, status: 'archived' as const } : e))
+    try {
+      await archiveActivity(id, activity.type)
+    } catch (err) {
+      console.error('Archive failed:', err)
+      setActivities(prev => prev.map(e => e.id === id ? { ...e, status: activity.status } : e))
+    }
   }
 
   const handleAddEvent = async (captureData: CaptureDataProps) => {
@@ -190,7 +198,7 @@ export default function Board({ initialActivities } : BoardProps) {
                 })
               }}
               activities={activities
-                .filter(e => e.list_id === col.id)
+                .filter(e => e.list_id === col.id && e.status !== 'archived')
                 .sort((a, b) => {
                   if (!a.start_date && !b.start_date) return 0
                   if (!a.start_date) return 1

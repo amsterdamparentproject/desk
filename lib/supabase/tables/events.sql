@@ -34,6 +34,9 @@ CREATE TABLE activities.events (
   repeat_frequency activities.repeat_frequency,
   repeat_next_date timestamptz,
   
+  -- APP Website
+  tagline text,
+
   -- Newsletter & Calendar Tracking
   newsletter_description text NOT NULL,
   newsletter_last date,
