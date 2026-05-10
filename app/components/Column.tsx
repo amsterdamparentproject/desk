@@ -107,7 +107,17 @@ export function Column({
               // Determine which card component to use based on list type
               const listTab = getListTab(list.id);
 
-              if (listTab === 'triage') {
+              if (list.id === 'ideas') {
+                return (
+                  <TriageCard
+                    key={activity.id}
+                    activity={activity}
+                    onDetails={onDetails}
+                    onMove={onMove}
+                    onArchive={onArchive}
+                  />
+                )
+              } else if (listTab === 'triage') {
                 return (
                   <TriageCard
                     key={activity.id}
@@ -128,7 +138,6 @@ export function Column({
                   />
                 )
               } else {
-                // Fallback - shouldn't happen with current lists
                 return (
                   <CaptureCard
                     key={activity.id}

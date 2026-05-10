@@ -82,12 +82,15 @@ export type CaptureDataProps = {
  * It merges all available fields making production variants optional so forms don't crash.
  */
 export type DeskActivity = BaseActivity & {
-  // Temporary browser state 
+  // Discriminator: which DB table this record lives in
+  type: 'event' | 'resource';
+
+  // Temporary browser state
   file: File | null;
   preview_url: string | null;
 
   // Event specific properties made optional for staging
-  start_date?: string; 
+  start_date?: string;
   end_date?: string | null;
   start_time?: string | null;
   end_time?: string | null;
@@ -108,6 +111,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   id: '',
   created_at: '',
   updated_at: '',
+  type: 'event',
   list_id: 'capture',
   status: 'new',
   source: 'manual',

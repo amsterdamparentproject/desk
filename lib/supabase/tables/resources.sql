@@ -5,7 +5,7 @@ CREATE TABLE activities.resources (
   updated_at timestamptz DEFAULT now(),
   
   -- Workflow & State (APP Desk)
-  list_id activities.desk_list NOT NULL DEFAULT 'capture',
+  list_id activities.desk_list NOT NULL DEFAULT 'ideas',
   status activities.triage_status NOT NULL DEFAULT 'new',
   source activities.capture_source NOT NULL DEFAULT 'manual',
   snooze_until timestamptz,

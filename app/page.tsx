@@ -5,11 +5,22 @@ import Board from './components/Board';
 import { verifyDeskToken } from './utils/auth-gate';
 import { createAdminClient } from './utils/supabase/server';
 
+function isCurrentEvent(event: any, today: string): boolean {
+  const isRecurring = !!event.repeat_frequency
+  if (isRecurring) {
+    // Open-ended recurring: end_date absent or same as start (first-occurrence placeholder)
+    if (!event.end_date || event.end_date === event.start_date) return true
+    return event.end_date >= today
+  }
+  if (event.end_date) return event.end_date >= today
+  if (event.start_date) return event.start_date >= today
+  return true
+}
+
 export default async function DeskPage() {
   const cookieStore = await cookies();
   const isAuthorized = verifyDeskToken(cookieStore);
 
-  // 🔒 Gate 1: Check if the token is missing or incorrect
   if (!isAuthorized) {
     return (
       <div className="flex min-h-[80vh] flex-col items-center justify-center p-4">
@@ -26,10 +37,9 @@ export default async function DeskPage() {
     );
   }
 
-  // 🔑 Gate 2: Authorized! Boot up the admin client to bypass schema RLS barriers
   const supabase = createAdminClient();
+  const today = new Date().toISOString().split('T')[0];
 
-  // Fetch events and resources in parallel
   const [eventsResult, resourcesResult] = await Promise.all([
     supabase.from('events').select('*').order('created_at', { ascending: false }),
     supabase.from('resources').select('*').order('created_at', { ascending: false }),
@@ -45,13 +55,18 @@ export default async function DeskPage() {
     );
   }
 
-  const activities = [
-    ...(eventsResult.data ?? []),
-    ...(resourcesResult.data ?? []),
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const events = (eventsResult.data ?? [])
+    .filter(e => e.status !== 'archived' && isCurrentEvent(e, today))
+    .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
 
-  // Pass the raw data array directly over the wire down to the client wrapper
+  const resources = (resourcesResult.data ?? [])
+    .filter(r => r.status !== 'archived')
+    .map(r => ({ ...r, type: 'resource' as const, file: null, preview_url: null }))
+
+  const activities = [...events, ...resources]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
   return (
-      <Board initialActivities={(activities as DeskActivity[]) || []} />
+    <Board initialActivities={activities as DeskActivity[]} />
   );
 }
