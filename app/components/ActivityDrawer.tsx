@@ -2,6 +2,7 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { X, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar } from 'lucide-react'
 import { DeskActivity, DEFAULT_DESK_ACTIVITY, RepeatFrequency } from '../types/activity'
+import { ALL_LISTS } from '../types/list'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
 import { parseRrule, buildRrule, computeNextDate, parsePositionalDay } from '../utils/rrule';
 
@@ -512,13 +513,16 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
         </div>
 
         {/* Footer actions */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 grid grid-cols-2 gap-4">
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
           <button onClick={() => onSaveDraft(formData)} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
             <Save size={18} strokeWidth={3} /> Save draft
           </button>
-          <button onClick={() => onFinishEditing(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-            <Check size={18} strokeWidth={3} /> Finish editing
-          </button>
+          {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel && (
+            <button onClick={() => onFinishEditing(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+              <Check size={18} strokeWidth={3} />
+              {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

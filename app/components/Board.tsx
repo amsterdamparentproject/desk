@@ -3,14 +3,34 @@
 import { useState, useEffect } from 'react'
 import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/activity'
-import { CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
+import { ALL_LISTS, CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
 import { archiveActivity, moveActivity, saveActivity } from '../actions/activities'
-import { Calendar } from 'lucide-react'
+import { Calendar, RotateCcw } from 'lucide-react'
+import { Card } from './card/Card'
 
 const LS_KEY = 'app_desk_newsletter_publish_date'
 const DEFAULT_PUBLISH_DATE = '2026-05-18'
+
+function ArchivedCard({ activity, onDetails, onRestore }: {
+  activity: DeskActivity
+  onDetails: (a: DeskActivity) => void
+  onRestore: (id: string) => void
+}) {
+  return (
+    <Card activity={activity} onDetails={onDetails}>
+      <div className="flex h-10 px-2 py-1.5">
+        <button
+          onClick={() => onRestore(activity.id)}
+          className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-colors uppercase"
+        >
+          <RotateCcw size={12} /> Restore
+        </button>
+      </div>
+    </Card>
+  )
+}
 
 interface BoardProps {
   initialActivities: DeskActivity[];
@@ -50,7 +70,8 @@ export default function Board({ initialActivities } : BoardProps) {
   }
 
   const handleFinishEditing = async (updated: DeskActivity) => {
-    const targetList: ListId = updated.type === 'event' ? 'upcoming_events' : 'new_resources'
+    const list = ALL_LISTS.find(l => l.id === updated.list_id)
+    const targetList: ListId = list?.finishTarget?.(updated.type) ?? (updated.type === 'event' ? 'upcoming_events' : 'new_resources')
     const withListAndStatus = { ...updated, list_id: targetList, status: 'edited' as const }
     setActivities(prev => prev.map(e => e.id === updated.id ? withListAndStatus : e))
     setSelectedActivity(null)
@@ -83,6 +104,18 @@ export default function Board({ initialActivities } : BoardProps) {
     } catch (err) {
       console.error('Archive failed:', err)
       setActivities(prev => prev.map(e => e.id === id ? { ...e, status: activity.status } : e))
+    }
+  }
+
+  const handleRestoreEvent = async (id: string) => {
+    const activity = activities.find(e => e.id === id)
+    if (!activity) return
+    setActivities(prev => prev.map(e => e.id === id ? { ...e, status: 'edited' as const } : e))
+    try {
+      await saveActivity(id, activity.type, { ...activity, status: 'edited' })
+    } catch (err) {
+      console.error('Restore failed:', err)
+      setActivities(prev => prev.map(e => e.id === id ? { ...e, status: 'archived' as const } : e))
     }
   }
 
@@ -137,6 +170,9 @@ export default function Board({ initialActivities } : BoardProps) {
   };
 
   const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
+  const archivedActivities = activities
+    .filter(e => e.status === 'archived')
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
 
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
@@ -153,17 +189,17 @@ export default function Board({ initialActivities } : BoardProps) {
         </div>
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8">
-            {(['capture', 'triage', 'newsletter'] as Tab[]).map((tab) => (
+            {(['capture', 'triage', 'newsletter', 'archived'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`py-4 text-sm font-black uppercase tracking-widest transition-all ${
                   activeTab === tab
-                    ? 'text-blue-600'
+                    ? tab === 'archived' ? 'text-red-500' : 'text-blue-600'
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                {tab}
+                {tab === 'archived' ? `archived (${archivedActivities.length})` : tab}
               </button>
             ))}
           </div>
@@ -180,6 +216,21 @@ export default function Board({ initialActivities } : BoardProps) {
         </div>
       </header>
 
+      {activeTab === 'archived' ? (
+        <div className="flex-1 overflow-y-auto p-4">
+          {archivedActivities.length === 0 ? (
+            <div className="py-16 text-center text-sm text-slate-400 italic">No archived records</div>
+          ) : (
+            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3 space-y-3">
+              {archivedActivities.map(activity => (
+                <div key={activity.id} className="break-inside-avoid">
+                  <ArchivedCard activity={activity} onDetails={setSelectedActivity} onRestore={handleRestoreEvent} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
         {currentColumns.map((col) => (
           <div
@@ -215,6 +266,7 @@ export default function Board({ initialActivities } : BoardProps) {
           </div>
         ))}
       </div>
+      )}
 
       {selectedActivity && (
         <ActivityDrawer

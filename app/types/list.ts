@@ -1,4 +1,4 @@
-export type Tab = 'capture' | 'triage' | 'newsletter' 
+export type Tab = 'capture' | 'triage' | 'newsletter' | 'archived'
 
 export type ListId =
   | 'ideas'
@@ -12,21 +12,23 @@ export type ListId =
 export interface ListProps {
   id: ListId
   label: string
+  finishLabel?: string
+  finishTarget?: (type: 'event' | 'resource') => ListId
 }
 
 export const CAPTURE_LISTS: ListProps[] = [
   { id: 'capture', label: 'Capture' },
-  { id: 'ideas', label: 'Ideas' },
+  { id: 'ideas', label: 'Ideas', finishLabel: 'Looks good', finishTarget: () => 'capture' },
 ]
 
-export const TRIAGE_LISTS: ListProps[] = [ 
-  { id: 'review', label: 'To review' },
-  { id: 'error', label: 'Errors' },
+export const TRIAGE_LISTS: ListProps[] = [
+  { id: 'review', label: 'To review', finishLabel: 'Finish editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'error',  label: 'Errors',    finishLabel: 'Finish editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
 ]
 
-export const NEWSLETTER_LISTS: ListProps[] = [ // Actions: Accept, snooze, archive
-  { id: 'upcoming_events', label: 'Upcoming events' },
-  { id: 'new_resources', label: 'New resources' },
+export const NEWSLETTER_LISTS: ListProps[] = [
+  { id: 'upcoming_events', label: 'Upcoming events', finishLabel: 'Include in next newsletter', finishTarget: () => 'next_newsletter' },
+  { id: 'new_resources',   label: 'New resources',   finishLabel: 'Include in next newsletter', finishTarget: () => 'next_newsletter' },
   { id: 'next_newsletter', label: 'Next newsletter' },
 ]
 

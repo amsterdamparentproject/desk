@@ -56,11 +56,10 @@ export default async function DeskPage() {
   }
 
   const events = (eventsResult.data ?? [])
-    .filter(e => e.status !== 'archived' && isCurrentEvent(e, today))
+    .filter(e => e.status === 'archived' || isCurrentEvent(e, today))
     .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
 
   const resources = (resourcesResult.data ?? [])
-    .filter(r => r.status !== 'archived')
     .map(r => ({ ...r, type: 'resource' as const, file: null, preview_url: null }))
 
   const activities = [...events, ...resources]
