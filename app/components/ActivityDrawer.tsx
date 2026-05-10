@@ -15,7 +15,12 @@ export function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
     if (value !== null) acc[key] = value;
     return acc;
   }, {});
-  return { ...DEFAULT_DESK_ACTIVITY, ...cleanIncomingFields } as DeskActivity;
+  const result = { ...DEFAULT_DESK_ACTIVITY, ...cleanIncomingFields } as DeskActivity;
+  // Default highlight to true for APP's own events, but only if not explicitly set in the DB
+  if (result.organization === 'Amsterdam Parent Project' && activity.newsletter_highlight === null) {
+    result.newsletter_highlight = true;
+  }
+  return result;
 }
 
 interface ActivityDrawerProps {
@@ -33,7 +38,13 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const notesRef = useAutosizeTextArea(formData.triage_notes || "");
 
   const handleChange = (field: keyof DeskActivity, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'organization' && value === 'Amsterdam Parent Project') {
+        next.newsletter_highlight = true;
+      }
+      return next;
+    });
   };
 
   const handleDateChange = (field: keyof DeskActivity, value: any) => {
@@ -295,14 +306,17 @@ function Toggle({ label, icon, checked, onChange }: { label: string, icon?: Reac
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center justify-between w-full px-1 py-0.5"
+      className="flex items-center gap-3 px-1 py-0.5"
     >
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="text-sm font-bold text-slate-700">{label}</span>
+      <div className={`relative inline-flex h-6 w-16 items-center rounded-full transition-colors ${checked ? 'bg-amber-400' : 'bg-slate-200'}`}>
+        <span className={`absolute text-[9px] font-black uppercase tracking-wider transition-all ${checked ? 'left-2 text-white' : 'right-2 text-slate-400'}`}>
+          {checked ? 'YES' : 'NO'}
+        </span>
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-10' : 'translate-x-1'}`} />
       </div>
-      <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${checked ? 'bg-green-500' : 'bg-slate-200'}`}>
-        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
+      <div className={`flex items-center gap-2 transition-colors ${checked ? 'text-amber-500' : 'text-slate-400'}`}>
+        {icon}
+        <span className={`text-sm font-bold transition-colors ${checked ? 'text-amber-500' : 'text-slate-500'}`}>{label}</span>
       </div>
     </button>
   )
