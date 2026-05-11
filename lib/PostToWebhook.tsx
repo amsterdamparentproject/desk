@@ -72,10 +72,8 @@ interface PostDeskProps extends CaptureDataProps {
 }
 
 export const postDesk = async (data: PostDeskProps) => {
-  const action = data.action ?? 'add'
   const baseUrl = isLocal ? process.env.TEST_N8N_DESK_WEBHOOK_URL : process.env.N8N_DESK_WEBHOOK_URL;
-  const url = `${baseUrl}/${action}`
 
-  console.info('Posting to webhook URL:', url);
-  return postToWebhook(url, data);
+  console.info('Posting to webhook URL:', baseUrl);
+  return postToWebhook(baseUrl, data);
 };

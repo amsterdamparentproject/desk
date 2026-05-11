@@ -212,9 +212,28 @@ export default function Board({ initialActivities } : BoardProps) {
         const result = await postDesk({ ...captureData, id, action: 'add' })
         if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
 
-        let processedData = result.data as DeskActivity
-        processedData.list_id = 'review'
-        setActivities(prev => prev.map(e => e.id === id ? processedData : e))
+        const rawData = result.data
+        const items: DeskActivity[] = Array.isArray(rawData) ? rawData : [rawData]
+
+        const first = { ...items[0], id, list_id: 'review' as ListId, file_url: items[0].file_url ?? file_url }
+        setActivities(prev => prev.map(e => e.id === id ? first : e))
+
+        for (const item of items.slice(1)) {
+          const newId = crypto.randomUUID()
+          const newActivity = { ...item, id: newId, list_id: 'review' as ListId, status: 'processed' as const, file_url: item.file_url ?? file_url }
+          setActivities(prev => [newActivity, ...prev])
+          try {
+            await createActivity(newId, newActivity.type ?? type, {
+              description: newActivity.description,
+              list_id: 'review',
+              status: 'processed',
+              file_url: newActivity.file_url,
+            })
+            await saveActivity(newId, newActivity.type ?? type, newActivity)
+          } catch (err) {
+            console.error('Failed to persist additional activity:', newId, err)
+          }
+        }
       } catch (err) {
         console.error('Capture Error:', err)
         await moveToError(id, type, description, seedCreated)
@@ -256,7 +275,7 @@ export default function Board({ initialActivities } : BoardProps) {
     try {
       const result = await postDesk({ ...activity, id: activity.id, action: 'add', use_ai: true, file: null })
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
-      const processedData = { ...(result.data as DeskActivity), list_id: 'review' as ListId }
+      const processedData = { ...(result.data as DeskActivity), id: activity.id, list_id: 'review' as ListId }
       setActivities(prev => prev.map(e => e.id === activity.id ? processedData : e))
     } catch (err) {
       console.error('Send to AI Error:', err)

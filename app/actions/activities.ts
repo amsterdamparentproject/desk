@@ -124,15 +124,18 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'
   const fields = type === 'event' ? EVENT_FIELDS : RESOURCE_FIELDS
+  const normalized = data.repeat_frequency
+    ? { ...data, repeat_frequency: data.repeat_frequency.toLowerCase() as DeskActivity['repeat_frequency'] }
+    : data
   const update: Record<string, any> = {
-    ...pickFields(data, fields),
+    ...pickFields(normalized, fields),
     updated_at: new Date().toISOString(),
   }
 
   if (type === 'event') {
-    const { frequency, days, untilDate } = parseRrule(data.repeat_rrule)
+    const { frequency, days, untilDate } = parseRrule(normalized.repeat_rrule)
     update.repeat_next_date = frequency
-      ? computeNextDate(frequency, days, untilDate, data.start_date)
+      ? computeNextDate(frequency, days, untilDate, normalized.start_date)
       : null
   }
 

@@ -549,6 +549,12 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </Field>
             )}
 
+            <div className="flex flex-row items-center gap-2 mb-2">
+              <Field label="Record id">
+                <div className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}>{formData.id ?? 'No id'}</div>
+              </Field>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <Field label="Source">
                 <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} className={selectStyle}>

@@ -99,6 +99,8 @@ Return only a JSON object. Event example:
 }
 ```
 
+If there are multiple activities identified, return the object for each activity in an array.
+
 ## Input
 
 ```json

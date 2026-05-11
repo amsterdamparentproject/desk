@@ -155,17 +155,6 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSno
   const windowActivities = activities.filter(a => isInNewsletterWindow(a, windowStart, windowEnd))
   const futureActivities = activities.filter(a => !isInNewsletterWindow(a, windowStart, windowEnd))
 
-  const renderCard = (activity: DeskActivity) => (
-    <ActivityCard
-      key={activity.id}
-      activity={activity}
-      onDetails={onDetails}
-      onMove={onMove}
-      onArchive={onArchive}
-      onSnooze={onSnooze}
-    />
-  )
-
   return (
     <>
       {windowActivities.length === 0 ? (
@@ -173,7 +162,16 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSno
           Nothing in this newsletter window 🌬️
         </div>
       ) : (
-        windowActivities.map(renderCard)
+        windowActivities.map(activity => (
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            onDetails={onDetails}
+            onMove={onMove}
+            onArchive={onArchive}
+            onSnooze={onSnooze}
+          />
+        ))
       )}
 
       {futureActivities.length > 0 && (
@@ -192,7 +190,16 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSno
 
           {showFuture && (
             <div className="space-y-3 mt-1">
-              {futureActivities.map(renderCard)}
+              {futureActivities.map(activity => (
+                <ActivityCard
+                  key={activity.id}
+                  activity={activity}
+                  onDetails={onDetails}
+                  onMove={onMove}
+                  onArchive={onArchive}
+                  onSnooze={onSnooze}
+                />
+              ))}
             </div>
           )}
         </div>
