@@ -34,3 +34,7 @@ input[type="time"]::-webkit-datetime-edit-seconds-field,
 input[type="time"]::-webkit-datetime-edit-milliseconds-field {
   display: none;
 }
+
+button {
+  cursor: pointer;
+}

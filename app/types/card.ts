@@ -17,6 +17,7 @@ export interface CardProps {
   onDetails?: (activity: DeskActivity) => void // Only cards that have been processed can access the Edit pane
   onMove?: (id: string, target: ListId) => void
   onArchive?: (id: string) => void
+  onSnooze?: (id: string) => void
   showApproveButton?: boolean
   children?: React.ReactNode // For extending components to add custom footers
 }

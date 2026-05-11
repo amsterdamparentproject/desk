@@ -1,11 +1,13 @@
 // components/card/CaptureCard.tsx
 import { useState, useRef, useEffect } from 'react'
-import { Paperclip, X, Send } from 'lucide-react'
+import { Paperclip, X, Send, Sparkles } from 'lucide-react'
 import { CaptureCardProps } from '../../types/card'
 
 export function CaptureCardForm({ onAdd, listId }: CaptureCardProps) {
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [useAi, setUseAi] = useState(true)
+  const [type, setType] = useState<'event' | 'resource'>('event')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -27,6 +29,8 @@ export function CaptureCardForm({ onAdd, listId }: CaptureCardProps) {
       description,
       file,
       list_id: listId,
+      use_ai: useAi,
+      type,
     })
 
     // Reset state
@@ -80,10 +84,34 @@ export function CaptureCardForm({ onAdd, listId }: CaptureCardProps) {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 transition-colors"
           >
             <Paperclip size={14} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              Attach
-            </span>
+            <span className="text-[10px] font-black uppercase tracking-widest">Attach</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setUseAi(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+              useAi ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+            }`}
+          >
+            <Sparkles size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Use AI</span>
+          </button>
+          <div className="flex rounded-lg overflow-hidden border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setType('event')}
+              className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                type === 'event' ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-white text-slate-400 hover:bg-slate-50'
+              }`}
+            >Event</button>
+            <button
+              type="button"
+              onClick={() => setType('resource')}
+              className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                type === 'resource' ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-white text-slate-400 hover:bg-slate-50'
+              }`}
+            >Resource</button>
+          </div>
         </div>
 
         <button

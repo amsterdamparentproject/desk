@@ -75,8 +75,10 @@ export interface ResourceActivity extends BaseActivity {
  */
 export type CaptureDataProps = {
   list_id: ListId;
+  type: 'event' | 'resource';
   description: string;
   file: File | null;
+  use_ai: boolean;
 }
 
 /**

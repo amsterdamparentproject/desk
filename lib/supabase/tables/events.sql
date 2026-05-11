@@ -38,7 +38,7 @@ CREATE TABLE activities.events (
   tagline text,
 
   -- Newsletter & Calendar Tracking
-  newsletter_description text NOT NULL,
+  newsletter_description text,
   newsletter_last date,
   newsletter_highlight boolean DEFAULT false,
   calendar_skip boolean DEFAULT false,

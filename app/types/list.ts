@@ -17,8 +17,8 @@ export interface ListProps {
 }
 
 export const CAPTURE_LISTS: ListProps[] = [
-  { id: 'capture', label: 'Capture', finishLabel: 'Looks good', finishTarget: () => 'review' },
-  { id: 'ideas',   label: 'Ideas',   finishLabel: 'Looks good', finishTarget: () => 'capture' },
+  { id: 'capture', label: 'Capture', finishLabel: 'Capture details', finishTarget: () => 'review' },
+  { id: 'ideas',   label: 'Ideas',   finishLabel: 'Capture details', finishTarget: () => 'capture' },
 ]
 
 export const TRIAGE_LISTS: ListProps[] = [

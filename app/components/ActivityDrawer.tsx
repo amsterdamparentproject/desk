@@ -1,8 +1,9 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState } from 'react'
-import { X, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar } from 'lucide-react'
+import { X, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2 } from 'lucide-react'
 import { DeskActivity, DEFAULT_DESK_ACTIVITY, RepeatFrequency } from '../types/activity'
-import { ALL_LISTS } from '../types/list'
+import { ALL_LISTS, ListId, getListTab } from '../types/list'
+import { TriageStatus } from '../types/card'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
 import { parseRrule, buildRrule, computeNextDate, parsePositionalDay } from '../utils/rrule';
 
@@ -33,6 +34,9 @@ interface ActivityDrawerProps {
   onSaveDraft: (data: DeskActivity) => void,
   onFinishEditing: (data: DeskActivity) => void,
   onClose: () => void,
+  publishDate?: string,
+  onSendToAI?: (data: DeskActivity) => void,
+  onDelete?: (id: string, type: 'event' | 'resource') => void,
 }
 
 const WEEKDAYS = [
@@ -45,8 +49,20 @@ const WEEKDAYS = [
   { label: 'Sun', abbr: 'SU' },
 ]
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose }: ActivityDrawerProps) {
+const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'edited', 'archived', 'snoozed']
+
+const STATUS_COLORS: Record<TriageStatus, string> = {
+  new:        'bg-blue-600 text-white',
+  processing: 'bg-amber-500 text-white',
+  processed:  'bg-purple-600 text-white',
+  edited:     'bg-green-600 text-white',
+  archived:   'bg-red-500 text-white',
+  snoozed:    'bg-slate-500 text-white',
+}
+
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const parsed = parseRrule(activity.repeat_rrule)
   const parsedMonthly = parsed.frequency === 'monthly' && parsed.days[0] ? parsePositionalDay(parsed.days[0]) : null
@@ -176,7 +192,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <div className="flex items-center gap-2">
             <Edit size={18} className="text-white ml-3" />
             <span className="text-lg tracking-wide text-white font-bold pl-2 py-1 rounded">
-              Edit activity
+              Edit {activity.type}
             </span>
           </div>
           <button onClick={onClose} className="p-2 text-white hover:text-slate-200 rounded-full transition-colors">
@@ -248,7 +264,8 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             />
           </section>
 
-          {/* Date & time */}
+          {/* Date & time — events only */}
+          {formData.type === 'event' && (
           <section className="space-y-4 py-2">
             <div className="flex flex-row items-center gap-2 mb-2">
               <Clock size={18} className="text-slate-700" />
@@ -282,16 +299,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 <input type="number" value={formData.duration_minutes ?? 0} onChange={(e) => handleDateChange('duration_minutes', e.target.value)} className={inputStyle} />
               </Field>
             </div>
-
-            {formData.type === 'event' && (
-              <Toggle
-                label="Skip calendar"
-                icon={<SkipForward size={14} className={formData.calendar_skip ? "text-orange-500" : "text-slate-400"} />}
-                checked={!!formData.calendar_skip}
-                onChange={(v) => handleChange('calendar_skip', v)}
-              />
-            )}
+            <Toggle
+              label="Skip calendar"
+              icon={<SkipForward size={14} className={formData.calendar_skip ? "text-orange-500" : "text-slate-400"} />}
+              checked={!!formData.calendar_skip}
+              onChange={(v) => handleChange('calendar_skip', v)}
+            />
           </section>
+          )}
 
           {/* Repeat */}
           {formData.type === 'event' && (
@@ -493,18 +508,84 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             )}
           </section>
 
-          {/* Triage notes */}
-          <section className="space-y-3">
+          {/* Triage */}
+          <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
-              <NotebookPen size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-xl font-black">Triage notes</h2>
+              <Settings size={18} className="text-slate-700" />
+              <h2 className="text-slate-700 text-xl font-black">Triage</h2>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-500">Added to calendar</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.calendar_sent ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
-                {formData.calendar_sent ? 'Yes' : 'No'}
-              </span>
+
+            <Field label="Status">
+              <div className="flex flex-wrap gap-1.5">
+                {TRIAGE_STATUSES.map(s => {
+                  const isActive = formData.status === s
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => {
+                        if (s === 'snoozed' && publishDate) {
+                          const d = new Date(publishDate)
+                          d.setDate(d.getDate() + 1)
+                          setFormData(prev => ({ ...prev, status: 'snoozed', snooze_until: d.toISOString().split('T')[0] }))
+                        } else {
+                          setFormData(prev => ({ ...prev, status: s, snooze_until: s !== 'snoozed' ? null : prev.snooze_until }))
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
+                        isActive ? STATUS_COLORS[s] : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      }`}
+                    >
+                      {s === 'snoozed' ? 'Snoozed' : s}
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
+
+            {formData.snooze_until && (
+              <Field label="Snoozed until">
+                <div className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}>{formData.snooze_until}</div>
+              </Field>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Source">
+                <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} className={selectStyle}>
+                  <option value="app_desk">APP Desk</option>
+                  <option value="app_website">APP Website</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </Field>
+              <Field label="In list">
+                <select value={formData.list_id} onChange={(e) => handleChange('list_id', e.target.value as ListId)} className={selectStyle}>
+                  {ALL_LISTS.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
+                </select>
+              </Field>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Created">
+                <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
+                  {formData.created_at ? new Date(formData.created_at).toLocaleString('en-GB') : '—'}
+                </div>
+              </Field>
+              <Field label="Last edited">
+                <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
+                  {formData.updated_at ? new Date(formData.updated_at).toLocaleString('en-GB') : '—'}
+                </div>
+              </Field>
+            </div>
+
+            {formData.type === 'event' && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-slate-500">Added to calendar</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.calendar_sent ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
+                  {formData.calendar_sent ? 'Yes' : 'No'}
+                </span>
+              </div>
+            )}
+
             <textarea
               ref={notesRef}
               value={formData.triage_notes || ""}
@@ -512,6 +593,36 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               className="w-full text-sm leading-relaxed text-black border border-amber-200 p-3 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none overflow-hidden bg-amber-50/80 rounded-lg transition-colors"
               placeholder="Add administrative context notes here..."
             />
+
+            {onDelete && (
+              confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-red-600">Are you sure?</span>
+                  <button
+                    type="button"
+                    onClick={() => { onDelete(formData.id, formData.type); onClose(); }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={13} /> Yes, delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                >
+                  <Trash2 size={13} /> Delete record permanently
+                </button>
+              )
+            )}
           </section>
 
         </div>
@@ -521,6 +632,11 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <button onClick={() => onSaveDraft(formData)} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
             <Save size={18} strokeWidth={3} /> Save draft
           </button>
+          {onSendToAI && getListTab(formData.list_id) === 'triage' && (
+            <button onClick={() => onSendToAI(formData)} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+              <Sparkles size={18} strokeWidth={3} /> Send to AI
+            </button>
+          )}
           {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel && (
             <button onClick={() => onFinishEditing(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
               <Check size={18} strokeWidth={3} />

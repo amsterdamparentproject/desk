@@ -6,7 +6,7 @@ import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/acti
 import { ALL_LISTS, CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
-import { archiveActivity, moveActivity, saveActivity } from '../actions/activities'
+import { archiveActivity, createActivity, deleteActivity, moveActivity, saveActivity, uploadActivityFile } from '../actions/activities'
 import { Calendar, RotateCcw } from 'lucide-react'
 import { Card } from './card/Card'
 
@@ -119,6 +119,33 @@ export default function Board({ initialActivities } : BoardProps) {
     }
   }
 
+  const handleSnoozeEvent = async (id: string) => {
+    const activity = activities.find(e => e.id === id)
+    if (!activity) return
+    const d = new Date(publishDate)
+    d.setDate(d.getDate() + 1)
+    const snoozeUntil = d.toISOString().split('T')[0]
+    const updated = { ...activity, status: 'snoozed' as const, snooze_until: snoozeUntil }
+    setActivities(prev => prev.map(e => e.id === id ? updated : e))
+    try {
+      await saveActivity(id, activity.type, updated)
+    } catch (err) {
+      console.error('Snooze failed:', err)
+      setActivities(prev => prev.map(e => e.id === id ? activity : e))
+    }
+  }
+
+  const handleDeleteActivity = async (id: string, type: 'event' | 'resource') => {
+    setActivities(prev => prev.filter(e => e.id !== id))
+    try {
+      await deleteActivity(id, type)
+    } catch (err) {
+      console.error('Delete failed:', err)
+      const activity = activities.find(e => e.id === id)
+      if (activity) setActivities(prev => [...prev, activity])
+    }
+  }
+
   const handleRestoreEvent = async (id: string) => {
     const activity = activities.find(e => e.id === id)
     if (!activity) return
@@ -131,60 +158,113 @@ export default function Board({ initialActivities } : BoardProps) {
     }
   }
 
-  const handleAddEvent = async (captureData: CaptureDataProps) => {
-    const preview_url = captureData.file
-      ? URL.createObjectURL(captureData.file)
-      : null;
+  const moveToError = async (id: string, type: 'event' | 'resource', description: string, seedCreated: boolean) => {
+    setActivities(prev => prev.map(e =>
+      e.id === id ? { ...e, list_id: 'error' as ListId, status: 'new' as const, title: description } : e
+    ))
+    if (seedCreated) {
+      await saveActivity(id, type, { list_id: 'error', status: 'new', title: description } as Partial<DeskActivity>).catch(() => {})
+    } else {
+      await createActivity(id, type, { list_id: 'error', status: 'new', description }).catch(() => {})
+    }
+  }
 
-    const optimisticActivity: DeskActivity = createNewActivity(
-      captureData.description || '',
-      {
+  const handleAddEvent = async (captureData: CaptureDataProps) => {
+    const description = captureData.description || ''
+    const type = captureData.type ?? 'event'
+    const preview_url = captureData.file ? URL.createObjectURL(captureData.file) : null
+
+    // Generate ID upfront so the storage path matches the DB record
+    const id = crypto.randomUUID()
+
+    if (captureData.use_ai) {
+      const optimistic = createNewActivity(description, {
+        id, type,
         list_id: captureData.list_id || 'capture',
         status: 'processing',
         file: captureData.file,
-        preview_url: preview_url,
-      }
-    );
+        preview_url,
+      })
+      setActivities(prev => [optimistic, ...prev])
 
-    setActivities(prev => [optimisticActivity, ...prev]);
-
-    try {
-      const postData = {
-        ...captureData,
-        id: optimisticActivity.id,
-        action: 'add' as const,
-      };
-
-      const result = await postDesk(postData);
-
-      if (!result.success) {
-        throw new Error(`Webhook failed with status ${result.status}`);
+      // Upload file to storage before creating the seed record
+      let file_url: string | null = null
+      if (captureData.file) {
+        try {
+          file_url = await uploadActivityFile(id, captureData.file)
+          if (preview_url) URL.revokeObjectURL(preview_url)
+          setActivities(prev => prev.map(e => e.id === id ? { ...e, file_url, preview_url: null } : e))
+        } catch (err) {
+          console.error('File upload failed:', err)
+        }
       }
 
-      let processedData = result.data as DeskActivity
-      processedData.list_id = 'review'
-
-      setActivities(prev =>
-        prev.map(e => {
-          if (e.id === optimisticActivity.id) {
-            if (optimisticActivity.preview_url && e.file_url) {
-              URL.revokeObjectURL(optimisticActivity.preview_url);
-            }
-            return processedData;
-          }
-          return e;
+      let seedCreated = false
+      try {
+        await createActivity(id, type, {
+          description,
+          list_id: captureData.list_id || 'capture',
+          status: 'processing',
+          file_url,
         })
-      );
-    } catch (err) {
-      console.error('Capture Error:', err);
-      if (preview_url) URL.revokeObjectURL(preview_url);
-      setActivities(prev => prev.map(e =>
-        e.id === optimisticActivity.id
-          ? { ...e, status: 'new' as const, title: captureData.description || '' }
-          : e
-      ));
+        seedCreated = true
+
+        const result = await postDesk({ ...captureData, id, action: 'add' })
+        if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
+
+        let processedData = result.data as DeskActivity
+        processedData.list_id = 'review'
+        setActivities(prev => prev.map(e => e.id === id ? processedData : e))
+      } catch (err) {
+        console.error('Capture Error:', err)
+        await moveToError(id, type, description, seedCreated)
+      }
+    } else {
+      const reviewed = createNewActivity(description, {
+        id, type,
+        title: description,
+        list_id: 'review',
+        status: 'new',
+        file: captureData.file,
+        preview_url,
+      })
+      setActivities(prev => [reviewed, ...prev])
+
+      // Upload file to storage before creating the seed record
+      let file_url: string | null = null
+      if (captureData.file) {
+        try {
+          file_url = await uploadActivityFile(id, captureData.file)
+          if (preview_url) URL.revokeObjectURL(preview_url)
+          setActivities(prev => prev.map(e => e.id === id ? { ...e, file_url, preview_url: null } : e))
+        } catch (err) {
+          console.error('File upload failed:', err)
+        }
+      }
+
+      try {
+        await createActivity(id, type, { description, list_id: 'review', status: 'new', file_url })
+      } catch (err) {
+        console.error('Capture Error:', err)
+        await moveToError(id, type, description, false)
+      }
     }
-  };
+  }
+
+  const handleSendToAI = async (activity: DeskActivity) => {
+    setActivities(prev => prev.map(e => e.id === activity.id ? { ...e, status: 'processing' as const } : e))
+    try {
+      const result = await postDesk({ ...activity, id: activity.id, action: 'add', use_ai: true, file: null })
+      if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
+      const processedData = { ...(result.data as DeskActivity), list_id: 'review' as ListId }
+      setActivities(prev => prev.map(e => e.id === activity.id ? processedData : e))
+    } catch (err) {
+      console.error('Send to AI Error:', err)
+      setActivities(prev => prev.map(e =>
+        e.id === activity.id ? { ...e, status: 'new' as const, list_id: 'error' as ListId } : e
+      ))
+    }
+  }
 
   const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
   const archivedActivities = activities
@@ -278,6 +358,7 @@ export default function Board({ initialActivities } : BoardProps) {
               onMove={handleMoveEvent}
               onAddEvent={handleAddEvent}
               onArchive={handleArchiveEvent}
+              onSnooze={handleSnoozeEvent}
               publishDate={publishDate}
             />
           </div>
@@ -291,6 +372,9 @@ export default function Board({ initialActivities } : BoardProps) {
           onSaveDraft={handleSaveDraft}
           onFinishEditing={handleFinishEditing}
           onClose={() => setSelectedActivity(null)}
+          publishDate={publishDate}
+          onSendToAI={handleSendToAI}
+          onDelete={handleDeleteActivity}
         />
       )}
     </main>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit, MapPin, Clock, NotepadText, ArrowRight, CalendarCheck } from 'lucide-react'
+import { Edit, MapPin, Clock, NotepadText, ArrowRight, CalendarCheck, BellOff } from 'lucide-react'
 import { ALL_LISTS, ListId } from '../../types/list'
 import { CardProps } from '../../types/card'
 
@@ -16,6 +16,7 @@ export function Card({
   activity,
   onDetails,
   onMove,
+  onSnooze,
   children
 }: CardProps) {
   const [showMoveMenu, setShowMoveMenu] = useState(false)
@@ -123,6 +124,15 @@ export function Card({
                   document.body
                 )}
               </div> 
+            )}
+
+            { onSnooze && !isNewActivity && (
+              <button
+                onClick={() => onSnooze(activity.id)}
+                className="text-xs font-black hover:text-slate-600 text-slate-400 uppercase flex items-center gap-1"
+              >
+                <BellOff size={12} /> Snooze
+              </button>
             )}
 
             { onDetails && !isNewActivity && (

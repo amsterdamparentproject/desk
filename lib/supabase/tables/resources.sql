@@ -22,7 +22,7 @@ CREATE TABLE activities.resources (
   categories text[] DEFAULT '{}',
   
   -- Newsletter & Calendar Tracking
-  newsletter_description text NOT NULL,
+  newsletter_description text,
   newsletter_last date,
   newsletter_highlight boolean DEFAULT false,
   

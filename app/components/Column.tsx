@@ -25,6 +25,7 @@ interface ColumnProps {
   onDetails: (activity: DeskActivity) => void
   onMove: (id: string, targetList: ListId) => void
   onArchive: (id: string) => void
+  onSnooze: (id: string) => void
   onAddEvent: (activity: CaptureDataProps) => void
   publishDate: string
 }
@@ -37,17 +38,10 @@ export function Column({
   onDetails,
   onMove,
   onArchive,
+  onSnooze,
   onAddEvent,
   publishDate,
 }: ColumnProps) {
-  const handleCaptureAdd = (data: CaptureDataProps) => {
-    onAddEvent({
-      list_id: data.list_id,
-      description: data.description,
-      file: data.file,
-    })
-  }
-
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -108,7 +102,7 @@ export function Column({
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {(list.id === 'capture') && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <CaptureCardForm onAdd={handleCaptureAdd} listId={list.id} />
+              <CaptureCardForm onAdd={onAddEvent} listId={list.id} />
             </div>
           )}
 
@@ -122,6 +116,7 @@ export function Column({
               onDetails={onDetails}
               onMove={onMove}
               onArchive={onArchive}
+              onSnooze={onSnooze}
               publishDate={publishDate}
             />
           ) : (
@@ -132,6 +127,7 @@ export function Column({
                 onDetails={onDetails}
                 onMove={onMove}
                 onArchive={onArchive}
+                onSnooze={onSnooze}
               />
             ))
           )}
@@ -146,10 +142,11 @@ interface UpcomingEventsContentProps {
   onDetails: (activity: DeskActivity) => void
   onMove: (id: string, targetList: ListId) => void
   onArchive: (id: string) => void
+  onSnooze: (id: string) => void
   publishDate: string
 }
 
-function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publishDate }: UpcomingEventsContentProps) {
+function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSnooze, publishDate }: UpcomingEventsContentProps) {
   const [showFuture, setShowFuture] = useState(false)
 
   const windowStart = publishDate
@@ -165,6 +162,7 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publi
       onDetails={onDetails}
       onMove={onMove}
       onArchive={onArchive}
+      onSnooze={onSnooze}
     />
   )
 
