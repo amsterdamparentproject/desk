@@ -1,8 +1,10 @@
 // app/layout.tsx
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { cookies } from 'next/headers'
 import './globals.css'
 import { DeskNav } from './components/DeskNav'
+import { verifyDeskToken } from './utils/auth-gate'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -19,18 +21,21 @@ export const metadata: Metadata = {
   description: 'Internal workspace activities board',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const isLoggedIn = verifyDeskToken(cookieStore)
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="bg-white min-h-full flex flex-col">
-        <DeskNav />
+        <DeskNav isLoggedIn={isLoggedIn} />
         {children}
       </body>
     </html>

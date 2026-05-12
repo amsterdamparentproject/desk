@@ -292,17 +292,7 @@ export default function Board({ initialActivities } : BoardProps) {
 
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
-      <header className="m-4 mb-2 bg-white border-b shadow-sm z-10">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 italic">
-            The APP Desk
-          </h1>
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <p className="text-xs font-mono text-emerald-600 mt-1 bg-emerald-50 px-2.5 py-1 rounded-md inline-block">
-              ● Secure Token Active (RLS Bypassed)
-            </p>
-          </div>
-        </div>
+      <header className="bg-white border-b border-slate-200 z-10">
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8">
             {(['capture', 'triage', 'newsletter', 'archived'] as Tab[]).map((tab) => (

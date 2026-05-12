@@ -9,12 +9,12 @@ const NAV_LINKS = [
   { href: '/finances',  label: 'Finances'   },
 ]
 
-export function DeskNav() {
+export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
   const pathname = usePathname()
 
   return (
-    <nav className="shrink-0 flex items-center justify-between h-14 px-5 bg-app-cream border-b border-app-charcoal/10">
-      {/* Wordmark */}
+    <nav className="shrink-0 flex items-center justify-between h-14 py-6 px-5 bg-black border-b border-black/10">
+      {/* Wordmark + badge */}
       <div className="flex items-center gap-2.5">
         <Image
           src="/app_logo.png"
@@ -23,9 +23,14 @@ export function DeskNav() {
           height={30}
           className="rounded-sm"
         />
-        <span className="text-sm font-bold tracking-tight text-app-charcoal">
-          APP Desk
+        <span className="text-2xl italic font-bold text-app-cream mr-2">
+          The APP Desk
         </span>
+        {isLoggedIn && (
+          <span className="text-xs font-mono text-black bg-app-gold px-2 py-0.5 rounded-md">
+            ● Secure
+          </span>
+        )}
       </div>
 
       {/* Links */}
@@ -38,8 +43,8 @@ export function DeskNav() {
               href={href}
               className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-app-charcoal text-white'
-                  : 'text-app-charcoal/70 hover:bg-app-charcoal/10'
+                  ? 'bg-app-gold text-black'
+                  : 'text-white hover:bg-app-charcoal/10'
               }`}
             >
               {label}
