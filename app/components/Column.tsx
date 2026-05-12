@@ -12,9 +12,9 @@ function addDays(dateStr: string, days: number): string {
 }
 
 function isInNewsletterWindow(activity: DeskActivity, windowStart: string, windowEnd: string): boolean {
-  const date = activity.start_date
-  if (!date) return false
-  return date >= windowStart && date <= windowEnd
+  const inWindow = (date: string | null | undefined) =>
+    !!date && date >= windowStart && date <= windowEnd
+  return inWindow(activity.start_date) || inWindow(activity.repeat_next_date)
 }
 
 interface ColumnProps {
@@ -149,8 +149,8 @@ interface UpcomingEventsContentProps {
 function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSnooze, publishDate }: UpcomingEventsContentProps) {
   const [showFuture, setShowFuture] = useState(false)
 
-  const windowStart = publishDate
-  const windowEnd = addDays(publishDate, 14)
+  const windowStart = new Date().toISOString().split('T')[0]
+  const windowEnd = addDays(publishDate, 15) // Account for events happening on the last day of the period
 
   const windowActivities = activities.filter(a => isInNewsletterWindow(a, windowStart, windowEnd))
   const futureActivities = activities.filter(a => !isInNewsletterWindow(a, windowStart, windowEnd))

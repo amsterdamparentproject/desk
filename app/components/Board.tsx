@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/activity'
 import { ALL_LISTS, CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
@@ -53,6 +53,12 @@ export default function Board({ initialActivities } : BoardProps) {
 
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(null)
+  const processingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const disarmProcessingTimeout = (id: string) => {
+    const t = processingTimeouts.current.get(id)
+    if (t !== undefined) { clearTimeout(t); processingTimeouts.current.delete(id) }
+  }
   const [openCols, setOpenCols] = useState<Set<ListId>>(() => {
     const allIds = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map(col => col.id)
     return new Set(allIds)
@@ -186,6 +192,10 @@ export default function Board({ initialActivities } : BoardProps) {
         preview_url,
       })
       setActivities(prev => [optimistic, ...prev])
+      processingTimeouts.current.set(id, setTimeout(async () => {
+        processingTimeouts.current.delete(id)
+        await moveToError(id, type, description, true)
+      }, 2 * 60 * 1000))
 
       // Upload file to storage before creating the seed record
       let file_url: string | null = null
@@ -209,9 +219,10 @@ export default function Board({ initialActivities } : BoardProps) {
         })
         seedCreated = true
 
-        const result = await postDesk({ ...captureData, id, action: 'add' })
+        const result = await postDesk({ ...captureData, id, action: 'add', file_url })
         if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
 
+        disarmProcessingTimeout(id)
         const rawData = result.data
         const items: DeskActivity[] = Array.isArray(rawData) ? rawData : [rawData]
 
@@ -235,6 +246,7 @@ export default function Board({ initialActivities } : BoardProps) {
           }
         }
       } catch (err) {
+        disarmProcessingTimeout(id)
         console.error('Capture Error:', err)
         await moveToError(id, type, description, seedCreated)
       }
@@ -272,9 +284,16 @@ export default function Board({ initialActivities } : BoardProps) {
 
   const handleSendToAI = async (activity: DeskActivity) => {
     setActivities(prev => prev.map(e => e.id === activity.id ? { ...e, status: 'processing' as const } : e))
+    processingTimeouts.current.set(activity.id, setTimeout(() => {
+      processingTimeouts.current.delete(activity.id)
+      setActivities(prev => prev.map(e =>
+        e.id === activity.id ? { ...e, status: 'new' as const, list_id: 'error' as ListId } : e
+      ))
+    }, 2 * 60 * 1000))
     try {
       const result = await postDesk({ ...activity, id: activity.id, action: 'add', use_ai: true, file: null })
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
+      disarmProcessingTimeout(activity.id)
       const rawData = result.data
       const items: DeskActivity[] = Array.isArray(rawData) ? rawData : [rawData]
       const first = { ...items[0], id: activity.id, list_id: 'review' as ListId }
@@ -292,6 +311,7 @@ export default function Board({ initialActivities } : BoardProps) {
         }
       }
     } catch (err) {
+      disarmProcessingTimeout(activity.id)
       console.error('Send to AI Error:', err)
       setActivities(prev => prev.map(e =>
         e.id === activity.id ? { ...e, status: 'new' as const, list_id: 'error' as ListId } : e
@@ -371,6 +391,13 @@ export default function Board({ initialActivities } : BoardProps) {
               activities={activities
                 .filter(e => e.list_id === col.id && e.status !== 'archived')
                 .sort((a, b) => {
+                  if (col.id === 'upcoming_events') {
+                    const today = new Date().toISOString().split('T')[0]
+                    const aInWindow = !!(a.repeat_next_date && a.repeat_next_date >= today && a.repeat_next_date <= publishDate)
+                    const bInWindow = !!(b.repeat_next_date && b.repeat_next_date >= today && b.repeat_next_date <= publishDate)
+                    if (aInWindow !== bInWindow) return aInWindow ? -1 : 1
+                    if (aInWindow && bInWindow) return a.repeat_next_date!.localeCompare(b.repeat_next_date!)
+                  }
                   if (!a.start_date && !b.start_date) return 0
                   if (!a.start_date) return 1
                   if (!b.start_date) return -1
