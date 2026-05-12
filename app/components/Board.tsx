@@ -275,9 +275,22 @@ export default function Board({ initialActivities } : BoardProps) {
     try {
       const result = await postDesk({ ...activity, id: activity.id, action: 'add', use_ai: true, file: null })
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
-      const processedData = { ...(result.data as DeskActivity), id: activity.id, list_id: 'review' as ListId }
-      setActivities(prev => prev.map(e => e.id === activity.id ? processedData : e))
-      await saveActivity(activity.id, activity.type, processedData)
+      const rawData = result.data
+      const items: DeskActivity[] = Array.isArray(rawData) ? rawData : [rawData]
+      const first = { ...items[0], id: activity.id, list_id: 'review' as ListId }
+      setActivities(prev => prev.map(e => e.id === activity.id ? first : e))
+      await saveActivity(activity.id, activity.type, first)
+      for (const item of items.slice(1)) {
+        const newId = crypto.randomUUID()
+        const newActivity = { ...item, id: newId, list_id: 'review' as ListId, status: 'processed' as const }
+        setActivities(prev => [newActivity, ...prev])
+        try {
+          await createActivity(newId, activity.type, { description: newActivity.description, list_id: 'review', status: 'processed' })
+          await saveActivity(newId, activity.type, newActivity)
+        } catch (err) {
+          console.error('Failed to persist additional activity:', newId, err)
+        }
+      }
     } catch (err) {
       console.error('Send to AI Error:', err)
       setActivities(prev => prev.map(e =>
@@ -378,7 +391,7 @@ export default function Board({ initialActivities } : BoardProps) {
 
       {selectedActivity && (
         <ActivityDrawer
-          activity={selectedActivity}
+          activity={activities.find(e => e.id === selectedActivity.id) ?? selectedActivity}
           onSaveDraft={handleSaveDraft}
           onFinishEditing={handleFinishEditing}
           onClose={() => setSelectedActivity(null)}

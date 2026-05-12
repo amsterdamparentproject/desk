@@ -185,7 +185,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
-      <div className="w-full max-w-4xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-4xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+
+        {activity.status === 'processing' && (
+          <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-30">
+            <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing</span>
+          </div>
+        )}
 
         {/* Header */}
         <div className="sticky top-0 bg-blue-600 border-b border-slate-100 p-4 flex items-center justify-between z-20">

@@ -41,7 +41,6 @@ export async function createActivity(
     updated_at: now,
   }
   if (type === 'event') insert.start_date = today
-  console.log('[createActivity] table:', table, 'type:', type, 'id:', id)
   const { error } = await supabase.from(table).insert(insert)
   if (error) throw new Error(error.message)
 }
