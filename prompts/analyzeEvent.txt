@@ -37,7 +37,7 @@ You are a parser for Amsterdam Parent Project. Process community-submitted activ
 - For resources: all date/time fields are null
 - If no year is specified, assume current year. If date/time cannot be determined, use today's.
 - `end_date`: **only set if the event spans multiple calendar days** (`end_date > start_date`), e.g. a 3-day festival. For single-day events, omit `end_date` (null). Do not echo `start_date` as `end_date`.
-- If multiple start times exist, store as comma-separated list (e.g. `"11:00, 12:00"`); `end_time` corresponds to the first start time
+- If multiple distinct start times on the same day, output them as separate objects in the JSON array rather than a single object with multiple times in one string.
 - `duration_minutes`: integer minutes between start and end time (null if not determinable)
 
 #### Repeat
@@ -98,8 +98,6 @@ Return only a JSON object. Event example:
   "file_url": "https://lchjodrcpfauvkxnhnxe.supabase.co/storage/v1/object/public/activities/captures/452179f7.png"
 }
 ```
-
-If there are multiple activities identified, return the object for each activity in an array.
 
 ## Input
 

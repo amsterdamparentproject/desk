@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Desk Board',
-  description: 'Internal workspace activities board',
+  title: 'The APP Desk',
+  description: 'Powering Amsterdam Parent Project',
 }
 
 export default async function RootLayout({

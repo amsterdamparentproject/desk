@@ -277,6 +277,7 @@ export default function Board({ initialActivities } : BoardProps) {
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
       const processedData = { ...(result.data as DeskActivity), id: activity.id, list_id: 'review' as ListId }
       setActivities(prev => prev.map(e => e.id === activity.id ? processedData : e))
+      await saveActivity(activity.id, activity.type, processedData)
     } catch (err) {
       console.error('Send to AI Error:', err)
       setActivities(prev => prev.map(e =>
