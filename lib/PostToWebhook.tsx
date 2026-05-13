@@ -48,18 +48,10 @@ const postToWebhook = async (webhookURL: string | undefined, data: any) => {
       body,
     });
 
-    // 1. Safely extract the parsed JSON body data from the network response stream
-    let responseData = null;
-    if (response.ok) {
-      responseData = await response.json();
-    } else {
-      responseData = { message: await response.text() };
-    }
-
     const isOk = !!response.ok;
     const statusCode = Number(response.status);
 
-    return { success: isOk, status: statusCode, data: responseData};
+    return { success: isOk, status: statusCode, data: null };
   } catch (error: any) {
     console.error("postToWebhook error:", error);
     return { success: false, error: error.message || "Unknown error" };
@@ -78,3 +70,4 @@ export const postDesk = async (data: PostDeskProps) => {
   console.info('Posting to webhook URL:', baseUrl);
   return postToWebhook(baseUrl, data);
 };
+

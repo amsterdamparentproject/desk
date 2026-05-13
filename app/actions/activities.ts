@@ -141,3 +141,32 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 }
+
+export async function pollForUpdates(
+  processing: { id: string; type: 'event' | 'resource'; created_at: string }[]
+): Promise<DeskActivity[]> {
+  if (processing.length === 0) return []
+  const supabase = createAdminClient()
+
+  const eventIds = processing.filter(p => p.type === 'event').map(p => p.id)
+  const resourceIds = processing.filter(p => p.type === 'resource').map(p => p.id)
+  const since = processing.reduce((min, p) => p.created_at < min ? p.created_at : min, processing[0].created_at)
+
+  const [eventsById, resourcesById, recentEvents, recentResources] = await Promise.all([
+    eventIds.length ? supabase.from('events').select('*').in('id', eventIds) : Promise.resolve({ data: [] as any[] }),
+    resourceIds.length ? supabase.from('resources').select('*').in('id', resourceIds) : Promise.resolve({ data: [] as any[] }),
+    supabase.from('events').select('*').eq('list_id', 'review').gte('created_at', since),
+    supabase.from('resources').select('*').eq('list_id', 'review').gte('created_at', since),
+  ])
+
+  const seen = new Set<string>()
+  const results: DeskActivity[] = []
+
+  for (const row of [...(eventsById.data ?? []), ...(recentEvents.data ?? [])]) {
+    if (!seen.has(row.id)) { seen.add(row.id); results.push({ ...row, type: 'event' as const, file: null, preview_url: null }) }
+  }
+  for (const row of [...(resourcesById.data ?? []), ...(recentResources.data ?? [])]) {
+    if (!seen.has(row.id)) { seen.add(row.id); results.push({ ...row, type: 'resource' as const, file: null, preview_url: null }) }
+  }
+  return results
+}

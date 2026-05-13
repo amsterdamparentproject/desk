@@ -13,6 +13,7 @@ vi.mock('../app/actions/activities', () => ({
   archiveActivity: vi.fn(),
   moveActivity: vi.fn(),
   uploadActivityFile: vi.fn(),
+  pollForUpdates: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('../lib/PostToWebhook', () => ({
@@ -79,7 +80,7 @@ describe('capture via AI', () => {
     'creates %s without file',
     async (type) => {
       const user = userEvent.setup()
-      vi.mocked(postDesk).mockResolvedValue({ success: true, data: webhookData({ type }) })
+      vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
 
       render(<Board initialActivities={[]} />)
       await switchToCapture(user)
@@ -107,7 +108,7 @@ describe('capture via AI', () => {
     'creates %s with file (uploads first and preserves file_url)',
     async (type) => {
       const user = userEvent.setup()
-      vi.mocked(postDesk).mockResolvedValue({ success: true, data: webhookData({ type, file_url: null }) })
+      vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
 
       render(<Board initialActivities={[]} />)
       await switchToCapture(user)
@@ -136,10 +137,9 @@ describe('capture via AI', () => {
     },
   )
 
-  it('creates two records when webhook returns array', async () => {
+  it('fires webhook and creates seed record (multi-item split handled by callback route)', async () => {
     const user = userEvent.setup()
-    const second = webhookData({ id: 'act-2', title: 'Second Event' })
-    vi.mocked(postDesk).mockResolvedValue({ success: true, data: [webhookData(), second] })
+    vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
 
     render(<Board initialActivities={[]} />)
     await switchToCapture(user)
@@ -148,15 +148,14 @@ describe('capture via AI', () => {
     await user.type(textarea, 'Multi-event description')
     fireEvent.submit(textarea.closest('form')!)
 
-    // createActivity called twice: once for seed, once for the second returned item
-    await waitFor(() => expect(createActivity).toHaveBeenCalledTimes(2))
-    // saveActivity called once for the additional record
-    await waitFor(() => expect(saveActivity).toHaveBeenCalledTimes(1))
-    expect(saveActivity).toHaveBeenCalledWith(
+    // Only the seed createActivity call — extra items created server-side by /api/desk/callback
+    await waitFor(() => expect(createActivity).toHaveBeenCalledTimes(1))
+    expect(createActivity).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ title: 'Second Event', status: 'processed' }),
+      expect.objectContaining({ list_id: 'capture', status: 'processing' }),
     )
+    expect(postDesk).toHaveBeenCalledWith(expect.objectContaining({ action: 'add' }))
   })
 })
 

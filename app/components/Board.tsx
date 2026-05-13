@@ -6,7 +6,7 @@ import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/acti
 import { ALL_LISTS, CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
-import { archiveActivity, createActivity, deleteActivity, moveActivity, saveActivity, uploadActivityFile } from '../actions/activities'
+import { archiveActivity, createActivity, deleteActivity, moveActivity, pollForUpdates, saveActivity, uploadActivityFile } from '../actions/activities'
 import { Calendar, RotateCcw } from 'lucide-react'
 import { Card } from './card/Card'
 
@@ -223,30 +223,6 @@ export default function Board({ initialActivities } : BoardProps) {
 
         const result = await postDesk({ ...postDeskData, id, action: 'add' })
         if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
-
-        disarmProcessingTimeout(id)
-        const rawData = result.data
-        const items: DeskActivity[] = Array.isArray(rawData) ? rawData : [rawData]
-
-        const first = { ...items[0], id, list_id: 'review' as ListId, file_url: items[0].file_url ?? file_url }
-        setActivities(prev => prev.map(e => e.id === id ? first : e))
-
-        for (const item of items.slice(1)) {
-          const newId = crypto.randomUUID()
-          const newActivity = { ...item, id: newId, list_id: 'review' as ListId, status: 'processed' as const, file_url: item.file_url ?? file_url }
-          setActivities(prev => [newActivity, ...prev])
-          try {
-            await createActivity(newId, newActivity.type ?? type, {
-              description: newActivity.description,
-              list_id: 'review',
-              status: 'processed',
-              file_url: newActivity.file_url,
-            })
-            await saveActivity(newId, newActivity.type ?? type, newActivity)
-          } catch (err) {
-            console.error('Failed to persist additional activity:', newId, err)
-          }
-        }
       } catch (err) {
         disarmProcessingTimeout(id)
         console.error('Capture Error:', err)
@@ -295,23 +271,6 @@ export default function Board({ initialActivities } : BoardProps) {
     try {
       const result = await postDesk({ ...activity, id: activity.id, action: 'update', use_ai: true, file: null })
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
-      disarmProcessingTimeout(activity.id)
-      const rawData = result.data
-      const items: DeskActivity[] = Array.isArray(rawData) ? rawData : [rawData]
-      const first = { ...items[0], id: activity.id, list_id: 'review' as ListId }
-      setActivities(prev => prev.map(e => e.id === activity.id ? first : e))
-      await saveActivity(activity.id, activity.type, first)
-      for (const item of items.slice(1)) {
-        const newId = crypto.randomUUID()
-        const newActivity = { ...item, id: newId, list_id: 'review' as ListId, status: 'processed' as const }
-        setActivities(prev => [newActivity, ...prev])
-        try {
-          await createActivity(newId, activity.type, { description: newActivity.description, list_id: 'review', status: 'processed' })
-          await saveActivity(newId, activity.type, newActivity)
-        } catch (err) {
-          console.error('Failed to persist additional activity:', newId, err)
-        }
-      }
     } catch (err) {
       disarmProcessingTimeout(activity.id)
       console.error('Send to AI Error:', err)
@@ -320,6 +279,34 @@ export default function Board({ initialActivities } : BoardProps) {
       ))
     }
   }
+
+  const processingActivities = activities.filter(a => a.status === 'processing')
+  useEffect(() => {
+    if (processingActivities.length === 0) return
+    const processingMeta = processingActivities.map(a => ({
+      id: a.id,
+      type: a.type,
+      created_at: a.created_at,
+    }))
+    const intervalId = setInterval(async () => {
+      const fetched = await pollForUpdates(processingMeta)
+      setActivities(prev => {
+        const fetchedMap = new Map(fetched.map(a => [a.id, a]))
+        const updated = prev.map(a =>
+          fetchedMap.has(a.id)
+            ? { ...fetchedMap.get(a.id)!, file: a.file, preview_url: a.preview_url }
+            : a
+        )
+        const existingIds = new Set(prev.map(a => a.id))
+        const newItems = fetched.filter(a => !existingIds.has(a.id))
+        return [...newItems, ...updated]
+      })
+      fetched.forEach(a => {
+        if (a.status !== 'processing') disarmProcessingTimeout(a.id)
+      })
+    }, 3000)
+    return () => clearInterval(intervalId)
+  }, [processingActivities.length])
 
   const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
   const archivedActivities = activities
