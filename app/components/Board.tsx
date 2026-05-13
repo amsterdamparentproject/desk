@@ -269,6 +269,7 @@ export default function Board({ initialActivities } : BoardProps) {
       ))
     }, 2 * 60 * 1000))
     try {
+      await saveActivity(activity.id, activity.type, { status: 'processing' })
       const result = await postDesk({ ...activity, id: activity.id, action: 'update', use_ai: true, file: null })
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
     } catch (err) {
