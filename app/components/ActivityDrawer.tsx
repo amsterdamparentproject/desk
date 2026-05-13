@@ -67,7 +67,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const parsed = parseRrule(activity.repeat_rrule)
   const parsedMonthly = parsed.frequency === 'monthly' && parsed.days[0] ? parsePositionalDay(parsed.days[0]) : null
   const [repeatFrequency, setRepeatFrequency] = useState<string>(parsed.frequency ?? '')
-  const [repeatDays, setRepeatDays] = useState<string[]>(parsed.frequency === 'weekly' ? parsed.days : [])
+  const [repeatDays, setRepeatDays] = useState<string[]>(
+    (parsed.frequency === 'weekly' || parsed.frequency === 'biweekly') ? parsed.days : []
+  )
   const [repeatUntil, setRepeatUntil] = useState<string>(() => {
     // Only pre-fill until if it's meaningfully after the start_date (not just the event's own end date)
     if (!parsed.untilDate || !activity.start_date) return parsed.untilDate
@@ -87,7 +89,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     const abbr = DOW_TO_ABBR[d.getDay()]
     const effectiveFreq = repeatFrequency || 'weekly'
     setRepeatFrequency(effectiveFreq)
-    if (effectiveFreq === 'weekly') {
+    if (effectiveFreq === 'weekly' || effectiveFreq === 'biweekly') {
       setRepeatDays([abbr])
       setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
     } else if (effectiveFreq === 'monthly') {
@@ -105,7 +107,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const effectiveDays =
     repeatFrequency === 'monthly' && repeatMonthlyPos && repeatMonthlyDay
       ? [`${repeatMonthlyPos}${repeatMonthlyDay}`]
-      : repeatFrequency === 'weekly'
+      : (repeatFrequency === 'weekly' || repeatFrequency === 'biweekly')
         ? repeatDays
         : []
 
@@ -329,7 +331,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     onChange={(e) => {
                       const next = e.target.value
                       setRepeatFrequency(next)
-                      if (next !== 'weekly') {
+                      if (next !== 'weekly' && next !== 'biweekly') {
                         setRepeatDays([])
                       } else if (formData.start_date) {
                         const [wy, wm, wd] = formData.start_date.split('-').map(Number)
@@ -352,6 +354,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     <option value="">None</option>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
+                    <option value="biweekly">Every 2 weeks</option>
                     <option value="monthly">Monthly</option>
                   </select>
                 </Field>
@@ -404,7 +407,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 </Field>
               )}
 
-              {repeatFrequency === 'weekly' && (
+              {(repeatFrequency === 'weekly' || repeatFrequency === 'biweekly') && (
                 <Field label="Days of week">
                   <div className="flex gap-1.5 flex-wrap">
                     {WEEKDAYS.map(({ label, abbr }) => (

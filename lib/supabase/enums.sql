@@ -35,5 +35,5 @@ CREATE TYPE activities.day_name AS ENUM (
 );
 
 CREATE TYPE activities.repeat_frequency AS ENUM (
-  'daily', 'weekly', 'monthly'
+  'daily', 'weekly', 'biweekly', 'monthly'
 );

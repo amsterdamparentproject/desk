@@ -1,7 +1,7 @@
 // RRULE format: "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20260601"
 // Monthly positional: "RRULE:FREQ=MONTHLY;BYDAY=1MO" (1st Monday), "-1FR" (last Friday)
 
-export type RruleFrequency = 'daily' | 'weekly' | 'monthly'
+export type RruleFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly'
 
 export interface ParsedRrule {
   frequency: RruleFrequency | null
@@ -45,7 +45,10 @@ export function parseRrule(rrule: string | null | undefined): ParsedRrule {
     body.split(';').map(p => p.split('=') as [string, string])
   )
 
-  const frequency = parts['FREQ'] ? (FREQ_MAP[parts['FREQ']] ?? null) : null
+  const interval = parts['INTERVAL'] ? parseInt(parts['INTERVAL'], 10) : 1
+  const frequency: RruleFrequency | null = parts['FREQ']
+    ? (parts['FREQ'] === 'WEEKLY' && interval === 2 ? 'biweekly' : (FREQ_MAP[parts['FREQ']] ?? null))
+    : null
   const days = parts['BYDAY'] ? parts['BYDAY'].split(',').map(d => d.trim()) : []
   const untilDate = parts['UNTIL']
     ? `${parts['UNTIL'].slice(0, 4)}-${parts['UNTIL'].slice(4, 6)}-${parts['UNTIL'].slice(6, 8)}`
@@ -65,9 +68,15 @@ export function buildRrule({
 }): string {
   if (!frequency) return ''
 
-  const parts: string[] = [`FREQ=${frequency.toUpperCase()}`]
+  const parts: string[] = []
 
-  if ((frequency === 'weekly' || frequency === 'monthly') && days.length > 0) {
+  if (frequency === 'biweekly') {
+    parts.push('FREQ=WEEKLY', 'INTERVAL=2')
+  } else {
+    parts.push(`FREQ=${frequency.toUpperCase()}`)
+  }
+
+  if ((frequency === 'weekly' || frequency === 'biweekly' || frequency === 'monthly') && days.length > 0) {
     parts.push(`BYDAY=${days.join(',')}`)
   }
 
@@ -147,6 +156,17 @@ export function computeNextDate(
 
     // Walk forward up to 7 days to find the next matching weekday
     for (let i = 1; i <= 7; i++) {
+      candidate.setDate(after.getDate() + i)
+      if (targetDays.includes(candidate.getDay())) break
+    }
+  } else if (frequency === 'biweekly') {
+    const targetDays = days.length > 0
+      ? days.map(d => ABBR_TO_JS_DAY[d]).filter(n => n !== undefined)
+      : [after.getDay()]
+
+    if (targetDays.length === 0) return null
+
+    for (let i = 8; i <= 14; i++) {
       candidate.setDate(after.getDate() + i)
       if (targetDays.includes(candidate.getDay())) break
     }

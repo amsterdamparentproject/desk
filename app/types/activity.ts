@@ -3,7 +3,7 @@ import { TriageStatus } from './card'
 
 export type CaptureSource = 'app_desk' | 'app_website' | 'manual'
 export type DayName = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
-export type RepeatFrequency = 'daily' | 'weekly' | 'monthly';
+export type RepeatFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 
 /**
  * 1. THE SHARED BASELINE
