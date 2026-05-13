@@ -50,6 +50,13 @@ const postToWebhook = async (webhookURL: string | undefined, data: any) => {
 
     const isOk = !!response.ok;
     const statusCode = Number(response.status);
+    const responseText = await response.text();
+
+    if (!isOk) {
+      console.error(`postToWebhook failed: ${statusCode}`, responseText);
+    } else {
+      console.info(`postToWebhook success: ${statusCode}`, responseText);
+    }
 
     return { success: isOk, status: statusCode, data: null };
   } catch (error: any) {
