@@ -219,7 +219,9 @@ export default function Board({ initialActivities } : BoardProps) {
         })
         seedCreated = true
 
-        const result = await postDesk({ ...captureData, id, action: 'add', file_url })
+        const postDeskData = { ...captureData, file_url }
+
+        const result = await postDesk({ ...postDeskData, id, action: 'add' })
         if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
 
         disarmProcessingTimeout(id)
@@ -291,7 +293,7 @@ export default function Board({ initialActivities } : BoardProps) {
       ))
     }, 2 * 60 * 1000))
     try {
-      const result = await postDesk({ ...activity, id: activity.id, action: 'add', use_ai: true, file: null })
+      const result = await postDesk({ ...activity, id: activity.id, action: 'update', use_ai: true, file: null })
       if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
       disarmProcessingTimeout(activity.id)
       const rawData = result.data
