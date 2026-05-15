@@ -18,6 +18,29 @@ export async function uploadActivityFile(id: string, file: File): Promise<string
   return supabase.storage.from('activities').getPublicUrl(path).data.publicUrl
 }
 
+export async function captureFromShare(data: { url: string; title: string; text: string }) {
+  const supabase = createAdminClient()
+  const now = new Date().toISOString()
+  const today = now.split('T')[0]
+  const id = crypto.randomUUID()
+  const title = data.title || data.url || '(Shared link)'
+  const { error } = await supabase.from('events').insert({
+    id,
+    title,
+    description: data.text || '',
+    newsletter_description: '',
+    url: data.url || null,
+    list_id: 'ideas',
+    status: 'new',
+    source: 'app_desk',
+    start_date: today,
+    created_at: now,
+    updated_at: now,
+  })
+  if (error) throw new Error(error.message)
+  return id
+}
+
 export async function createActivity(
   id: string,
   type: 'event' | 'resource',

@@ -17,7 +17,7 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
       {/* Wordmark + badge */}
       <div className="flex items-center gap-2.5">
         <Image
-          src="/app_logo.png"
+          src="/app_desk_logo.png"
           alt="Amsterdam Parent Project"
           width={30}
           height={30}

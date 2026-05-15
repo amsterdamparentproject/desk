@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { cookies } from 'next/headers'
 import './globals.css'
 import { DeskNav } from './components/DeskNav'
+import { ServiceWorkerRegistration } from './components/ServiceWorkerRegistration'
 import { verifyDeskToken } from './utils/auth-gate'
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="bg-white min-h-full flex flex-col">
+        <ServiceWorkerRegistration />
         <DeskNav isLoggedIn={isLoggedIn} />
         {children}
       </body>
