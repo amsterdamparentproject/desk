@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/activity'
-import { ALL_LISTS, CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
+import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
 import { archiveActivity, createActivity, deleteActivity, moveActivity, pollForUpdates, saveActivity, stampNewsletterLast, uploadActivityFile } from '../actions/activities'
@@ -42,7 +42,6 @@ export default function Board({ initialActivities } : BoardProps) {
   const [publishDate, setPublishDate] = useState<string>(DEFAULT_PUBLISH_DATE);
 
   useEffect(() => {
-    if (window.innerWidth < 768) setActiveTab('capture');
     const saved = localStorage.getItem(LS_KEY);
     if (saved) setPublishDate(saved);
   }, []);
@@ -62,7 +61,7 @@ export default function Board({ initialActivities } : BoardProps) {
     if (t !== undefined) { clearTimeout(t); processingTimeouts.current.delete(id) }
   }
   const [openCols, setOpenCols] = useState<Set<ListId>>(() => {
-    const allIds = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map(col => col.id)
+    const allIds = [...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map(col => col.id)
     return new Set(allIds)
   })
 
@@ -337,7 +336,7 @@ export default function Board({ initialActivities } : BoardProps) {
     return () => clearInterval(intervalId)
   }, [processingActivities.length])
 
-  const currentColumns = activeTab === 'capture' ? CAPTURE_LISTS : activeTab === 'triage' ? TRIAGE_LISTS : NEWSLETTER_LISTS
+  const currentColumns = activeTab === 'triage' ? TRIAGE_LISTS : activeTab === 'newsletter' ? NEWSLETTER_LISTS : []
   const archivedActivities = activities
     .filter(e => e.status === 'archived')
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -347,7 +346,7 @@ export default function Board({ initialActivities } : BoardProps) {
       <header className="bg-white border-b border-slate-200 z-10">
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8">
-            {(['capture', 'triage', 'newsletter', 'archived'] as Tab[]).map((tab) => (
+            {(['triage', 'newsletter', 'archived'] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}

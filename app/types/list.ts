@@ -1,4 +1,4 @@
-export type Tab = 'capture' | 'triage' | 'newsletter' | 'archived'
+export type Tab = 'triage' | 'newsletter' | 'archived'
 
 export type ListId =
   | 'ideas'
@@ -16,14 +16,15 @@ export interface ListProps {
   finishTarget?: (type: 'event' | 'resource') => ListId
 }
 
+// 'capture' kept here so it appears in the "In list" drawer dropdown for legacy records
 export const CAPTURE_LISTS: ListProps[] = [
-  { id: 'capture', label: 'Capture', finishLabel: 'Capture details', finishTarget: () => 'review' },
-  { id: 'ideas',   label: 'Ideas',   finishLabel: 'Capture details', finishTarget: () => 'capture' },
+  { id: 'capture', label: 'Capture', finishLabel: 'Done editing', finishTarget: () => 'review' },
 ]
 
 export const TRIAGE_LISTS: ListProps[] = [
-  { id: 'review', label: 'To review', finishLabel: 'Done editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
-  { id: 'error',  label: 'Errors',    finishLabel: 'Done editing', finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'ideas',  label: 'Ideas',      finishLabel: 'Send to review', finishTarget: () => 'review' },
+  { id: 'review', label: 'To review',  finishLabel: 'Done editing',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'error',  label: 'Errors',     finishLabel: 'Done editing',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
 ]
 
 export const NEWSLETTER_LISTS: ListProps[] = [
@@ -35,18 +36,11 @@ export const NEWSLETTER_LISTS: ListProps[] = [
 export const ALL_LISTS: ListProps[] = [...CAPTURE_LISTS, ...TRIAGE_LISTS, ...NEWSLETTER_LISTS];
 
 export function getListTab(listId: ListId): Tab {
-  if (CAPTURE_LISTS.some(list => list.id === listId)) {
-    return 'capture';
-  }
-  
-  if (TRIAGE_LISTS.some(list => list.id === listId)) {
+  if (TRIAGE_LISTS.some(list => list.id === listId) || listId === 'capture') {
     return 'triage';
   }
-  
   if (NEWSLETTER_LISTS.some(list => list.id === listId)) {
     return 'newsletter';
   }
-
-  // Default to capture
-  return 'capture';
+  return 'triage';
 }

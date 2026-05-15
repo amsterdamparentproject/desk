@@ -116,47 +116,58 @@ function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-// ─── HTML builder ─────────────────────────────────────────────────────────────
+// ─── Grouping helper ──────────────────────────────────────────────────────────
 
-function buildNewsletterHTML(activities: DeskActivity[], publishDate: string): string {
-  const windowStart = publishDate
-  const windowEnd   = addDaysStr(publishDate, 14)
+const AREA_FIRST      = 'APP & Friends'
+const AREA_PENULTIMATE = 'Everywhere'
+const AREA_LAST       = 'Online'
 
-  // Group: highlighted events go into "APP & Friends" first
-  const grouped: Record<string, DeskActivity[]> = { 'APP & Friends': [] }
+function groupAndOrder(activities: DeskActivity[], windowStart: string): [string, DeskActivity[]][] {
+  const grouped: Record<string, DeskActivity[]> = { [AREA_FIRST]: [] }
 
   for (const a of activities) {
     const area = a.area || 'Other'
     if (!grouped[area]) grouped[area] = []
-
     if (a.newsletter_highlight) {
-      grouped['APP & Friends'].push(a)
+      grouped[AREA_FIRST].push(a)
     } else {
       grouped[area].push(a)
     }
   }
 
-  // Sort each group by effective start date ascending
   for (const area in grouped) {
     grouped[area].sort((a, b) => {
       const aDate = (a.type === 'event' ? getEffectiveStart(a, windowStart) : null) || a.start_date || ''
       const bDate = (b.type === 'event' ? getEffectiveStart(b, windowStart) : null) || b.start_date || ''
+      if (!aDate && !bDate) return 0
+      if (!aDate) return 1
+      if (!bDate) return -1
       return aDate.localeCompare(bDate)
     })
   }
 
+  const middle = Object.keys(grouped).filter(k => k !== AREA_FIRST && k !== AREA_PENULTIMATE && k !== AREA_LAST)
+  return [AREA_FIRST, ...middle, AREA_PENULTIMATE, AREA_LAST]
+    .filter(k => k in grouped && grouped[k].length > 0)
+    .map(k => [k, grouped[k]])
+}
+
+// ─── Builders ─────────────────────────────────────────────────────────────────
+
+function buildNewsletterHTML(activities: DeskActivity[], publishDate: string): string {
+  const windowStart = publishDate
+  const windowEnd   = addDaysStr(publishDate, 14)
   let html = ''
 
-  for (const area in grouped) {
-    if (grouped[area].length === 0) continue
+  for (const [area, items] of groupAndOrder(activities, windowStart)) {
     html += `<p><b>${escHtml(area)}</b></p>\n<ul style="list-style-type: disc; padding-left: 20px;">\n`
 
-    for (const a of grouped[area]) {
-      const dateDisplay        = a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
-      const repeatLabel        = getRepeatLabel(a)
-      const displayRepeat      = repeatLabel ? ` (${repeatLabel})` : ''
-      const displayNeighborhood = (area !== 'Online' && a.neighborhood) ? ` — ${escHtml(a.neighborhood)}` : ''
-      const displayTitle       = (a.age_range && a.age_range !== 'All ages')
+    for (const a of items) {
+      const dateDisplay         = a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
+      const repeatLabel         = getRepeatLabel(a)
+      const displayRepeat       = repeatLabel ? ` (${repeatLabel})` : ''
+      const displayNeighborhood = (area !== AREA_LAST && a.neighborhood) ? ` — ${escHtml(a.neighborhood)}` : ''
+      const displayTitle        = (a.age_range && a.age_range !== 'All ages')
         ? `${escHtml(a.title)} (${escHtml(a.age_range)})`
         : escHtml(a.title)
 
@@ -175,6 +186,35 @@ function buildNewsletterHTML(activities: DeskActivity[], publishDate: string): s
   return html
 }
 
+function buildNewsletterText(activities: DeskActivity[], publishDate: string): string {
+  const windowStart = publishDate
+  const windowEnd   = addDaysStr(publishDate, 14)
+  const lines: string[] = []
+
+  for (const [area, items] of groupAndOrder(activities, windowStart)) {
+    lines.push(area)
+    lines.push('')
+
+    for (const a of items) {
+      const dateDisplay         = a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
+      const repeatLabel         = getRepeatLabel(a)
+      const displayRepeat       = repeatLabel ? ` (${repeatLabel})` : ''
+      const displayNeighborhood = (area !== AREA_LAST && a.neighborhood) ? ` — ${a.neighborhood}` : ''
+      const displayTitle        = (a.age_range && a.age_range !== 'All ages')
+        ? `${a.title} (${a.age_range})`
+        : a.title
+
+      lines.push(`• ${displayTitle}`)
+      const meta = `${dateDisplay}${displayRepeat}${displayNeighborhood}`
+      if (meta) lines.push(meta)
+      if (a.newsletter_description) lines.push(a.newsletter_description)
+      lines.push('')
+    }
+  }
+
+  return lines.join('\n').trim()
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface NewsletterDrawerProps {
@@ -191,9 +231,10 @@ export function NewsletterDrawer({ activities, publishDate, onClose, onCopy }: N
   const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
   const windowEnd      = addDaysStr(publishDate, 14)
   const html           = buildNewsletterHTML(nextActivities, publishDate)
+  const text           = buildNewsletterText(nextActivities, publishDate)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(html)
+    await navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     onCopy?.()
@@ -231,13 +272,13 @@ export function NewsletterDrawer({ activities, publishDate, onClose, onCopy }: N
                   onClick={() => setShowRaw(v => !v)}
                   className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  {showRaw ? 'Show preview' : 'Show HTML'}
+                  {showRaw ? 'Show preview' : 'Show text'}
                 </button>
               </div>
 
               {showRaw ? (
                 <pre className="text-xs font-mono text-slate-600 bg-slate-50 p-4 rounded-xl overflow-x-auto whitespace-pre-wrap border border-slate-200">
-                  {html}
+                  {text}
                 </pre>
               ) : (
                 <div
@@ -261,7 +302,7 @@ export function NewsletterDrawer({ activities, publishDate, onClose, onCopy }: N
             }`}
           >
             {copied ? <Check size={18} strokeWidth={3} /> : <Copy size={18} strokeWidth={3} />}
-            {copied ? 'Copied to clipboard!' : 'Copy HTML'}
+            {copied ? 'Copied to clipboard!' : 'Copy text'}
           </button>
         </div>
       </div>

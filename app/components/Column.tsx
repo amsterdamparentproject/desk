@@ -100,10 +100,13 @@ export function Column({
         }`}
       >
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
-          {(list.id === 'capture') && (
+          {list.id === 'ideas' && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
               <CaptureCardForm onAdd={onAddEvent} listId={list.id} />
             </div>
+          )}
+          {list.id !== 'ideas' && list.id !== 'error' && (
+            <InlineCaptureAdd onAddEvent={onAddEvent} listId={list.id} />
           )}
 
           {activities.length === 0 ? (
@@ -205,5 +208,29 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSno
         </div>
       )}
     </>
+  )
+}
+
+function InlineCaptureAdd({ onAddEvent, listId }: { onAddEvent: (data: CaptureDataProps) => void, listId: ListId }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="sticky top-0 z-10 mb-2 md:backdrop-blur-sm">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 py-2 text-slate-400 hover:text-slate-600 transition-colors group"
+      >
+        <div className="flex-1 h-px bg-slate-300 group-hover:bg-slate-400 transition-colors" />
+        <span className="text-sm font-black leading-none select-none">{open ? '×' : '+'}</span>
+        <div className="flex-1 h-px bg-slate-300 group-hover:bg-slate-400 transition-colors" />
+      </button>
+      {open && (
+        <CaptureCardForm
+          onAdd={(data) => { onAddEvent(data); setOpen(false) }}
+          listId={listId}
+        />
+      )}
+    </div>
   )
 }
