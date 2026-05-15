@@ -1,6 +1,6 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState } from 'react'
-import { X, MapPin, ExternalLink, Save, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2 } from 'lucide-react'
+import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2 } from 'lucide-react'
 import { DeskActivity, DEFAULT_DESK_ACTIVITY, RepeatFrequency } from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
@@ -63,6 +63,11 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
 export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Always track latest formData so onBlur handlers don't capture stale closure values
+  const latestFormData = useRef(formData)
+  latestFormData.current = formData
+  const handleBlurSave = () => onSaveDraft(latestFormData.current)
 
   const parsed = parseRrule(activity.repeat_rrule)
   const parsedMonthly = parsed.frequency === 'monthly' && parsed.days[0] ? parsePositionalDay(parsed.days[0]) : null
@@ -218,6 +223,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 className="w-full text-2xl font-black tracking-tight border-none p-0 focus:ring-0 focus:outline-none text-slate-900"
                 value={formData.title}
                 onChange={(e) => handleChange('title', e.target.value)}
+                onBlur={handleBlurSave}
               />
             </Field>
 
@@ -226,6 +232,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 <input
                   value={formData.url ?? ''}
                   onChange={(e) => handleChange('url', e.target.value)}
+                  onBlur={handleBlurSave}
                   placeholder="https://example.com/activity-details"
                   className={inputStyle + " font-mono text-blue-600"}
                 />
@@ -242,13 +249,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </div>
             </Field>
             <Field label="Host Organization">
-              <input value={formData.organization ?? ''} onChange={(e) => handleChange('organization', e.target.value)} className={inputStyle} />
+              <input value={formData.organization ?? ''} onChange={(e) => handleChange('organization', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
             </Field>
             {formData.organization === 'Amsterdam Parent Project' && (
               <Field label="Website tagline">
                 <input
                   value={formData.tagline ?? ''}
                   onChange={(e) => handleChange('tagline', e.target.value)}
+                  onBlur={handleBlurSave}
                   placeholder="One sentence for the APP website..."
                   className={descriptionStyle}
                 />
@@ -260,6 +268,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 ref={blurbRef}
                 value={formData.newsletter_description}
                 onChange={(e) => handleChange('newsletter_description', e.target.value)}
+                onBlur={handleBlurSave}
                 className={descriptionStyle}
                 placeholder="Create a succinct newsletter snippet description..."
               />
@@ -269,8 +278,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               label="Highlight in newsletter"
               icon={<Star size={14} className={formData.newsletter_highlight ? "fill-current text-amber-500" : "text-slate-400"} />}
               checked={!!formData.newsletter_highlight}
-              onChange={(v) => handleChange('newsletter_highlight', v)}
+              onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
             />
+
+            {formData.newsletter_last && (
+              <Field label="Last sent">
+                <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>{formData.newsletter_last}</div>
+              </Field>
+            )}
           </section>
 
           {/* Date & time — events only */}
@@ -289,30 +304,30 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             </div>
             <div className={`grid gap-4 ${isMultiDay ? 'grid-cols-2' : 'grid-cols-1'}`}>
               <Field label="Start Date">
-                <DateInput value={formData.start_date ?? ''} onChange={(v) => handleDateChange('start_date', v)} />
+                <DateInput value={formData.start_date ?? ''} onChange={(v) => handleDateChange('start_date', v)} onBlur={handleBlurSave} />
               </Field>
               {isMultiDay && (
                 <Field label="End Date">
-                  <DateInput value={formData.end_date ?? ''} onChange={(v) => handleDateChange('end_date', v)} />
+                  <DateInput value={formData.end_date ?? ''} onChange={(v) => handleDateChange('end_date', v)} onBlur={handleBlurSave} />
                 </Field>
               )}
             </div>
             <div className="grid grid-cols-3 gap-4">
               <Field label="Start Time">
-                <TimeInput value={formData.start_time ?? ''} onChange={(v) => handleDateChange('start_time', v)} />
+                <TimeInput value={formData.start_time ?? ''} onChange={(v) => handleDateChange('start_time', v)} onBlur={handleBlurSave} />
               </Field>
               <Field label="End Time">
-                <TimeInput value={formData.end_time ?? ''} onChange={(v) => handleDateChange('end_time', v)} />
+                <TimeInput value={formData.end_time ?? ''} onChange={(v) => handleDateChange('end_time', v)} onBlur={handleBlurSave} />
               </Field>
               <Field label="Duration (min)">
-                <input type="number" value={formData.duration_minutes ?? 0} onChange={(e) => handleDateChange('duration_minutes', e.target.value)} className={inputStyle} />
+                <input type="number" value={formData.duration_minutes ?? 0} onChange={(e) => handleDateChange('duration_minutes', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
               </Field>
             </div>
             <Toggle
               label="Skip calendar"
               icon={<SkipForward size={14} className={formData.calendar_skip ? "text-orange-500" : "text-slate-400"} />}
               checked={!!formData.calendar_skip}
-              onChange={(v) => handleChange('calendar_skip', v)}
+              onChange={(v) => { handleChange('calendar_skip', v); onSaveDraft({ ...formData, calendar_skip: v }) }}
             />
           </section>
           )}
@@ -349,6 +364,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                         setRepeatMonthlyPos(String(pos)); setRepeatMonthlyDay(abbr)
                       }
                     }}
+                    onBlur={handleBlurSave}
                     className={selectStyle}
                   >
                     <option value="">None</option>
@@ -363,6 +379,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     <DateInput
                       value={deriveDate || repeatNextDate || ''}
                       onChange={setDeriveDate}
+                      onBlur={handleBlurSave}
                     />
                     <button
                       type="button"
@@ -382,6 +399,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     <select
                       value={repeatMonthlyPos}
                       onChange={(e) => setRepeatMonthlyPos(e.target.value)}
+                      onBlur={handleBlurSave}
                       className={selectStyle}
                     >
                       <option value="">Day of month</option>
@@ -395,6 +413,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                       <select
                         value={repeatMonthlyDay}
                         onChange={(e) => setRepeatMonthlyDay(e.target.value)}
+                        onBlur={handleBlurSave}
                         className={selectStyle}
                       >
                         <option value="">Weekday</option>
@@ -430,7 +449,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
 
               {repeatFrequency && (
                 <Field label="Repeat ends (until date)">
-                  <DateInput value={repeatUntil} onChange={setRepeatUntil} />
+                  <DateInput value={repeatUntil} onChange={setRepeatUntil} onBlur={handleBlurSave} />
                 </Field>
               )}
 
@@ -451,18 +470,18 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Area">
-                <select value={formData.area ?? ''} onChange={(e) => handleChange('area', e.target.value)} className={selectStyle}>
+                <select value={formData.area ?? ''} onChange={(e) => handleChange('area', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
                   <option value="" disabled>Select area</option>
                   {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
               </Field>
               <Field label="Neighborhood">
-                <input value={formData.neighborhood ?? ''} onChange={(e) => handleChange('neighborhood', e.target.value)} className={inputStyle} />
+                <input value={formData.neighborhood ?? ''} onChange={(e) => handleChange('neighborhood', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
               </Field>
             </div>
             <div className="grid gap-4">
               <Field label="Address">
-                <input value={formData.location ?? ''} onChange={(e) => handleChange('location', e.target.value)} className={inputStyle} />
+                <input value={formData.location ?? ''} onChange={(e) => handleChange('location', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
               </Field>
             </div>
           </section>
@@ -474,13 +493,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               <h2 className="text-slate-700 text-xl font-black">Details</h2>
             </div>
             <Field label="Target Age Range">
-              <input value={formData.age_range ?? ''} onChange={(e) => handleChange('age_range', e.target.value)} className={inputStyle} />
+              <input value={formData.age_range ?? ''} onChange={(e) => handleChange('age_range', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
             </Field>
             <Field label="Description">
               <textarea
                 ref={rawDescRef}
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
+                onBlur={handleBlurSave}
                 className={descriptionStyle}
                 placeholder="Full text scraped or transcribed from original source submission..."
               />
@@ -498,6 +518,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               <input
                 value={formData.file_url ?? ''}
                 onChange={(e) => handleChange('file_url', e.target.value)}
+                onBlur={handleBlurSave}
                 placeholder="https://..."
                 className={inputStyle + " font-mono text-xs"}
               />
@@ -567,14 +588,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
 
             <div className="grid grid-cols-2 gap-4">
               <Field label="Source">
-                <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} className={selectStyle}>
+                <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
                   <option value="app_desk">APP Desk</option>
                   <option value="app_website">APP Website</option>
                   <option value="manual">Manual</option>
                 </select>
               </Field>
               <Field label="In list">
-                <select value={formData.list_id} onChange={(e) => handleChange('list_id', e.target.value as ListId)} className={selectStyle}>
+                <select value={formData.list_id} onChange={(e) => handleChange('list_id', e.target.value as ListId)} onBlur={handleBlurSave} className={selectStyle}>
                   {ALL_LISTS.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
                 </select>
               </Field>
@@ -606,6 +627,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               ref={notesRef}
               value={formData.triage_notes || ""}
               onChange={(e) => handleChange('triage_notes', e.target.value)}
+              onBlur={handleBlurSave}
               className="w-full text-sm leading-relaxed text-black border border-amber-200 p-3 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none overflow-hidden bg-amber-50/80 rounded-lg transition-colors"
               placeholder="Add administrative context notes here..."
             />
@@ -644,28 +666,27 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
         </div>
 
         {/* Footer actions */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
-          <button onClick={() => onSaveDraft(formData)} className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-            <Save size={18} strokeWidth={3} /> Save draft
-          </button>
-          {onSendToAI && getListTab(formData.list_id) === 'triage' && (
-            <button onClick={() => onSendToAI(formData)} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-              <Sparkles size={18} strokeWidth={3} /> Send to AI
-            </button>
-          )}
-          {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel && (
-            <button onClick={() => onFinishEditing(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-              <Check size={18} strokeWidth={3} />
-              {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel}
-            </button>
-          )}
-        </div>
+        {((onSendToAI && getListTab(formData.list_id) === 'triage') || !!ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel) && (
+          <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
+            {onSendToAI && getListTab(formData.list_id) === 'triage' && (
+              <button onClick={() => onSendToAI(formData)} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+                <Sparkles size={18} strokeWidth={3} /> Send to AI
+              </button>
+            )}
+            {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel && (
+              <button onClick={() => onFinishEditing(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+                <Check size={18} strokeWidth={3} />
+                {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function DateInput({ value, onChange }: { value: string, onChange: (v: string) => void }) {
+function DateInput({ value, onChange, onBlur }: { value: string, onChange: (v: string) => void, onBlur?: () => void }) {
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div className="relative">
@@ -673,13 +694,13 @@ function DateInput({ value, onChange }: { value: string, onChange: (v: string) =
         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
         <Calendar size={14} />
       </button>
-      <input ref={ref} type="date" value={value} onChange={e => onChange(e.target.value)}
+      <input ref={ref} type="date" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
         className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
     </div>
   )
 }
 
-function TimeInput({ value, onChange }: { value: string, onChange: (v: string) => void }) {
+function TimeInput({ value, onChange, onBlur }: { value: string, onChange: (v: string) => void, onBlur?: () => void }) {
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div className="relative">
@@ -687,7 +708,7 @@ function TimeInput({ value, onChange }: { value: string, onChange: (v: string) =
         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
         <Clock size={14} />
       </button>
-      <input ref={ref} type="time" lang="nl" value={value} onChange={e => onChange(e.target.value)}
+      <input ref={ref} type="time" lang="nl" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
         className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
     </div>
   )

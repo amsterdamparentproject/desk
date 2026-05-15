@@ -6,9 +6,10 @@ import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/acti
 import { ALL_LISTS, CAPTURE_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
-import { archiveActivity, createActivity, deleteActivity, moveActivity, pollForUpdates, saveActivity, uploadActivityFile } from '../actions/activities'
-import { Calendar, RotateCcw } from 'lucide-react'
+import { archiveActivity, createActivity, deleteActivity, moveActivity, pollForUpdates, saveActivity, stampNewsletterLast, uploadActivityFile } from '../actions/activities'
+import { Calendar, Newspaper, RotateCcw } from 'lucide-react'
 import { Card } from './card/Card'
+import { NewsletterDrawer } from './NewsletterDrawer'
 
 const LS_KEY = 'app_desk_newsletter_publish_date'
 const DEFAULT_PUBLISH_DATE = '2026-05-18'
@@ -53,6 +54,7 @@ export default function Board({ initialActivities } : BoardProps) {
 
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(null)
+  const [newsletterOpen, setNewsletterOpen] = useState(false)
   const processingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const disarmProcessingTimeout = (id: string) => {
@@ -64,8 +66,26 @@ export default function Board({ initialActivities } : BoardProps) {
     return new Set(allIds)
   })
 
+  // Returns the newsletter_last value to write when a card moves between lists.
+  // undefined = no change needed; null = clear it; string = set it.
+  const newsletterLastDelta = (
+    fromList: string,
+    toList: string,
+    currentNewsletterLast: string | null | undefined,
+  ): string | null | undefined => {
+    if (toList === 'next_newsletter') return publishDate
+    if (fromList === 'next_newsletter' && currentNewsletterLast === publishDate) return null
+    return undefined
+  }
+
   const handleSaveDraft = async (updated: DeskActivity) => {
-    const withStatus = { ...updated, status: 'edited' as const }
+    const original = activities.find(e => e.id === updated.id)
+    const delta = newsletterLastDelta(original?.list_id ?? updated.list_id, updated.list_id, updated.newsletter_last)
+    const withStatus = {
+      ...updated,
+      status: 'edited' as const,
+      ...(delta !== undefined ? { newsletter_last: delta } : {}),
+    }
     setActivities(prev => prev.map(e => e.id === updated.id ? withStatus : e))
     setSelectedActivity(null)
     try {
@@ -84,9 +104,10 @@ export default function Board({ initialActivities } : BoardProps) {
     const isPastEvent = updated.type === 'event' && !updated.repeat_frequency && updated.start_date && updated.start_date < today
     const shouldArchive = isTriageApproval && isPastEvent
 
+    const delta = !shouldArchive ? newsletterLastDelta(updated.list_id, targetList, updated.newsletter_last) : undefined
     const withListAndStatus = shouldArchive
       ? { ...updated, status: 'archived' as const }
-      : { ...updated, list_id: targetList, status: 'edited' as const }
+      : { ...updated, list_id: targetList, status: 'edited' as const, ...(delta !== undefined ? { newsletter_last: delta } : {}) }
     setActivities(prev => prev.map(e => e.id === updated.id ? withListAndStatus : e))
     setSelectedActivity(null)
     try {
@@ -104,12 +125,19 @@ export default function Board({ initialActivities } : BoardProps) {
     const activity = activities.find(e => e.id === id)
     if (!activity) return
     const newStatus = targetList === 'capture' ? 'processing' as const : activity.status
-    setActivities(prev => prev.map(e => e.id === id ? { ...e, list_id: targetList, status: newStatus } : e))
+    const delta = newsletterLastDelta(activity.list_id, targetList, activity.newsletter_last)
+    setActivities(prev => prev.map(e => e.id === id
+      ? { ...e, list_id: targetList, status: newStatus, ...(delta !== undefined ? { newsletter_last: delta } : {}) }
+      : e
+    ))
     try {
-      await moveActivity(id, activity.type, targetList, targetList === 'capture' ? 'processing' : undefined)
+      await moveActivity(id, activity.type, targetList, targetList === 'capture' ? 'processing' : undefined, delta)
     } catch (err) {
       console.error('Move failed:', err)
-      setActivities(prev => prev.map(e => e.id === id ? { ...e, list_id: activity.list_id, status: activity.status } : e))
+      setActivities(prev => prev.map(e => e.id === id
+        ? { ...e, list_id: activity.list_id, status: activity.status, newsletter_last: activity.newsletter_last }
+        : e
+      ))
     }
   }
 
@@ -342,6 +370,12 @@ export default function Board({ initialActivities } : BoardProps) {
               onChange={(e) => handlePublishDateChange(e.target.value)}
               className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
+            <button
+              onClick={() => setNewsletterOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-black uppercase tracking-widest"
+            >
+              <Newspaper size={11} /> Copy activities
+            </button>
           </div>
         </div>
       </header>
@@ -404,6 +438,26 @@ export default function Board({ initialActivities } : BoardProps) {
           </div>
         ))}
       </div>
+      )}
+
+      {newsletterOpen && (
+        <NewsletterDrawer
+          activities={activities}
+          publishDate={publishDate}
+          onClose={() => setNewsletterOpen(false)}
+          onCopy={async () => {
+            const next = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
+            if (!next.length) return
+            setActivities(prev => prev.map(a =>
+              next.some(n => n.id === a.id) ? { ...a, newsletter_last: publishDate } : a
+            ))
+            const eventIds    = next.filter(a => a.type === 'event').map(a => a.id)
+            const resourceIds = next.filter(a => a.type === 'resource').map(a => a.id)
+            await stampNewsletterLast(eventIds, resourceIds, publishDate).catch(err =>
+              console.error('Failed to stamp newsletter_last:', err)
+            )
+          }}
+        />
       )}
 
       {selectedActivity && (

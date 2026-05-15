@@ -110,11 +110,18 @@ export async function archiveActivity(id: string, type: 'event' | 'resource') {
   if (error) throw new Error(error.message)
 }
 
-export async function moveActivity(id: string, type: 'event' | 'resource', list_id: ListId, status?: string) {
+export async function moveActivity(
+  id: string,
+  type: 'event' | 'resource',
+  list_id: ListId,
+  status?: string,
+  newsletter_last?: string | null,
+) {
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'
   const update: Record<string, any> = { list_id, updated_at: new Date().toISOString() }
-  if (status) update.status = status
+  if (status !== undefined) update.status = status
+  if (newsletter_last !== undefined) update.newsletter_last = newsletter_last
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 }
@@ -140,6 +147,19 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
 
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+export async function stampNewsletterLast(
+  eventIds: string[],
+  resourceIds: string[],
+  date: string,
+) {
+  const supabase = createAdminClient()
+  const update = { newsletter_last: date, updated_at: new Date().toISOString() }
+  await Promise.all([
+    eventIds.length    ? supabase.from('events').update(update).in('id', eventIds)      : Promise.resolve(),
+    resourceIds.length ? supabase.from('resources').update(update).in('id', resourceIds) : Promise.resolve(),
+  ])
 }
 
 export async function pollForUpdates(
