@@ -172,6 +172,19 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
   if (error) throw new Error(error.message)
 }
 
+export async function finishNewsletterIssue(
+  eventIds: string[],
+  resourceIds: string[],
+  publishDate: string,
+) {
+  const supabase = createAdminClient()
+  const update = { newsletter_last: publishDate, status: 'archived', updated_at: new Date().toISOString() }
+  await Promise.all([
+    eventIds.length    ? supabase.from('events').update(update).in('id', eventIds)      : Promise.resolve(),
+    resourceIds.length ? supabase.from('resources').update(update).in('id', resourceIds) : Promise.resolve(),
+  ])
+}
+
 export async function stampNewsletterLast(
   eventIds: string[],
   resourceIds: string[],

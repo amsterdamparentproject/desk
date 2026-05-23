@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Copy, Check, Newspaper } from 'lucide-react'
+import { X, Check, Newspaper, Archive } from 'lucide-react'
 import { DeskActivity } from '../types/activity'
 import { parseRrule, computeNextDate } from '../utils/rrule'
 
@@ -221,23 +221,23 @@ interface NewsletterDrawerProps {
   activities: DeskActivity[]
   publishDate: string
   onClose: () => void
-  onCopy?: () => void
+  onFinishIssue: () => Promise<void>
 }
 
-export function NewsletterDrawer({ activities, publishDate, onClose, onCopy }: NewsletterDrawerProps) {
-  const [copied, setCopied]   = useState(false)
-  const [showRaw, setShowRaw] = useState(false)
+export function NewsletterDrawer({ activities, publishDate, onClose, onFinishIssue }: NewsletterDrawerProps) {
+  const [showRaw, setShowRaw]         = useState(false)
+  const [confirming, setConfirming]   = useState(false)
+  const [finishing, setFinishing]     = useState(false)
 
   const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
   const windowEnd      = addDaysStr(publishDate, 14)
   const html           = buildNewsletterHTML(nextActivities, publishDate)
   const text           = buildNewsletterText(nextActivities, publishDate)
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-    onCopy?.()
+  const handleFinish = async () => {
+    setFinishing(true)
+    await onFinishIssue()
+    setFinishing(false)
   }
 
   return (
@@ -291,19 +291,37 @@ export function NewsletterDrawer({ activities, publishDate, onClose, onCopy }: N
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20">
-          <button
-            onClick={handleCopy}
-            disabled={nextActivities.length === 0}
-            className={`w-full font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs disabled:opacity-40 ${
-              copied
-                ? 'bg-green-600 text-white'
-                : 'bg-slate-900 text-white hover:bg-green-600'
-            }`}
-          >
-            {copied ? <Check size={18} strokeWidth={3} /> : <Copy size={18} strokeWidth={3} />}
-            {copied ? 'Copied to clipboard!' : 'Copy text'}
-          </button>
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 space-y-3">
+          {confirming ? (
+            <>
+              <p className="text-center text-xs font-black text-slate-600 uppercase tracking-widest">
+                Archive {nextActivities.length} card{nextActivities.length !== 1 ? 's' : ''} and advance to {windowEnd}?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFinish}
+                  disabled={finishing}
+                  className="flex-1 py-3 rounded-2xl bg-green-600 text-white text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Archive size={14} strokeWidth={3} /> {finishing ? 'Finishing…' : 'Confirm'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={nextActivities.length === 0}
+              className="w-full font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs bg-slate-900 text-white hover:bg-green-600 disabled:opacity-40"
+            >
+              <Check size={18} strokeWidth={3} /> Finish issue
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState } from 'react'
-import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2 } from 'lucide-react'
+import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw } from 'lucide-react'
 import { DeskActivity, DEFAULT_DESK_ACTIVITY, RepeatFrequency } from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
@@ -37,6 +37,8 @@ interface ActivityDrawerProps {
   publishDate?: string,
   onSendToAI?: (data: DeskActivity) => void,
   onDelete?: (id: string, type: 'event' | 'resource') => void,
+  readOnly?: boolean,
+  onRestore?: () => void,
 }
 
 const WEEKDAYS = [
@@ -60,7 +62,7 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   snoozed:    'bg-slate-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete }: ActivityDrawerProps) {
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -202,11 +204,11 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
         )}
 
         {/* Header */}
-        <div className="sticky top-0 bg-blue-600 border-b border-slate-100 p-4 flex items-center justify-between z-20">
+        <div className={`sticky top-0 border-b border-slate-100 p-4 flex items-center justify-between z-20 ${readOnly ? 'bg-slate-500' : 'bg-blue-600'}`}>
           <div className="flex items-center gap-2">
-            <Edit size={18} className="text-white ml-3" />
+            {readOnly ? <Archive size={18} className="text-white ml-3" /> : <Edit size={18} className="text-white ml-3" />}
             <span className="text-lg tracking-wide text-white font-bold pl-2 py-1 rounded">
-              Edit {activity.type}
+              {readOnly ? `Archived ${activity.type}` : `Edit ${activity.type}`}
             </span>
           </div>
           <button onClick={onClose} className="p-2 text-white hover:text-slate-200 rounded-full transition-colors">
@@ -214,7 +216,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           </button>
         </div>
 
-        <div className="p-8 space-y-8 pb-16">
+        <div className={`p-8 space-y-8 pb-16 ${readOnly ? 'pointer-events-none select-none opacity-60' : ''}`}>
 
           {/* Primary content */}
           <section className="space-y-4">
@@ -281,11 +283,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
             />
 
-            {formData.newsletter_last && (
-              <Field label="Last sent">
-                <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>{formData.newsletter_last}</div>
-              </Field>
-            )}
+            <Field label="Last newsletter issue">
+              <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>{formData.newsletter_last ?? '—'}</div>
+            </Field>
           </section>
 
           {/* Date & time — events only */}
@@ -666,7 +666,43 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
         </div>
 
         {/* Footer actions */}
-        {((onSendToAI && getListTab(formData.list_id) === 'triage') || !!ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel) && (
+        {readOnly ? (
+          <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-3">
+            {onRestore && (
+              <button
+                onClick={() => { onRestore(); onClose(); }}
+                className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+              >
+                <RotateCcw size={18} strokeWidth={3} /> Restore
+              </button>
+            )}
+            {onDelete && (
+              confirmDelete ? (
+                <div className="flex-1 flex items-center gap-2">
+                  <button
+                    onClick={() => { onDelete(formData.id, formData.type); onClose(); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-4 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors"
+                  >
+                    <Trash2 size={14} /> Yes, delete
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-4 py-4 text-xs font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-2xl transition-colors"
+                >
+                  <Trash2 size={18} strokeWidth={3} /> Delete forever
+                </button>
+              )
+            )}
+          </div>
+        ) : ((onSendToAI && getListTab(formData.list_id) === 'triage') || !!ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel) && (
           <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
             {onSendToAI && getListTab(formData.list_id) === 'triage' && (
               <button onClick={() => onSendToAI(formData)} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">

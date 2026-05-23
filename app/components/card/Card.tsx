@@ -148,7 +148,10 @@ export function Card({
         </div>
 
         {/* Card Main Title */}
-        <h3 className="font-black text-slate-900 text-sm leading-tight uppercase tracking-tight">
+        <h3
+          onClick={onDetails && !isNewActivity ? () => onDetails(activity) : undefined}
+          className={`font-black text-slate-900 text-sm leading-tight uppercase tracking-tight ${onDetails && !isNewActivity ? 'cursor-pointer hover:text-blue-600 transition-colors' : ''}`}
+        >
           {activity.title}
         </h3>
 

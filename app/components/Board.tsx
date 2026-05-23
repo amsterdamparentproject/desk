@@ -6,7 +6,7 @@ import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/acti
 import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
-import { archiveActivity, createActivity, deleteActivity, moveActivity, pollForUpdates, saveActivity, stampNewsletterLast, uploadActivityFile } from '../actions/activities'
+import { archiveActivity, createActivity, deleteActivity, finishNewsletterIssue, moveActivity, pollForUpdates, saveActivity, uploadActivityFile } from '../actions/activities'
 import { Calendar, Check, Newspaper, RotateCcw, Trash2 } from 'lucide-react'
 import { Card } from './card/Card'
 import { NewsletterDrawer } from './NewsletterDrawer'
@@ -125,7 +125,6 @@ export default function Board({ initialActivities } : BoardProps) {
       ...(delta !== undefined ? { newsletter_last: delta } : {}),
     }
     setActivities(prev => prev.map(e => e.id === updated.id ? withStatus : e))
-    setSelectedActivity(null)
     try {
       await saveActivity(updated.id, updated.type, withStatus)
     } catch (err) {
@@ -432,7 +431,7 @@ export default function Board({ initialActivities } : BoardProps) {
               onClick={() => setNewsletterOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-black uppercase tracking-widest"
             >
-              <Newspaper size={11} /> Copy activities
+              <Newspaper size={11} /> Manage
             </button>
           </div>
         </div>
@@ -555,16 +554,22 @@ export default function Board({ initialActivities } : BoardProps) {
           activities={activities}
           publishDate={publishDate}
           onClose={() => setNewsletterOpen(false)}
-          onCopy={async () => {
+          onFinishIssue={async () => {
             const next = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
             if (!next.length) return
-            setActivities(prev => prev.map(a =>
-              next.some(n => n.id === a.id) ? { ...a, newsletter_last: publishDate } : a
-            ))
             const eventIds    = next.filter(a => a.type === 'event').map(a => a.id)
             const resourceIds = next.filter(a => a.type === 'resource').map(a => a.id)
-            await stampNewsletterLast(eventIds, resourceIds, publishDate).catch(err =>
-              console.error('Failed to stamp newsletter_last:', err)
+            const d = new Date(publishDate); d.setDate(d.getDate() + 14)
+            const newPublishDate = d.toISOString().split('T')[0]
+            setActivities(prev => prev.map(a =>
+              next.some(n => n.id === a.id)
+                ? { ...a, newsletter_last: publishDate, status: 'archived' as const }
+                : a
+            ))
+            handlePublishDateChange(newPublishDate)
+            setNewsletterOpen(false)
+            await finishNewsletterIssue(eventIds, resourceIds, publishDate).catch(err =>
+              console.error('Failed to finish newsletter issue:', err)
             )
           }}
         />
@@ -579,6 +584,8 @@ export default function Board({ initialActivities } : BoardProps) {
           publishDate={publishDate}
           onSendToAI={handleSendToAI}
           onDelete={handleDeleteActivity}
+          readOnly={selectedActivity.status === 'archived'}
+          onRestore={() => handleRestoreEvent(selectedActivity.id)}
         />
       )}
     </main>
