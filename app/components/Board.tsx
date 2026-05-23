@@ -7,27 +7,64 @@ import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
 import { archiveActivity, createActivity, deleteActivity, moveActivity, pollForUpdates, saveActivity, stampNewsletterLast, uploadActivityFile } from '../actions/activities'
-import { Calendar, Newspaper, RotateCcw } from 'lucide-react'
+import { Calendar, Check, Newspaper, RotateCcw, Trash2 } from 'lucide-react'
 import { Card } from './card/Card'
 import { NewsletterDrawer } from './NewsletterDrawer'
 
 const LS_KEY = 'app_desk_newsletter_publish_date'
 const DEFAULT_PUBLISH_DATE = '2026-05-18'
 
-function ArchivedCard({ activity, onDetails, onRestore }: {
+function ArchivedCard({ activity, onDetails, onRestore, onDelete, isSelected, onToggleSelect }: {
   activity: DeskActivity
   onDetails: (a: DeskActivity) => void
   onRestore: (id: string) => void
+  onDelete: (id: string, type: 'event' | 'resource') => void
+  isSelected: boolean
+  onToggleSelect: () => void
 }) {
+  const [confirm, setConfirm] = useState(false)
+
+  const checkbox = (
+    <button
+      onClick={onToggleSelect}
+      className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-blue-600'}`}
+    >
+      {isSelected ? <Check size={11} /> : <div className="w-3 h-3 rounded border-2 border-current" />}
+    </button>
+  )
+
   return (
-    <Card activity={activity} onDetails={onDetails}>
-      <div className="flex h-10 px-2 py-1.5">
+    <Card activity={activity} onDetails={onDetails} detailsAction={checkbox}>
+      <div className="flex h-10 px-2 py-1.5 gap-1.5">
         <button
           onClick={() => onRestore(activity.id)}
           className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-colors uppercase"
         >
           <RotateCcw size={12} /> Restore
         </button>
+        {confirm ? (
+          <>
+            <button
+              onClick={() => onDelete(activity.id, activity.type)}
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors uppercase"
+            >
+              <Trash2 size={12} /> Confirm
+            </button>
+            <button
+              onClick={() => setConfirm(false)}
+              className="px-3 flex rounded-lg items-center justify-center text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirm(true)}
+            className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-600 hover:text-white transition-colors uppercase"
+          >
+            <Trash2 size={12} /> Delete
+          </button>
+        )}
       </div>
     </Card>
   )
@@ -39,6 +76,8 @@ interface BoardProps {
 
 export default function Board({ initialActivities } : BoardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('triage');
+  const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [publishDate, setPublishDate] = useState<string>(DEFAULT_PUBLISH_DATE);
 
   useEffect(() => {
@@ -149,6 +188,26 @@ export default function Board({ initialActivities } : BoardProps) {
     } catch (err) {
       console.error('Archive failed:', err)
       setActivities(prev => prev.map(e => e.id === id ? { ...e, status: activity.status } : e))
+    }
+  }
+
+  const toggleArchiveSelect = (id: string) =>
+    setSelectedArchiveIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+
+  const handleBulkDelete = async () => {
+    const toDelete = activities.filter(a => selectedArchiveIds.has(a.id))
+    setSelectedArchiveIds(new Set())
+    setConfirmBulkDelete(false)
+    setActivities(prev => prev.filter(a => !selectedArchiveIds.has(a.id)))
+    try {
+      await Promise.all(toDelete.map(a => deleteActivity(a.id, a.type)))
+    } catch (err) {
+      console.error('Bulk delete failed:', err)
+      setActivities(prev => [...prev, ...toDelete])
     }
   }
 
@@ -380,18 +439,70 @@ export default function Board({ initialActivities } : BoardProps) {
       </header>
 
       {activeTab === 'archived' ? (
-        <div className="flex-1 overflow-y-auto p-4">
-          {archivedActivities.length === 0 ? (
-            <div className="py-16 text-center text-sm text-slate-400 italic">No archived records</div>
-          ) : (
-            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3 space-y-3">
-              {archivedActivities.map(activity => (
-                <div key={activity.id} className="break-inside-avoid">
-                  <ArchivedCard activity={activity} onDetails={setSelectedActivity} onRestore={handleRestoreEvent} />
-                </div>
-              ))}
+        <div className="flex-1 overflow-y-auto">
+          {selectedArchiveIds.size > 0 && (
+            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3">
+              <span className="text-xs font-black text-slate-700">{selectedArchiveIds.size} selected</span>
+              <button
+                onClick={() => setSelectedArchiveIds(new Set(archivedActivities.map(a => a.id)))}
+                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Select all
+              </button>
+              <button
+                onClick={() => { setSelectedArchiveIds(new Set()); setConfirmBulkDelete(false) }}
+                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                Clear
+              </button>
+              <div className="ml-auto flex items-center gap-2">
+                {confirmBulkDelete ? (
+                  <>
+                    <span className="text-xs font-black text-red-600">Delete {selectedArchiveIds.size} records?</span>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={11} /> Yes, delete all
+                    </button>
+                    <button
+                      onClick={() => setConfirmBulkDelete(false)}
+                      className="px-3 py-1.5 text-xs font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmBulkDelete(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                  >
+                    <Trash2 size={11} /> Delete {selectedArchiveIds.size}
+                  </button>
+                )}
+              </div>
             </div>
           )}
+          <div className="p-4">
+            {archivedActivities.length === 0 ? (
+              <div className="py-16 text-center text-sm text-slate-400 italic">No archived records</div>
+            ) : (
+              <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3 space-y-3">
+                {archivedActivities.map(activity => (
+                  <div key={activity.id} className="break-inside-avoid">
+                    <ArchivedCard
+                      activity={activity}
+                      onDetails={setSelectedActivity}
+                      onRestore={handleRestoreEvent}
+                      onDelete={handleDeleteActivity}
+                      isSelected={selectedArchiveIds.has(activity.id)}
+                      onToggleSelect={() => toggleArchiveSelect(activity.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">

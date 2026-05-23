@@ -19,6 +19,7 @@ export interface CardProps {
   onArchive?: (id: string) => void
   onSnooze?: (id: string) => void
   showApproveButton?: boolean
+  detailsAction?: React.ReactNode // Replaces the Edit button in the card header
   children?: React.ReactNode // For extending components to add custom footers
 }
 

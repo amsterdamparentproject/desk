@@ -17,6 +17,7 @@ export function Card({
   onDetails,
   onMove,
   onSnooze,
+  detailsAction,
   children
 }: CardProps) {
   const [showMoveMenu, setShowMoveMenu] = useState(false)
@@ -135,14 +136,14 @@ export function Card({
               </button>
             )}
 
-            { onDetails && !isNewActivity && (
+            {detailsAction ?? (onDetails && !isNewActivity && (
               <button
                 onClick={() => onDetails(activity)}
                 className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
               >
                 <Edit size={12} /> Edit
               </button>
-            )}
+            ))}
           </div>
         </div>
 
