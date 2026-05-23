@@ -216,7 +216,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           </button>
         </div>
 
-        <div className={`p-8 space-y-8 pb-16 ${readOnly ? 'pointer-events-none select-none opacity-60' : ''}`}>
+        <div className={`p-4 md:p-8 space-y-6 md:space-y-8 pb-16 ${readOnly ? 'pointer-events-none select-none opacity-60' : ''}`}>
 
           {/* Primary content */}
           <section className="space-y-4">
@@ -293,7 +293,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4 py-2">
             <div className="flex flex-row items-center gap-2 mb-2">
               <Clock size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-xl font-black">Date & time</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Date & time</h2>
               <div className="ml-auto">
                 <Toggle
                   label="Multi-day"
@@ -312,7 +312,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 </Field>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 md:gap-4">
               <Field label="Start Time">
                 <TimeInput value={formData.start_time ?? ''} onChange={(v) => handleDateChange('start_time', v)} onBlur={handleBlurSave} />
               </Field>
@@ -337,9 +337,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <section className="space-y-4 py-2">
               <div className="flex flex-row items-center gap-2 mb-2">
                 <RefreshCw size={18} className="text-slate-700" />
-                <h2 className="text-slate-700 text-xl font-black">Repeat</h2>
+                <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Repeat</h2>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
                 <Field label="Frequency">
                   <select
                     value={repeatFrequency}
@@ -466,9 +466,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <MapPin size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-xl font-black">Location</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Location</h2>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 md:gap-4">
               <Field label="Area">
                 <select value={formData.area ?? ''} onChange={(e) => handleChange('area', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
                   <option value="" disabled>Select area</option>
@@ -490,7 +490,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <NotebookPen size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-xl font-black">Details</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Details</h2>
             </div>
             <Field label="Target Age Range">
               <input value={formData.age_range ?? ''} onChange={(e) => handleChange('age_range', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
@@ -511,7 +511,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-3">
             <div className="flex flex-row items-center gap-2 mb-2">
               <ImageIcon size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-xl font-black">Image</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Image</h2>
               <p className="text-sm text-slate-400 italic">Used on the website for APP events</p>
             </div>
             <Field label="Image URL">
@@ -543,35 +543,32 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <Settings size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-xl font-black">Triage</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Triage</h2>
             </div>
 
             <Field label="Status">
-              <div className="flex flex-wrap gap-1.5">
-                {TRIAGE_STATUSES.map(s => {
-                  const isActive = formData.status === s
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => {
-                        if (s === 'snoozed' && publishDate) {
-                          const d = new Date(publishDate)
-                          d.setDate(d.getDate() + 1)
-                          setFormData(prev => ({ ...prev, status: 'snoozed', snooze_until: d.toISOString().split('T')[0] }))
-                        } else {
-                          setFormData(prev => ({ ...prev, status: s, snooze_until: s !== 'snoozed' ? null : prev.snooze_until }))
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
-                        isActive ? STATUS_COLORS[s] : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                      }`}
-                    >
-                      {s === 'snoozed' ? 'Snoozed' : s}
-                    </button>
-                  )
-                })}
-              </div>
+              <select
+                value={formData.status}
+                onChange={e => {
+                  const s = e.target.value as TriageStatus
+                  if (s === 'snoozed' && publishDate) {
+                    const d = new Date(publishDate)
+                    d.setDate(d.getDate() + 1)
+                    const next = { ...latestFormData.current, status: 'snoozed' as const, snooze_until: d.toISOString().split('T')[0] }
+                    setFormData(next)
+                    onSaveDraft(next)
+                  } else {
+                    const next = { ...latestFormData.current, status: s, snooze_until: s !== 'snoozed' ? null : latestFormData.current.snooze_until }
+                    setFormData(next)
+                    onSaveDraft(next)
+                  }
+                }}
+                className={`w-full rounded-lg py-2 px-3 text-sm font-black uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors border-0 ${STATUS_COLORS[formData.status as TriageStatus] ?? 'bg-slate-100 text-slate-500'}`}
+              >
+                {TRIAGE_STATUSES.map(s => (
+                  <option key={s} value={s}>{s === 'snoozed' ? 'Snoozed' : s}</option>
+                ))}
+              </select>
             </Field>
 
             {formData.snooze_until && (
@@ -586,22 +583,36 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Source">
-                <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
-                  <option value="app_desk">APP Desk</option>
-                  <option value="app_website">APP Website</option>
-                  <option value="manual">Manual</option>
-                </select>
-              </Field>
-              <Field label="In list">
-                <select value={formData.list_id} onChange={(e) => handleChange('list_id', e.target.value as ListId)} onBlur={handleBlurSave} className={selectStyle}>
-                  {ALL_LISTS.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
-                </select>
-              </Field>
-            </div>
+            <Field label="Source">
+              <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
+                <option value="app_desk">APP Desk</option>
+                <option value="app_website">APP Website</option>
+                <option value="manual">Manual</option>
+              </select>
+            </Field>
 
-            <div className="grid grid-cols-2 gap-4">
+            <Field label="In list">
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_LISTS.map(l => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => {
+                      const next = { ...latestFormData.current, list_id: l.id as ListId }
+                      setFormData(next)
+                      onSaveDraft(next)
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
+                      formData.list_id === l.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <div className="grid grid-cols-2 gap-2 md:gap-4">
               <Field label="Created">
                 <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
                   {formData.created_at ? new Date(formData.created_at).toLocaleString('en-GB') : '—'}
@@ -774,7 +785,7 @@ function Toggle({ label, icon, checked, onChange }: { label: string, icon?: Reac
       </div>
       <div className={`flex items-center gap-2 transition-colors ${checked ? 'text-amber-500' : 'text-slate-400'}`}>
         {icon}
-        <span className={`text-sm font-bold transition-colors ${checked ? 'text-amber-500' : 'text-slate-500'}`}>{label}</span>
+        <span className={`text-xs md:text-sm font-bold whitespace-nowrap transition-colors ${checked ? 'text-amber-500' : 'text-slate-500'}`}>{label}</span>
       </div>
     </button>
   )

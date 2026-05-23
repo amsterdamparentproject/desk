@@ -23,11 +23,11 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
           height={30}
           className="rounded-sm"
         />
-        <span className="text-2xl italic font-bold text-app-cream mr-2">
+        <span className="hidden md:block text-2xl italic font-bold text-app-cream mr-2">
           The APP Desk
         </span>
         {isLoggedIn && (
-          <span className="text-xs font-mono text-black bg-app-gold px-2 py-0.5 rounded-md">
+          <span className="hidden md:block text-xs font-mono text-black bg-app-gold px-2 py-0.5 rounded-md">
             ● Secure
           </span>
         )}

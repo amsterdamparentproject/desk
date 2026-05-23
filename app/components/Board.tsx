@@ -408,7 +408,7 @@ export default function Board({ initialActivities } : BoardProps) {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`py-4 text-sm font-black uppercase tracking-widest transition-all ${
+                className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all ${
                   activeTab === tab
                     ? tab === 'archived' ? 'text-red-500' : 'text-blue-600'
                     : 'text-slate-400 hover:text-slate-600'
