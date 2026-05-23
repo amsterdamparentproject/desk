@@ -4,6 +4,7 @@ import { createAdminClient } from '@/app/utils/supabase/server'
 import { DeskActivity, EventActivity, ResourceActivity } from '@/app/types/activity'
 import { ListId } from '@/app/types/list'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
+import { postDesk } from '@/lib/PostToWebhook'
 
 type WritableEvent    = Omit<EventActivity,    'id' | 'created_at' | 'updated_at'>
 type WritableResource = Omit<ResourceActivity, 'id' | 'created_at' | 'updated_at'>
@@ -18,26 +19,50 @@ export async function uploadActivityFile(id: string, file: File): Promise<string
   return supabase.storage.from('activities').getPublicUrl(path).data.publicUrl
 }
 
-export async function captureFromShare(data: { url: string; title: string; text: string }) {
+export async function captureFromShare(data: {
+  title: string
+  description: string
+  url: string
+  type: 'event' | 'resource'
+  use_ai: boolean
+}) {
   const supabase = createAdminClient()
   const now = new Date().toISOString()
   const today = now.split('T')[0]
   const id = crypto.randomUUID()
-  const title = data.title || data.url || '(Shared link)'
-  const { error } = await supabase.from('events').insert({
+  const list_id: ListId = data.use_ai ? 'ideas' : 'review'
+  const status = data.use_ai ? 'processing' : 'new'
+  const table = data.type === 'event' ? 'events' : 'resources'
+
+  const insert: Record<string, unknown> = {
     id,
-    title,
-    description: data.text || '',
+    title: data.title || data.url || '(Shared link)',
+    description: data.description,
     newsletter_description: '',
     url: data.url || null,
-    list_id: 'ideas',
-    status: 'new',
+    list_id,
+    status,
     source: 'app_desk',
-    start_date: today,
     created_at: now,
     updated_at: now,
-  })
+  }
+  if (data.type === 'event') insert.start_date = today
+
+  const { error } = await supabase.from(table).insert(insert)
   if (error) throw new Error(error.message)
+
+  if (data.use_ai) {
+    await postDesk({
+      description: data.description,
+      file: null,
+      list_id,
+      use_ai: true,
+      type: data.type,
+      id,
+      action: 'add',
+    }).catch(err => console.error('Share webhook failed:', err))
+  }
+
   return id
 }
 

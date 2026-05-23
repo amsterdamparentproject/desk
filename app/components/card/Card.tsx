@@ -183,7 +183,7 @@ export function Card({
           {/* AI Production Summary Field */}
           {!isNewActivity && activity.newsletter_description && (
             <div className="flex items-start gap-1.5 text-slate-500">
-              <NotepadText size={10} className="mt-0.5" />
+              <NotepadText size={12} className="mt-0.5 shrink-0" />
               <span className="text-xs text-slate-500 line-clamp-3">
                 {activity.newsletter_description}
               </span>
