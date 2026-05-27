@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Column } from './Column'
-import { CaptureDataProps, createNewActivity, DeskActivity } from '../types/activity'
+import { CaptureDataProps, createNewActivity, DeskActivity, Location } from '../types/activity'
 import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { postDesk } from '../../lib/PostToWebhook'
@@ -72,9 +72,10 @@ function ArchivedCard({ activity, onDetails, onRestore, onDelete, isSelected, on
 
 interface BoardProps {
   initialActivities: DeskActivity[];
+  initialLocations?: Location[];
 }
 
-export default function Board({ initialActivities } : BoardProps) {
+export default function Board({ initialActivities, initialLocations = [] } : BoardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('triage');
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -586,6 +587,7 @@ export default function Board({ initialActivities } : BoardProps) {
           onDelete={handleDeleteActivity}
           readOnly={selectedActivity.status === 'archived'}
           onRestore={() => handleRestoreEvent(selectedActivity.id)}
+          locations={initialLocations}
         />
       )}
     </main>

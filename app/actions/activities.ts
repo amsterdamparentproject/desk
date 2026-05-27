@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/app/utils/supabase/server'
-import { DeskActivity, EventActivity, ResourceActivity } from '@/app/types/activity'
+import { DeskActivity, EventActivity, Location, ResourceActivity } from '@/app/types/activity'
 import { ListId } from '@/app/types/list'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 import { postDesk } from '@/lib/PostToWebhook'
@@ -250,4 +250,11 @@ export async function pollForUpdates(
     if (!seen.has(row.id)) { seen.add(row.id); results.push({ ...row, type: 'resource' as const, file: null, preview_url: null }) }
   }
   return results
+}
+
+export async function getLocations(): Promise<Location[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase.from('locations').select('*').order('name')
+  if (error) throw new Error(error.message)
+  return data ?? []
 }

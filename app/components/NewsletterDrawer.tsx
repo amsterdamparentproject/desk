@@ -171,12 +171,12 @@ function buildNewsletterHTML(activities: DeskActivity[], publishDate: string): s
         ? `${escHtml(a.title)} (${escHtml(a.age_range)})`
         : escHtml(a.title)
 
-      html += `  <li style="margin-bottom: 20px;">\n`
-      html += `    <p><a href="${escHtml(a.url ?? '#')}" target="_blank">${displayTitle}</a></p>\n`
+      html += `  <li>\n`
+      html += `    <p style="margin: 0;"><a href="${escHtml(a.url ?? '#')}" target="_blank">${displayTitle}</a></p>\n`
       if (dateDisplay || displayRepeat || displayNeighborhood) {
-        html += `    <p><i>${escHtml(dateDisplay)}${displayRepeat}${displayNeighborhood}</i></p>\n`
+        html += `    <p style="margin: 0;"><i>${escHtml(dateDisplay)}${displayRepeat}${displayNeighborhood}</i></p>\n`
       }
-      html += `    <p>${escHtml(a.newsletter_description)}</p>\n`
+      html += `    <p style="margin: 0;">${escHtml(a.newsletter_description)}</p>\n`
       html += `  </li>\n`
     }
 
@@ -282,7 +282,7 @@ export function NewsletterDrawer({ activities, publishDate, onClose, onFinishIss
                 </pre>
               ) : (
                 <div
-                  className="text-sm text-black [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-5 [&_p]:mb-1 [&_a]:text-blue-600 [&_a]:underline [&_b]:font-black"
+                  className="text-sm text-black [&_ul]:list-disc [&_ul]:pl-5 [&_p]:m-0 [&_a]:text-blue-600 [&_a]:underline [&_b]:font-black"
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               )}

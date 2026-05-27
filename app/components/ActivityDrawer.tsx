@@ -1,7 +1,7 @@
 // components/ActivityDrawer.tsx
-import { ReactNode, useEffect, useRef, useState } from 'react'
+import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
 import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw } from 'lucide-react'
-import { DeskActivity, DEFAULT_DESK_ACTIVITY, RepeatFrequency } from '../types/activity'
+import { DeskActivity, DEFAULT_DESK_ACTIVITY, Location, RepeatFrequency } from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
@@ -39,6 +39,7 @@ interface ActivityDrawerProps {
   onDelete?: (id: string, type: 'event' | 'resource') => void,
   readOnly?: boolean,
   onRestore?: () => void,
+  locations?: Location[],
 }
 
 const WEEKDAYS = [
@@ -62,9 +63,11 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   snoozed:    'bg-slate-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore }: ActivityDrawerProps) {
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore, locations = [] }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
+  const [pendingLocationSource, setPendingLocationSource] = useState<'org' | 'location' | null>(null);
 
   // Always track latest formData so onBlur handlers don't capture stale closure values
   const latestFormData = useRef(formData)
@@ -189,6 +192,30 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     });
   };
 
+  // Saved location helpers
+  const hasExistingLocation = !!(formData.location || formData.neighborhood || formData.area)
+  const applyLocation = (loc: Location) => {
+    const next = {
+      ...latestFormData.current,
+      location: loc.address,
+      neighborhood: loc.neighborhood ?? latestFormData.current.neighborhood,
+      area: loc.area ?? latestFormData.current.area,
+    }
+    setFormData(next)
+    onSaveDraft(next)
+    setPendingLocation(null)
+    setPendingLocationSource(null)
+  }
+
+  const requestApplyLocation = (loc: Location, source: 'org' | 'location') => {
+    if (hasExistingLocation) {
+      setPendingLocation(loc)
+      setPendingLocationSource(source)
+    } else {
+      applyLocation(loc)
+    }
+  }
+
   const displayImageUrl = formData.preview_url || formData.file_url;
   const descriptionStyle = "w-full text-sm leading-relaxed text-black border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none overflow-hidden bg-blue-50/60 rounded-lg transition-colors";
 
@@ -251,8 +278,25 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </div>
             </Field>
             <Field label="Host Organization">
-              <input value={formData.organization ?? ''} onChange={(e) => handleChange('organization', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
+              <OrgCombobox
+                value={formData.organization ?? ''}
+                locations={locations}
+                inputStyle={inputStyle}
+                onChange={(val) => handleChange('organization', val)}
+                onSelectLocation={(loc) => {
+                  handleChange('organization', loc.name)
+                  requestApplyLocation(loc, 'org')
+                }}
+                onBlur={handleBlurSave}
+              />
             </Field>
+            {pendingLocation && pendingLocationSource === 'org' && (
+              <OverwriteConfirm
+                loc={pendingLocation}
+                onConfirm={() => applyLocation(pendingLocation)}
+                onCancel={() => { setPendingLocation(null); setPendingLocationSource(null) }}
+              />
+            )}
             {formData.organization === 'Amsterdam Parent Project' && (
               <Field label="Website tagline">
                 <input
@@ -467,7 +511,33 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <div className="flex flex-row items-center gap-2 mb-2">
               <MapPin size={18} className="text-slate-700" />
               <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Location</h2>
+              {locations.length > 0 && (
+                <div className="ml-auto">
+                  <select
+                    className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 max-w-[180px]"
+                    value=""
+                    onChange={(e) => {
+                      const loc = locations.find(l => l.id === e.target.value)
+                      if (loc) requestApplyLocation(loc, 'location')
+                    }}
+                  >
+                    <option value="">Apply saved location…</option>
+                    {locations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {pendingLocation && pendingLocationSource === 'location' && (
+              <OverwriteConfirm
+                loc={pendingLocation}
+                onConfirm={() => applyLocation(pendingLocation)}
+                onCancel={() => { setPendingLocation(null); setPendingLocationSource(null) }}
+              />
+            )}
+
             <div className="grid grid-cols-2 gap-2 md:gap-4">
               <Field label="Area">
                 <select value={formData.area ?? ''} onChange={(e) => handleChange('area', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
@@ -757,6 +827,88 @@ function TimeInput({ value, onChange, onBlur }: { value: string, onChange: (v: s
       </button>
       <input ref={ref} type="time" lang="nl" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
         className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
+    </div>
+  )
+}
+
+function OverwriteConfirm({ loc, onConfirm, onCancel }: { loc: Location, onConfirm: () => void, onCancel: () => void }) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+      <span className="text-amber-800 font-bold flex-1">
+        Overwrite existing location with <span className="italic">{loc.name}</span>?
+      </span>
+      <button
+        type="button"
+        onClick={onConfirm}
+        className="px-2.5 py-1 text-xs font-black uppercase tracking-wide bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+      >
+        Yes
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="px-2.5 py-1 text-xs font-black uppercase tracking-wide bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  )
+}
+
+function OrgCombobox({ value, locations, inputStyle, onChange, onSelectLocation, onBlur }: {
+  value: string
+  locations: Location[]
+  inputStyle: string
+  onChange: (val: string) => void
+  onSelectLocation: (loc: Location) => void
+  onBlur: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const filtered = locations.filter(loc =>
+    loc.name.toLowerCase().includes(value.toLowerCase())
+  )
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={onBlur}
+        className={inputStyle}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+          {filtered.map(loc => (
+            <li key={loc.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault() // prevent input blur before click registers
+                  onSelectLocation(loc)
+                  setOpen(false)
+                }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2"
+              >
+                <MapPin size={12} className="text-slate-400 shrink-0" />
+                <span className="font-bold text-slate-700">{loc.name}</span>
+                <span className="text-slate-400 text-xs truncate">{loc.address}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

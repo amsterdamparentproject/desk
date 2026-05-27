@@ -2,6 +2,16 @@ import { ListId } from './list'
 import { TriageStatus } from './card'
 
 export type CaptureSource = 'app_desk' | 'app_website' | 'manual'
+
+export interface Location {
+  id: string
+  name: string
+  address: string
+  area: string | null
+  neighborhood: string | null
+  latitude: number | null
+  longitude: number | null
+}
 export type DayName = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 export type RepeatFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
 

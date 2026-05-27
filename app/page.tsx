@@ -4,6 +4,7 @@ import { DeskActivity } from '@/app/types/activity';
 import Board from './components/Board';
 import { verifyDeskToken } from './utils/auth-gate';
 import { createAdminClient } from './utils/supabase/server';
+import { getLocations } from './actions/activities';
 
 function isCurrentEvent(event: any, today: string): boolean {
   const isRecurring = !!event.repeat_frequency
@@ -40,9 +41,10 @@ export default async function DeskPage() {
   const supabase = createAdminClient();
   const today = new Date().toISOString().split('T')[0];
 
-  const [eventsResult, resourcesResult] = await Promise.all([
+  const [eventsResult, resourcesResult, locations] = await Promise.all([
     supabase.from('events').select('*').order('created_at', { ascending: false }),
     supabase.from('resources').select('*').order('created_at', { ascending: false }),
+    getLocations().catch(() => []),
   ]);
 
   if (eventsResult.error || resourcesResult.error) {
@@ -66,6 +68,6 @@ export default async function DeskPage() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return (
-    <Board initialActivities={activities as DeskActivity[]} />
+    <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} />
   );
 }
