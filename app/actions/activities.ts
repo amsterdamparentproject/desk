@@ -258,3 +258,19 @@ export async function getLocations(): Promise<Location[]> {
   if (error) throw new Error(error.message)
   return data ?? []
 }
+
+export async function upsertLocation(data: {
+  name: string
+  address: string
+  area: string | null
+  neighborhood: string | null
+}): Promise<Location> {
+  const supabase = createAdminClient()
+  const { data: row, error } = await supabase
+    .from('locations')
+    .upsert({ ...data, updated_at: new Date().toISOString() }, { onConflict: 'name' })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return row
+}

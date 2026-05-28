@@ -220,11 +220,12 @@ function buildNewsletterText(activities: DeskActivity[], publishDate: string): s
 interface NewsletterDrawerProps {
   activities: DeskActivity[]
   publishDate: string
+  onPublishDateChange: (date: string) => void
   onClose: () => void
   onFinishIssue: () => Promise<void>
 }
 
-export function NewsletterDrawer({ activities, publishDate, onClose, onFinishIssue }: NewsletterDrawerProps) {
+export function NewsletterDrawer({ activities, publishDate, onPublishDateChange, onClose, onFinishIssue }: NewsletterDrawerProps) {
   const [showRaw, setShowRaw]         = useState(false)
   const [confirming, setConfirming]   = useState(false)
   const [finishing, setFinishing]     = useState(false)
@@ -258,6 +259,16 @@ export function NewsletterDrawer({ activities, publishDate, onClose, onFinishIss
 
         {/* Body */}
         <div className="flex-1 p-6 overflow-y-auto">
+          {/* Mobile-only date input */}
+          <div className="md:hidden flex items-center gap-2 mb-5">
+            <label className="text-[9px] font-black uppercase tracking-widest text-green-600 shrink-0">Next newsletter</label>
+            <input
+              type="date"
+              value={publishDate}
+              onChange={(e) => onPublishDateChange(e.target.value)}
+              className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
           {nextActivities.length === 0 ? (
             <div className="py-16 text-center text-sm text-slate-400 italic">
               No activities in the next newsletter column

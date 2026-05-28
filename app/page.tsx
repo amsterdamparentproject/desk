@@ -40,6 +40,16 @@ export default async function DeskPage() {
 
   const supabase = createAdminClient();
   const today = new Date().toISOString().split('T')[0];
+  const now = new Date().toISOString();
+
+  // Resolve any processing records that have been stuck for more than 10 minutes
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  await Promise.all([
+    supabase.from('events').update({ list_id: 'error', status: 'new', updated_at: now })
+      .eq('status', 'processing').lt('updated_at', staleThreshold),
+    supabase.from('resources').update({ list_id: 'error', status: 'new', updated_at: now })
+      .eq('status', 'processing').lt('updated_at', staleThreshold),
+  ]);
 
   const [eventsResult, resourcesResult, locations] = await Promise.all([
     supabase.from('events').select('*').order('created_at', { ascending: false }),

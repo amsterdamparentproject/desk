@@ -76,6 +76,7 @@ interface BoardProps {
 }
 
 export default function Board({ initialActivities, initialLocations = [] } : BoardProps) {
+  const [locations, setLocations] = useState<Location[]>(initialLocations)
   const [activeTab, setActiveTab] = useState<Tab>('triage');
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
@@ -388,8 +389,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
         const newItems = fetched.filter(a => !existingIds.has(a.id))
         return [...newItems, ...updated]
       })
+      const now = Date.now()
       fetched.forEach(a => {
-        if (a.status !== 'processing') disarmProcessingTimeout(a.id)
+        if (a.status !== 'processing') {
+          disarmProcessingTimeout(a.id)
+        } else if (now - new Date(a.created_at).getTime() > 5 * 60 * 1000) {
+          // Stuck for more than 10 minutes — move to error
+          disarmProcessingTimeout(a.id)
+          moveToError(a.id, a.type, a.title || '', true)
+        }
       })
     }, 3000)
     return () => clearInterval(intervalId)
@@ -409,7 +417,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all ${
+                className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all ${tab === 'archived' ? 'hidden md:block' : ''} ${
                   activeTab === tab
                     ? tab === 'archived' ? 'text-red-500' : 'text-blue-600'
                     : 'text-slate-400 hover:text-slate-600'
@@ -420,19 +428,21 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <Calendar size={12} className="text-slate-400" />
-            <label className="text-[9px] font-black uppercase tracking-widest text-green-600">Next newsletter</label>
-            <input
-              type="date"
-              value={publishDate}
-              onChange={(e) => handlePublishDateChange(e.target.value)}
-              className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
+            <div className="hidden md:flex items-center gap-2">
+              <Calendar size={12} className="text-slate-400" />
+              <label className="text-[9px] font-black uppercase tracking-widest text-green-600">Next newsletter</label>
+              <input
+                type="date"
+                value={publishDate}
+                onChange={(e) => handlePublishDateChange(e.target.value)}
+                className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
             <button
               onClick={() => setNewsletterOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-black uppercase tracking-widest"
             >
-              <Newspaper size={11} /> Manage
+              <Newspaper size={11} /> View
             </button>
           </div>
         </div>
@@ -554,6 +564,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
         <NewsletterDrawer
           activities={activities}
           publishDate={publishDate}
+          onPublishDateChange={handlePublishDateChange}
           onClose={() => setNewsletterOpen(false)}
           onFinishIssue={async () => {
             const next = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
@@ -587,7 +598,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           onDelete={handleDeleteActivity}
           readOnly={selectedActivity.status === 'archived'}
           onRestore={() => handleRestoreEvent(selectedActivity.id)}
-          locations={initialLocations}
+          locations={locations}
+          onLocationSaved={(loc) =>
+            setLocations(prev => {
+              const idx = prev.findIndex(l => l.id === loc.id)
+              return idx >= 0
+                ? prev.map(l => l.id === loc.id ? loc : l)
+                : [...prev, loc].sort((a, b) => a.name.localeCompare(b.name))
+            })
+          }
         />
       )}
     </main>

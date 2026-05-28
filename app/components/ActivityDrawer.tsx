@@ -1,11 +1,12 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
-import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw } from 'lucide-react'
+import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw, BookmarkPlus } from 'lucide-react'
 import { DeskActivity, DEFAULT_DESK_ACTIVITY, Location, RepeatFrequency } from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
 import { parseRrule, buildRrule, computeNextDate, parsePositionalDay } from '../utils/rrule';
+import { upsertLocation } from '../actions/activities';
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 
@@ -40,6 +41,7 @@ interface ActivityDrawerProps {
   readOnly?: boolean,
   onRestore?: () => void,
   locations?: Location[],
+  onLocationSaved?: (loc: Location) => void,
 }
 
 const WEEKDAYS = [
@@ -63,11 +65,12 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   snoozed:    'bg-slate-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore, locations = [] }: ActivityDrawerProps) {
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
   const [pendingLocationSource, setPendingLocationSource] = useState<'org' | 'location' | null>(null);
+  const [locationSaveState, setLocationSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // Always track latest formData so onBlur handlers don't capture stale closure values
   const latestFormData = useRef(formData)
@@ -205,6 +208,25 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     onSaveDraft(next)
     setPendingLocation(null)
     setPendingLocationSource(null)
+  }
+
+  const handleSaveToLocations = async () => {
+    if (!formData.organization || !formData.location) return
+    setLocationSaveState('saving')
+    try {
+      const saved = await upsertLocation({
+        name: formData.organization,
+        address: formData.location,
+        area: formData.area ?? null,
+        neighborhood: formData.neighborhood ?? null,
+      })
+      onLocationSaved?.(saved)
+      setLocationSaveState('saved')
+      setTimeout(() => setLocationSaveState('idle'), 2000)
+    } catch (e) {
+      console.error('upsertLocation failed:', e)
+      setLocationSaveState('idle')
+    }
   }
 
   const requestApplyLocation = (loc: Location, source: 'org' | 'location') => {
@@ -554,6 +576,21 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 <input value={formData.location ?? ''} onChange={(e) => handleChange('location', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
               </Field>
             </div>
+
+            {formData.organization && formData.location && (
+              <button
+                type="button"
+                onClick={handleSaveToLocations}
+                disabled={locationSaveState === 'saving'}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-black uppercase tracking-wide rounded-lg transition-colors disabled:opacity-50
+                  bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
+              >
+                {locationSaveState === 'saved'
+                  ? <><Check size={12} /> Saved</>
+                  : <><BookmarkPlus size={12} /> Save to locations</>
+                }
+              </button>
+            )}
           </section>
 
           {/* Details */}
