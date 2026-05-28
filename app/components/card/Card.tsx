@@ -45,9 +45,11 @@ export function Card({
   const handleMoveClick = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
-      setMenuPos({ 
-        top: rect.bottom + window.scrollY + 4, 
-        left: rect.left + window.scrollX 
+      const MENU_WIDTH = 160
+      const left = rect.right + window.scrollX - MENU_WIDTH
+      setMenuPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: Math.max(8, left),
       })
     }
     setShowMoveMenu(prev => !prev)
