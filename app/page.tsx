@@ -6,6 +6,34 @@ import { verifyDeskToken } from './utils/auth-gate';
 import { createAdminClient } from './utils/supabase/server';
 import { getLocations } from './actions/activities';
 
+function computePublishDate(allRows: any[], today: string): string {
+  const dates = allRows
+    .map(r => r.newsletter_last)
+    .filter((d): d is string => typeof d === 'string' && d.length > 0)
+
+  // If no newsletters have ever been sent, default to today + 7 days
+  let next: string
+  if (dates.length === 0) {
+    const d = new Date(today)
+    d.setDate(d.getDate() + 7)
+    next = d.toISOString().split('T')[0]
+  } else {
+    const lastPublished = dates.reduce((max, d) => (d > max ? d : max))
+    const d = new Date(lastPublished)
+    d.setDate(d.getDate() + 14)
+    next = d.toISOString().split('T')[0]
+  }
+
+  // Auto-advance by 14-day increments until the date is in the future
+  while (next <= today) {
+    const d = new Date(next)
+    d.setDate(d.getDate() + 14)
+    next = d.toISOString().split('T')[0]
+  }
+
+  return next
+}
+
 function isCurrentEvent(event: any, today: string): boolean {
   const isRecurring = !!event.repeat_frequency
   if (isRecurring) {
@@ -42,13 +70,18 @@ export default async function DeskPage() {
   const today = new Date().toISOString().split('T')[0];
   const now = new Date().toISOString();
 
-  // Resolve any processing records that have been stuck for more than 10 minutes
+  // Resolve any processing records that have been stuck for more than 5 minutes
   const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  // Auto-archive next_newsletter cards whose issue date has passed
   await Promise.all([
     supabase.from('events').update({ list_id: 'error', status: 'new', updated_at: now })
       .eq('status', 'processing').lt('updated_at', staleThreshold),
     supabase.from('resources').update({ list_id: 'error', status: 'new', updated_at: now })
       .eq('status', 'processing').lt('updated_at', staleThreshold),
+    supabase.from('events').update({ status: 'archived', updated_at: now })
+      .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
+    supabase.from('resources').update({ status: 'archived', updated_at: now })
+      .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
   ]);
 
   const [eventsResult, resourcesResult, locations] = await Promise.all([
@@ -77,7 +110,12 @@ export default async function DeskPage() {
   const activities = [...events, ...resources]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
+  const publishDate = computePublishDate(
+    [...(eventsResult.data ?? []), ...(resourcesResult.data ?? [])],
+    today,
+  )
+
   return (
-    <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} />
+    <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} initialPublishDate={publishDate} />
   );
 }

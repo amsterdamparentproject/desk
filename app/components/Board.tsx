@@ -11,8 +11,6 @@ import { Calendar, Check, Newspaper, RotateCcw, Trash2 } from 'lucide-react'
 import { Card } from './card/Card'
 import { NewsletterDrawer } from './NewsletterDrawer'
 
-const LS_KEY = 'app_desk_newsletter_publish_date'
-const DEFAULT_PUBLISH_DATE = '2026-05-18'
 
 function ArchivedCard({ activity, onDetails, onRestore, onDelete, isSelected, onToggleSelect }: {
   activity: DeskActivity
@@ -73,23 +71,18 @@ function ArchivedCard({ activity, onDetails, onRestore, onDelete, isSelected, on
 interface BoardProps {
   initialActivities: DeskActivity[];
   initialLocations?: Location[];
+  initialPublishDate: string;
 }
 
-export default function Board({ initialActivities, initialLocations = [] } : BoardProps) {
+export default function Board({ initialActivities, initialLocations = [], initialPublishDate } : BoardProps) {
   const [locations, setLocations] = useState<Location[]>(initialLocations)
   const [activeTab, setActiveTab] = useState<Tab>('triage');
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
-  const [publishDate, setPublishDate] = useState<string>(DEFAULT_PUBLISH_DATE);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved) setPublishDate(saved);
-  }, []);
+  const [publishDate, setPublishDate] = useState<string>(initialPublishDate);
 
   const handlePublishDateChange = (date: string) => {
     setPublishDate(date);
-    localStorage.setItem(LS_KEY, date);
   };
 
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
