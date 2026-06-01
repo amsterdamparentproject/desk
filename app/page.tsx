@@ -7,7 +7,11 @@ import { createAdminClient } from './utils/supabase/server';
 import { getLocations } from './actions/activities';
 
 function computePublishDate(allRows: any[], today: string): string {
+  // Only count newsletter_last from archived records — cards in next_newsletter
+  // also carry newsletter_last (set when they were added) and would otherwise
+  // inflate the max before the issue has actually been sent.
   const dates = allRows
+    .filter(r => r.status === 'archived')
     .map(r => r.newsletter_last)
     .filter((d): d is string => typeof d === 'string' && d.length > 0)
 
