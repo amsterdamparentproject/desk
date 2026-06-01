@@ -13,12 +13,14 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     share_target: {
-      action: '/share',
-      method: 'GET',
+      action: '/share/receive',
+      method: 'POST',
+      enctype: 'multipart/form-data',
       params: {
         title: 'title',
         text: 'text',
         url: 'url',
+        files: [{ name: 'file', accept: ['image/*', 'application/pdf'] }],
       },
     },
   }

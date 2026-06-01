@@ -4,14 +4,14 @@ import { verifyDeskToken } from '@/app/utils/auth-gate'
 import { ShareForm } from './ShareForm'
 
 interface SharePageProps {
-  searchParams: Promise<{ title?: string; text?: string; url?: string }>
+  searchParams: Promise<{ title?: string; text?: string; url?: string; file_url?: string; file_id?: string }>
 }
 
 export default async function SharePage({ searchParams }: SharePageProps) {
   const cookieStore = await cookies()
   if (!verifyDeskToken(cookieStore)) redirect('/')
 
-  const { title = '', text = '', url = '' } = await searchParams
+  const { title = '', text = '', url = '', file_url = '', file_id = '' } = await searchParams
 
   const initialDescription = [title, url, text].filter(Boolean).join('\n')
 
@@ -21,7 +21,13 @@ export default async function SharePage({ searchParams }: SharePageProps) {
         <div className="px-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capture to Ideas</p>
         </div>
-        <ShareForm initialDescription={initialDescription} url={url} title={title} />
+        <ShareForm
+          initialDescription={initialDescription}
+          url={url}
+          title={title}
+          initialFileUrl={file_url || null}
+          initialFileId={file_id || null}
+        />
         <a
           href="/"
           className="block text-center text-xs text-slate-400 hover:text-slate-600 transition-colors pt-1"

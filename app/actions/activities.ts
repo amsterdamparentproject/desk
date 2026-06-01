@@ -25,18 +25,20 @@ export async function captureFromShare(data: {
   url: string
   type: 'event' | 'resource'
   use_ai: boolean
+  id?: string
+  file_url?: string
 }) {
   const supabase = createAdminClient()
   const now = new Date().toISOString()
   const today = now.split('T')[0]
-  const id = crypto.randomUUID()
+  const id = data.id ?? crypto.randomUUID()
   const list_id: ListId = data.use_ai ? 'ideas' : 'review'
   const status = data.use_ai ? 'processing' : 'new'
   const table = data.type === 'event' ? 'events' : 'resources'
 
   const insert: Record<string, unknown> = {
     id,
-    title: data.title || data.url || '(Shared link)',
+    title: data.title || data.url || data.description.trim() || '(Shared content)',
     description: data.description,
     newsletter_description: '',
     url: data.url || null,
@@ -45,6 +47,7 @@ export async function captureFromShare(data: {
     source: 'app_desk',
     created_at: now,
     updated_at: now,
+    ...(data.file_url ? { file_url: data.file_url } : {}),
   }
   if (data.type === 'event') insert.start_date = today
 
