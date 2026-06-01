@@ -50,6 +50,8 @@ export interface BaseActivity {
   location: string | null;
   neighborhood: string | null;
   area: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 /**
@@ -149,6 +151,8 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   location: '',
   neighborhood: '',
   area: '',
+  latitude: null,
+  longitude: null,
   
   // Event specific properties defaulted to safe non-null primitives
   tagline: null,

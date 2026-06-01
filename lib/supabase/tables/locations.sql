@@ -16,6 +16,8 @@ CREATE TABLE activities.locations (
   longitude numeric(9, 6)
 );
 
+CREATE INDEX locations_lat_lng_idx ON activities.locations (latitude, longitude);
+
 -- Auto-update updated_at on edit
 CREATE TRIGGER set_updated_at_locations
   BEFORE UPDATE ON activities.locations

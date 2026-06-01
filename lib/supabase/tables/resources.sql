@@ -29,5 +29,9 @@ CREATE TABLE activities.resources (
   -- Location Details
   location text,
   neighborhood text,
-  area text
+  area text,
+  latitude numeric(9, 6),
+  longitude numeric(9, 6)
 );
+
+CREATE INDEX resources_lat_lng_idx ON activities.resources (latitude, longitude);

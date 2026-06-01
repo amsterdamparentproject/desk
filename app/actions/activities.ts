@@ -5,6 +5,7 @@ import { DeskActivity, EventActivity, Location, ResourceActivity } from '@/app/t
 import { ListId } from '@/app/types/list'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 import { postDesk } from '@/lib/PostToWebhook'
+import { geocodeAddress } from '@/app/utils/geocode'
 
 type WritableEvent    = Omit<EventActivity,    'id' | 'created_at' | 'updated_at'>
 type WritableResource = Omit<ResourceActivity, 'id' | 'created_at' | 'updated_at'>
@@ -101,7 +102,7 @@ const EVENT_FIELDS = [
   'title', 'description', 'url', 'organization', 'age_range', 'categories',
   'tagline',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
-  'location', 'neighborhood', 'area',
+  'location', 'neighborhood', 'area', 'latitude', 'longitude',
   'start_date', 'end_date', 'start_time', 'end_time', 'day_of_week', 'duration_minutes',
   'repeat_rrule', 'repeat_frequency', 'repeat_next_date', 'calendar_skip', 'calendar_sent',
 ] as const satisfies readonly (keyof WritableEvent)[]
@@ -110,7 +111,7 @@ const RESOURCE_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
   'title', 'description', 'url', 'organization', 'age_range', 'categories',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
-  'location', 'neighborhood', 'area',
+  'location', 'neighborhood', 'area', 'latitude', 'longitude',
 ] as const satisfies readonly (keyof WritableResource)[]
 
 // Only coerce '' → null for non-text DB columns (dates, times, enums, numbers).
@@ -198,6 +199,27 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
 
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
+
+  // Geocode if address is present but lat/lng is missing on this record
+  if (data.location && data.latitude == null) {
+    const { data: current } = await supabase
+      .from(table).select('latitude').eq('id', id).single()
+    if (!current?.latitude) {
+      const coords = await geocodeAddress(data.location)
+      if (coords) {
+        await supabase.from(table)
+          .update({ ...coords, updated_at: new Date().toISOString() })
+          .eq('id', id)
+        // Also update the matching locations record if it has no lat/lng yet
+        if (data.organization) {
+          await supabase.from('locations')
+            .update({ ...coords, updated_at: new Date().toISOString() })
+            .eq('name', data.organization)
+            .is('latitude', null)
+        }
+      }
+    }
+  }
 }
 
 export async function finishNewsletterIssue(
@@ -269,9 +291,10 @@ export async function upsertLocation(data: {
   neighborhood: string | null
 }): Promise<Location> {
   const supabase = createAdminClient()
+  const coords = await geocodeAddress(data.address)
   const { data: row, error } = await supabase
     .from('locations')
-    .upsert({ ...data, updated_at: new Date().toISOString() }, { onConflict: 'name' })
+    .upsert({ ...data, ...(coords ?? {}), updated_at: new Date().toISOString() }, { onConflict: 'name' })
     .select()
     .single()
   if (error) throw new Error(error.message)

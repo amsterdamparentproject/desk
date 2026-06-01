@@ -58,6 +58,8 @@ function webhookData(overrides: Partial<DeskActivity> = {}): DeskActivity {
   return activity({ title: 'AI Title', newsletter_description: 'AI blurb', file_url: null, ...overrides })
 }
 
+const DEFAULT_PUBLISH_DATE = '2026-05-18'
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(createActivity).mockResolvedValue(undefined)
@@ -65,13 +67,7 @@ beforeEach(() => {
   vi.mocked(deleteActivity).mockResolvedValue(undefined)
   vi.mocked(archiveActivity).mockResolvedValue(undefined)
   vi.mocked(uploadActivityFile).mockResolvedValue(FILE_URL)
-  localStorage.clear()
 })
-
-async function switchToCapture(user: ReturnType<typeof userEvent.setup>) {
-  // Board defaults to 'triage' tab (jsdom innerWidth >= 768 so useEffect doesn't switch)
-  await user.click(await screen.findByRole('button', { name: 'capture' }))
-}
 
 // ─── Capture via AI ───────────────────────────────────────────────────────────
 
@@ -82,14 +78,14 @@ describe('capture via AI', () => {
       const user = userEvent.setup()
       vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
 
-      render(<Board initialActivities={[]} />)
-      await switchToCapture(user)
+      render(<Board initialActivities={[]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+
 
       const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
       await user.type(textarea, 'Test description')
 
       if (type === 'resource') {
-        await user.click(screen.getByText('Resource'))
+        await user.click(screen.getByText('Res'))
       }
 
       fireEvent.submit(textarea.closest('form')!)
@@ -98,7 +94,7 @@ describe('capture via AI', () => {
       expect(createActivity).toHaveBeenCalledWith(
         expect.any(String),
         type,
-        expect.objectContaining({ list_id: 'capture', status: 'processing' }),
+        expect.objectContaining({ list_id: 'ideas', status: 'processing' }),
       )
       expect(postDesk).toHaveBeenCalledWith(expect.objectContaining({ action: 'add', type }))
     },
@@ -110,14 +106,14 @@ describe('capture via AI', () => {
       const user = userEvent.setup()
       vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
 
-      render(<Board initialActivities={[]} />)
-      await switchToCapture(user)
+      render(<Board initialActivities={[]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+
 
       const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
       await user.type(textarea, 'Description with file')
 
       if (type === 'resource') {
-        await user.click(screen.getByText('Resource'))
+        await user.click(screen.getByText('Res'))
       }
 
       const fileInput = document.querySelector('input[type="file"]')! as HTMLInputElement
@@ -141,8 +137,7 @@ describe('capture via AI', () => {
     const user = userEvent.setup()
     vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
 
-    render(<Board initialActivities={[]} />)
-    await switchToCapture(user)
+    render(<Board initialActivities={[]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
 
     const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
     await user.type(textarea, 'Multi-event description')
@@ -153,7 +148,7 @@ describe('capture via AI', () => {
     expect(createActivity).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ list_id: 'capture', status: 'processing' }),
+      expect.objectContaining({ list_id: 'ideas', status: 'processing' }),
     )
     expect(postDesk).toHaveBeenCalledWith(expect.objectContaining({ action: 'add' }))
   })
@@ -164,7 +159,7 @@ describe('capture via AI', () => {
 describe('card actions', () => {
   it('archives event', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} />)
+    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
 
     // Board starts on triage — 'Archive' button is on the card (exact case avoids
     // matching the 'archived (0)' tab label)
@@ -175,8 +170,7 @@ describe('card actions', () => {
 
   it('snoozes event to day after newsletter date', async () => {
     const user = userEvent.setup()
-    // DEFAULT_PUBLISH_DATE = '2026-05-18'; snooze = next day '2026-05-19'
-    render(<Board initialActivities={[activity()]} />)
+    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
 
     await user.click(await screen.findByRole('button', { name: 'Snooze' }))
 
@@ -195,7 +189,7 @@ describe('card actions', () => {
 describe('ActivityDrawer', () => {
   it('saves newsletter_description', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} />)
+    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
 
     // Board starts on triage; activity is in 'review' column
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
@@ -204,7 +198,7 @@ describe('ActivityDrawer', () => {
     await user.clear(blurb)
     await user.type(blurb, 'Updated newsletter blurb')
 
-    await user.click(screen.getByRole('button', { name: /save draft/i }))
+    fireEvent.blur(blurb)
 
     await waitFor(() =>
       expect(saveActivity).toHaveBeenCalledWith(
@@ -217,7 +211,7 @@ describe('ActivityDrawer', () => {
 
   it('deletes activity (two-step confirm)', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} />)
+    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
 
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
 
