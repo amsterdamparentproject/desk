@@ -5,38 +5,7 @@ import Board from './components/Board';
 import { verifyDeskToken } from './utils/auth-gate';
 import { createAdminClient } from './utils/supabase/server';
 import { getLocations } from './actions/activities';
-
-function computePublishDate(allRows: any[], today: string): string {
-  // Only count newsletter_last from archived records — cards in next_newsletter
-  // also carry newsletter_last (set when they were added) and would otherwise
-  // inflate the max before the issue has actually been sent.
-  const dates = allRows
-    .filter(r => r.status === 'archived')
-    .map(r => r.newsletter_last)
-    .filter((d): d is string => typeof d === 'string' && d.length > 0)
-
-  // If no newsletters have ever been sent, default to today + 7 days
-  let next: string
-  if (dates.length === 0) {
-    const d = new Date(today)
-    d.setDate(d.getDate() + 7)
-    next = d.toISOString().split('T')[0]
-  } else {
-    const lastPublished = dates.reduce((max, d) => (d > max ? d : max))
-    const d = new Date(lastPublished)
-    d.setDate(d.getDate() + 14)
-    next = d.toISOString().split('T')[0]
-  }
-
-  // Auto-advance by 14-day increments until the date is in the future
-  while (next <= today) {
-    const d = new Date(next)
-    d.setDate(d.getDate() + 14)
-    next = d.toISOString().split('T')[0]
-  }
-
-  return next
-}
+import { computePublishDate } from './utils/publishDate';
 
 function isCurrentEvent(event: any, today: string): boolean {
   const isRecurring = !!event.repeat_frequency
