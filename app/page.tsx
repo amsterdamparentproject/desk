@@ -1,16 +1,16 @@
-// app/page.tsx
-import { cookies } from 'next/headers';
-import { DeskActivity } from '@/app/types/activity';
-import Board from './components/Board';
-import { verifyDeskToken } from './utils/auth-gate';
-import { createAdminClient } from './utils/supabase/server';
-import { getLocations } from './actions/activities';
-import { computePublishDate } from './utils/publishDate';
+import { Suspense } from 'react'
+import { cookies } from 'next/headers'
+import { DeskActivity } from '@/app/types/activity'
+import Board from './components/Board'
+import { CaptureShell } from './components/CaptureShell'
+import { verifyDeskToken } from './utils/auth-gate'
+import { createAdminClient } from './utils/supabase/server'
+import { getLocations } from './actions/activities'
+import { computePublishDate } from './utils/publishDate'
 
 function isCurrentEvent(event: any, today: string): boolean {
   const isRecurring = !!event.repeat_frequency
   if (isRecurring) {
-    // Open-ended recurring: end_date absent or same as start (first-occurrence placeholder)
     if (!event.end_date || event.end_date === event.start_date) return true
     return event.end_date >= today
   }
@@ -19,34 +19,15 @@ function isCurrentEvent(event: any, today: string): boolean {
   return true
 }
 
-export default async function DeskPage() {
-  const cookieStore = await cookies();
-  const isAuthorized = verifyDeskToken(cookieStore);
+async function BoardWithData() {
+  const supabase = createAdminClient()
+  const today = new Date().toISOString().split('T')[0]
+  const now = new Date().toISOString()
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString()
 
-  if (!isAuthorized) {
-    return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md text-center bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 text-amber-600 mb-4">
-            🔒
-          </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Desk Workspace Locked</h1>
-          <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">
-            This workspace requires a valid device token parameter to access backend records.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const supabase = createAdminClient();
-  const today = new Date().toISOString().split('T')[0];
-  const now = new Date().toISOString();
-
-  // Resolve any processing records that have been stuck for more than 5 minutes
-  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  // Auto-archive next_newsletter cards whose issue date has passed
-  await Promise.all([
+  // Run cleanup in parallel with data fetch — previously these were sequential,
+  // adding a full Supabase round-trip before the selects could start.
+  const cleanupPromise = Promise.all([
     supabase.from('events').update({ list_id: 'error', status: 'new', updated_at: now })
       .eq('status', 'processing').lt('updated_at', staleThreshold),
     supabase.from('resources').update({ list_id: 'error', status: 'new', updated_at: now })
@@ -55,22 +36,24 @@ export default async function DeskPage() {
       .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
     supabase.from('resources').update({ status: 'archived', updated_at: now })
       .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
-  ]);
+  ])
 
   const [eventsResult, resourcesResult, locations] = await Promise.all([
     supabase.from('events').select('*').order('created_at', { ascending: false }),
     supabase.from('resources').select('*').order('created_at', { ascending: false }),
     getLocations().catch(() => []),
-  ]);
+  ])
+
+  await cleanupPromise
 
   if (eventsResult.error || resourcesResult.error) {
-    const message = eventsResult.error?.message ?? resourcesResult.error?.message;
-    console.error('Database Fetch Error:', message);
+    const message = eventsResult.error?.message ?? resourcesResult.error?.message
+    console.error('Database Fetch Error:', message)
     return (
       <div className="p-6 text-sm bg-red-50 text-red-700 border border-red-200 rounded-xl">
         <span className="font-semibold">Database Schema Error:</span> {message}
       </div>
-    );
+    )
   }
 
   const events = (eventsResult.data ?? [])
@@ -90,5 +73,32 @@ export default async function DeskPage() {
 
   return (
     <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} initialPublishDate={publishDate} />
-  );
+  )
+}
+
+export default async function DeskPage() {
+  const cookieStore = await cookies()
+  const isAuthorized = verifyDeskToken(cookieStore)
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md text-center bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 text-amber-600 mb-4">
+            🔒
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Desk Workspace Locked</h1>
+          <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">
+            This workspace requires a valid device token parameter to access backend records.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Suspense fallback={<CaptureShell />}>
+      <BoardWithData />
+    </Suspense>
+  )
 }
