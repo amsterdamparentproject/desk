@@ -134,6 +134,57 @@ function pickFields(data: Partial<DeskActivity>, fields: readonly string[]) {
   )
 }
 
+// Used by the callback route for additional events returned by the AI (rest items).
+// A single upsert replaces the create+save two-step, and ignoreDuplicates prevents
+// re-runs from creating duplicate records.
+export async function upsertEnrichedActivity(
+  id: string,
+  type: 'event' | 'resource',
+  data: Partial<DeskActivity> & { description: string; list_id: ListId; status: string }
+) {
+  const supabase = createAdminClient()
+  const table = type === 'event' ? 'events' : 'resources'
+  const fields = type === 'event' ? EVENT_FIELDS : RESOURCE_FIELDS
+  const now = new Date().toISOString()
+
+  const normalized = data.repeat_frequency
+    ? { ...data, repeat_frequency: data.repeat_frequency.toLowerCase() as DeskActivity['repeat_frequency'] }
+    : data
+
+  const insert: Record<string, unknown> = {
+    id,
+    title: normalized.title || normalized.description || '(New activity)',
+    description: normalized.description,
+    newsletter_description: normalized.newsletter_description ?? normalized.description,
+    source: 'app_desk',
+    created_at: now,
+    updated_at: now,
+    ...pickFields(normalized, fields as readonly string[]),
+  }
+
+  if (type === 'event') {
+    const { frequency, days, untilDate } = parseRrule(normalized.repeat_rrule)
+    insert.repeat_next_date = frequency
+      ? computeNextDate(frequency, days, untilDate, normalized.start_date)
+      : null
+  }
+
+  const { error } = await supabase
+    .from(table)
+    .upsert(insert, { onConflict: 'title,start_date,start_time,url', ignoreDuplicates: true })
+
+  if (error) throw new Error(error.message)
+
+  if (data.location && data.latitude == null) {
+    const coords = await geocodeAddress(data.location)
+    if (coords) {
+      await supabase.from(table)
+        .update({ ...coords, updated_at: now })
+        .eq('id', id)
+    }
+  }
+}
+
 export async function deleteActivity(id: string, type: 'event' | 'resource') {
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'

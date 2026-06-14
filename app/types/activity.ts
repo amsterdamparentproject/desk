@@ -1,7 +1,7 @@
 import { ListId } from './list'
 import { TriageStatus } from './card'
 
-export type CaptureSource = 'app_desk' | 'app_website' | 'manual'
+export type CaptureSource = 'app_desk' | 'app_website' | 'manual' | 'luma'
 
 export interface Location {
   id: string

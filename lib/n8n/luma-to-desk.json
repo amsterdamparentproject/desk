@@ -1,0 +1,155 @@
+{
+  "name": "Luma → APP Desk",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.lu.ma/ics/get?entity=calendar&id=cal-w0FvwmAkcUTSsC9",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "name": "Fetch Luma iCal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const icsText = $input.first().json.data;\n\n// Unfold continued lines (iCal lines fold with a leading space)\nconst unfolded = icsText\n  .replace(/\\r\\n[ \\t]/g, '')\n  .replace(/\\n[ \\t]/g, '');\n\n// Extract VEVENT blocks\nconst blocks = unfolded\n  .split('BEGIN:VEVENT')\n  .slice(1)\n  .map(b => b.split('END:VEVENT')[0]);\n\n// Convert UTC iCal datetime to Amsterdam local date and time\nfunction parseDateTime(dtStr) {\n  if (!dtStr) return { date: null, time: null };\n  const clean = dtStr.replace('Z', '');\n  const iso = `${clean.slice(0,4)}-${clean.slice(4,6)}-${clean.slice(6,8)}T${clean.slice(9,11)}:${clean.slice(11,13)}:${clean.slice(13,15) || '00'}Z`;\n  const d = new Date(iso);\n  return {\n    date: d.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' }),\n    time: d.toLocaleTimeString('en-GB', { timeZone: 'Europe/Amsterdam', hour12: false })\n  };\n}\n\nconst today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });\nconst events = [];\n\nfor (const block of blocks) {\n  const props = {};\n  for (const line of block.trim().split(/\\r?\\n/)) {\n    const i = line.indexOf(':');\n    if (i === -1) continue;\n    props[line.slice(0, i).split(';')[0]] = line.slice(i + 1);\n  }\n\n  const start = parseDateTime(props.DTSTART);\n  const end = parseDateTime(props.DTEND);\n\n  // Skip past events\n  if (!start.date || start.date < today) continue;\n\n  // Only set end_date if the event spans multiple days\n  if (end.date === start.date) end.date = null;\n\n  const desc = (props.DESCRIPTION || '').replace(/\\\\n/g, '\\n');\n  const urlMatch = desc.match(/https:\\/\\/luma\\.com\\/\\S+/);\n  const url = urlMatch ? urlMatch[0].split('\\n')[0] : null;\n\n  const geo = (props.GEO || '').split(';');\n\n  // Strip venue name (first segment) from location — keep address only\n  const locationRaw = props.LOCATION || null;\n  const location = locationRaw ? locationRaw.split(', ').slice(1).join(', ') : null;\n\n  events.push({\n    json: {\n      title: props.SUMMARY || '',\n      description: url ? `See event page: ${url}` : '',\n      start_date: start.date,\n      start_time: start.time,\n      end_date: end.date,\n      end_time: end.time,\n      location,\n      latitude: geo[0] ? parseFloat(geo[0]) : null,\n      longitude: geo[1] ? parseFloat(geo[1]) : null,\n      url,\n      organization: 'Amsterdam Parent Project',\n      source: 'luma',\n      status: 'new',\n      list_id: 'capture'\n    }\n  });\n}\n\nreturn events;"
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "name": "Parse iCal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "Scrape single URL",
+        "url": "={{ $json.url }}"
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440005",
+      "name": "Scrape Luma page",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const scrapedItems = $input.all();\nconst originalItems = $('Parse iCal').all();\n\nreturn scrapedItems.map((scraped, i) => {\n  const event = originalItems[i].json;\n  const jsonLd = scraped.json.metadata?.jsonLd;\n  const eventJsonLd = Array.isArray(jsonLd) && jsonLd[0]?.['@type'] === 'Event' ? jsonLd[0] : null;\n\n  const description =\n    eventJsonLd?.description ||\n    scraped.json.metadata?.description ||\n    scraped.json.markdown?.slice(0, 500) ||\n    event.description;\n\n  const tagline = description.split('\\n')[0];\n  const newsletter_description = description;\n\n  // Enrich location data with usual APP hosting spots\n  if (event.location === 'Vasco Da Gamastraat 65, 1057 VJ Amsterdam, Netherlands') {\n    event.area = 'West';\n    event.neighborhood = 'De Baarsjes';\n  }\n  if (event.location?.includes('Museum')) {\n    event.area = 'South';\n    event.neighborhood = 'Museumplein';\n  }\n\n  return { json: { ...event, description, tagline, newsletter_description } };\n});"
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440006",
+      "name": "Enrich description",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $('Parse iCal').item.json }];"
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440007",
+      "name": "Scrape error fallback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=YOUR_SUPABASE_URL/rest/v1/events?on_conflict=title,start_date,start_time,url",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_SERVICE_ROLE_KEY"
+            },
+            {
+              "name": "Content-Profile",
+              "value": "activities"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=ignore-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "550e8400-e29b-41d4-a716-446655440004",
+      "name": "Insert to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [{ "node": "Fetch Luma iCal", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Luma iCal": {
+      "main": [
+        [{ "node": "Parse iCal", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse iCal": {
+      "main": [
+        [{ "node": "Scrape Luma page", "type": "main", "index": 0 }]
+      ]
+    },
+    "Scrape Luma page": {
+      "main": [
+        [{ "node": "Enrich description", "type": "main", "index": 0 }],
+        [{ "node": "Scrape error fallback", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enrich description": {
+      "main": [
+        [{ "node": "Insert to Supabase", "type": "main", "index": 0 }]
+      ]
+    },
+    "Scrape error fallback": {
+      "main": [
+        [{ "node": "Insert to Supabase", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

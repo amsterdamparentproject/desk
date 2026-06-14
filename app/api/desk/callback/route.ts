@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { saveActivity, createActivity } from '@/app/actions/activities'
+import { saveActivity, upsertEnrichedActivity } from '@/app/actions/activities'
 import { DeskActivity } from '@/app/types/activity'
 
 export async function POST(request: NextRequest) {
@@ -26,13 +26,13 @@ export async function POST(request: NextRequest) {
 
   for (const item of rest) {
     const newId = crypto.randomUUID()
-    await createActivity(newId, item.type ?? first.type, {
+    await upsertEnrichedActivity(newId, item.type ?? first.type, {
+      ...item,
+      id: newId,
       description: item.description ?? '',
       list_id: 'review',
       status: 'processed',
-      file_url: item.file_url ?? null,
     })
-    await saveActivity(newId, item.type ?? first.type, { ...item, id: newId, list_id: 'review', status: 'processed' })
   }
 
   return NextResponse.json({ ok: true })

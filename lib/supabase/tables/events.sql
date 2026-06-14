@@ -53,3 +53,15 @@ CREATE TABLE activities.events (
 );
 
 CREATE INDEX events_lat_lng_idx ON activities.events (latitude, longitude);
+
+-- Unique constraint for deduplication (Luma iCal sync + AI parser duplicates)
+ALTER TABLE activities.events ADD CONSTRAINT events_title_date_url_unique UNIQUE (title, start_date, start_time, url);
+
+-- View: APP-owned events only. Supports SELECT, INSERT, UPDATE, DELETE.
+-- WITH CHECK OPTION prevents writes that would set organization to anything other than 'Amsterdam Parent Project'.
+CREATE VIEW activities.app_events
+WITH (security_invoker = true) AS
+SELECT *
+FROM activities.events
+WHERE organization = 'Amsterdam Parent Project'
+WITH CHECK OPTION;

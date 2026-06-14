@@ -24,9 +24,10 @@ CREATE TYPE activities.triage_status AS ENUM (
 
 -- 3. Capture Source: Where did this come from?
 CREATE TYPE activities.capture_source AS ENUM (
-  'app_desk', 
-  'app_website', 
-  'manual'
+  'app_desk',
+  'app_website',
+  'manual',
+  'luma'
 );
 
 -- 4. Day Name: For automated grouping

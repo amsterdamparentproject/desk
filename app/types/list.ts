@@ -18,13 +18,13 @@ export interface ListProps {
 
 // 'capture' kept here so it appears in the "In list" drawer dropdown for legacy records
 export const CAPTURE_LISTS: ListProps[] = [
-  { id: 'capture', label: 'Capture', finishLabel: 'Done editing', finishTarget: () => 'review' },
+  { id: 'capture', label: 'Capture', finishLabel: 'Accept', finishTarget: () => 'review' },
 ]
 
 export const TRIAGE_LISTS: ListProps[] = [
   { id: 'ideas',  label: 'Ideas',      finishLabel: 'Send to review', finishTarget: () => 'review' },
-  { id: 'review', label: 'To review',  finishLabel: 'Done editing',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
-  { id: 'error',  label: 'Errors',     finishLabel: 'Done editing',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'review', label: 'To review',  finishLabel: 'Accept',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
+  { id: 'error',  label: 'Errors',     finishLabel: 'Accept',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
 ]
 
 export const NEWSLETTER_LISTS: ListProps[] = [

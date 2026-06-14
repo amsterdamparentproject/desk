@@ -695,6 +695,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 <option value="app_desk">APP Desk</option>
                 <option value="app_website">APP Website</option>
                 <option value="manual">Manual</option>
+                <option value="luma">Luma</option>
               </select>
             </Field>
 
