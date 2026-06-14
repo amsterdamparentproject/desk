@@ -38,5 +38,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL(`/share?${params.toString()}`, request.url))
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+  return NextResponse.redirect(new URL(`/share?${params.toString()}`, `${proto}://${host}`))
 }
