@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { captureFromShare } from '@/app/actions/activities'
 import { CaptureCardForm } from './card/CaptureCardForm'
 import { TRIAGE_LISTS } from '@/app/types/list'
 import type { CaptureDataProps } from '@/app/types/activity'
@@ -14,12 +13,10 @@ export function CaptureShell() {
   const router = useRouter()
 
   const handleAdd = (data: CaptureDataProps) => {
-    captureFromShare({
-      title: '',
-      description: data.description,
-      url: '',
-      type: data.type,
-      use_ai: data.use_ai,
+    fetch('/api/share/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '', description: data.description, url: '', type: data.type, use_ai: data.use_ai }),
     })
       .then(() => router.refresh())
       .catch(err => {

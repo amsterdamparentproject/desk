@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Send, Sparkles, ImagePlus, X } from 'lucide-react'
-import { captureFromShare, uploadActivityFile, saveActivity } from '@/app/actions/activities'
 
 interface ShareFormProps {
   initialDescription: string
@@ -59,20 +58,30 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
     if (!canSubmit) return
     setSubmitting(true)
     try {
-      // Pass the pre-generated ID when the file is already in Supabase,
-      // so captureFromShare uses the same ID and can include the file_url in the insert.
-      const id = await captureFromShare({
-        title,
-        description,
-        url,
-        type,
-        use_ai: useAi,
-        ...(uploadedId && uploadedUrl ? { id: uploadedId, file_url: uploadedUrl } : {}),
-      })
+      let body: BodyInit
+      let headers: HeadersInit | undefined
+
       if (pendingFile) {
-        const fileUrl = await uploadActivityFile(id, pendingFile)
-        await saveActivity(id, type, { file_url: fileUrl })
+        const fd = new FormData()
+        fd.append('title', title)
+        fd.append('description', description)
+        fd.append('url', url)
+        fd.append('type', type)
+        fd.append('use_ai', String(useAi))
+        if (uploadedId) fd.append('id', uploadedId)
+        if (uploadedUrl) fd.append('file_url', uploadedUrl)
+        fd.append('file', pendingFile)
+        body = fd
+      } else {
+        body = JSON.stringify({
+          title, description, url, type, use_ai: useAi,
+          ...(uploadedId && uploadedUrl ? { id: uploadedId, file_url: uploadedUrl } : {}),
+        })
+        headers = { 'Content-Type': 'application/json' }
       }
+
+      const res = await fetch('/api/share/submit', { method: 'POST', headers, body })
+      if (!res.ok) throw new Error(`Submit failed: ${res.status}`)
       router.push('/')
     } catch (err) {
       console.error('Share capture failed:', err)

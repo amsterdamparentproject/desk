@@ -5,7 +5,6 @@ import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity, Location } from '../types/activity'
 import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
-import { postDesk } from '../../lib/PostToWebhook'
 import { archiveActivity, createActivity, deleteActivity, finishNewsletterIssue, moveActivity, pollForUpdates, saveActivity, uploadActivityFile } from '../actions/activities'
 import { Calendar, Check, Newspaper, RotateCcw, Trash2 } from 'lucide-react'
 import { Card } from './card/Card'
@@ -301,8 +300,8 @@ export default function Board({ initialActivities, initialLocations = [], initia
 
         const postDeskData = { ...captureData, file_url }
 
-        const result = await postDesk({ ...postDeskData, id, action: 'add' })
-        if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
+        const res = await fetch('/api/desk/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...postDeskData, id, action: 'add' }) })
+        if (!res.ok) throw new Error(`Webhook failed with status ${res.status}`)
       } catch (err) {
         disarmProcessingTimeout(id)
         console.error('Capture Error:', err)
@@ -350,8 +349,8 @@ export default function Board({ initialActivities, initialLocations = [], initia
     }, 2 * 60 * 1000))
     try {
       await saveActivity(activity.id, activity.type, { status: 'processing' })
-      const result = await postDesk({ ...activity, id: activity.id, action: 'update', use_ai: true, file: null })
-      if (!result.success) throw new Error(`Webhook failed with status ${result.status}`)
+      const res = await fetch('/api/desk/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...activity, id: activity.id, action: 'update', use_ai: true, file: null }) })
+      if (!res.ok) throw new Error(`Webhook failed with status ${res.status}`)
     } catch (err) {
       disarmProcessingTimeout(activity.id)
       console.error('Send to AI Error:', err)
