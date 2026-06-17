@@ -9,6 +9,17 @@ const nextConfig: NextConfig = {
       allowedOrigins: ['null'],
     },
   },
+  async headers() {
+    return [
+      {
+        // Prevent browsers and CDNs from caching the share page so the PWA always
+        // loads fresh JavaScript after a deployment. Without this, old cached JS
+        // can still reference server action IDs from a previous build.
+        source: '/share/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+    ]
+  },
 }
 
 export default nextConfig
