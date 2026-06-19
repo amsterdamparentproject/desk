@@ -400,15 +400,18 @@ export default function Board({ initialActivities, initialLocations = [], initia
     new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
 
   const publishedRecurring = activities
-    .filter(e => e.status === 'published' && !!e.repeat_rrule)
+    .filter(e => e.status === 'published' && e.type === 'event' && !!e.repeat_rrule)
     .sort(byUpdatedDesc)
   const publishedPast = activities
-    .filter(e => e.status === 'published' && !e.repeat_rrule)
+    .filter(e => e.status === 'published' && e.type === 'event' && !e.repeat_rrule)
+    .sort(byUpdatedDesc)
+  const publishedResources = activities
+    .filter(e => e.status === 'published' && e.type === 'resource')
     .sort(byUpdatedDesc)
   const archivedActivities = activities
     .filter(e => e.status === 'archived')
     .sort(byUpdatedDesc)
-  const allArchiveActivities = [...publishedRecurring, ...publishedPast, ...archivedActivities]
+  const allArchiveActivities = [...publishedRecurring, ...publishedPast, ...publishedResources, ...archivedActivities]
 
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
@@ -497,9 +500,10 @@ export default function Board({ initialActivities, initialLocations = [], initia
           )}
           <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
             {([
-              { label: 'Published · Recurring', items: publishedRecurring, accent: 'text-green-600' },
-              { label: 'Published · Past',      items: publishedPast,      accent: 'text-blue-600'  },
-              { label: 'Archive',               items: archivedActivities, accent: 'text-red-500'   },
+              { label: 'Published · Recurring', items: publishedRecurring,  accent: 'text-green-600'  },
+              { label: 'Published · Past',      items: publishedPast,       accent: 'text-blue-600'   },
+              { label: 'Published · Resources', items: publishedResources,  accent: 'text-purple-600' },
+              { label: 'Archive',               items: archivedActivities,  accent: 'text-red-500'    },
             ] as const).map(({ label, items, accent }) => (
               <div key={label} className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-200 bg-white">
