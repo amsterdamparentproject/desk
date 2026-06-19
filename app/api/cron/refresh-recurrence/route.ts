@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/app/utils/supabase/server'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabaseClient = SupabaseClient<any, any, any>
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 
 function getYesterday(): string {
@@ -10,7 +13,7 @@ function getYesterday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-async function refreshDb(supabase: SupabaseClient, yesterday: string) {
+async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
   const now = new Date().toISOString()
 
   const { data: events, error } = await supabase
