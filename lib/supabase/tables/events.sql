@@ -43,6 +43,9 @@ CREATE TABLE activities.events (
   newsletter_highlight boolean DEFAULT false,
   calendar_skip boolean DEFAULT false,
   calendar_sent boolean DEFAULT false,
+
+  -- Postpartum Post
+  postpartum_post boolean NOT NULL DEFAULT true,
   
   -- Location Details
   location text,

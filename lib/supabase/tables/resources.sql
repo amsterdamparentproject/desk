@@ -25,6 +25,9 @@ CREATE TABLE activities.resources (
   newsletter_description text,
   newsletter_last date,
   newsletter_highlight boolean DEFAULT false,
+
+  -- Postpartum Post
+  postpartum_post boolean NOT NULL DEFAULT true,
   
   -- Location Details
   location text,

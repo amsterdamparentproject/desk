@@ -11,9 +11,17 @@ CREATE TABLE activities.locations (
   area text,
   neighborhood text,
 
+  -- Additional details
+  url text,
+  description text,
+  categories text[] DEFAULT '{}',
+
   -- Coordinates (optional, for future map use)
   latitude numeric(9, 6),
-  longitude numeric(9, 6)
+  longitude numeric(9, 6),
+
+  -- Postpartum Post
+  postpartum_post boolean NOT NULL DEFAULT true
 );
 
 CREATE INDEX locations_lat_lng_idx ON activities.locations (latitude, longitude);

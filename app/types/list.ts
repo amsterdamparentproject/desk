@@ -1,4 +1,4 @@
-export type Tab = 'triage' | 'newsletter' | 'archived'
+export type Tab = 'triage' | 'newsletter' | 'published' | 'archived' | 'post'
 
 export type ListId =
   | 'ideas'

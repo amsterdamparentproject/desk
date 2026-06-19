@@ -1,6 +1,6 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
-import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw, BookmarkPlus } from 'lucide-react'
+import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw, BookmarkPlus, Mail } from 'lucide-react'
 import { DeskActivity, DEFAULT_DESK_ACTIVITY, Location, RepeatFrequency } from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
@@ -139,7 +139,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     )
   }
 
-  const repeatNextDate = computeNextDate(repeatFrequency, effectiveDays, '', formData.start_date)
+  const repeatNextDate = (formData.repeat_next_date && formData.repeat_next_date.length >= 10 ? formData.repeat_next_date.slice(0, 10) : null) ?? computeNextDate(repeatFrequency, effectiveDays, '', formData.start_date)
   const rrulePreview = buildRrule({ frequency: repeatFrequency, days: effectiveDays, untilDate: repeatUntil })
 
   const [isMultiDay, setIsMultiDay] = useState(() => {
@@ -265,6 +265,15 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           </button>
         </div>
 
+        {activity.status === 'published' && activity.newsletter_last && (
+          <div className="bg-green-800 px-5 py-3 flex items-center gap-2.5">
+            <Check size={14} className="text-white shrink-0" />
+            <span className="text-sm font-black text-white tracking-wide">
+              Published in {new Date(activity.newsletter_last + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} issue
+            </span>
+          </div>
+        )}
+
         <div className={`p-4 md:p-8 space-y-6 md:space-y-8 pb-16 ${readOnly ? 'pointer-events-none select-none opacity-60' : ''}`}>
 
           {/* Primary content */}
@@ -347,6 +356,13 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               icon={<Star size={14} className={formData.newsletter_highlight ? "fill-current text-amber-500" : "text-slate-400"} />}
               checked={!!formData.newsletter_highlight}
               onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
+            />
+
+            <Toggle
+              label="Postpartum Post"
+              icon={<Mail size={14} className={formData.postpartum_post ? "text-violet-500" : "text-slate-400"} />}
+              checked={!!formData.postpartum_post}
+              onChange={(v) => { handleChange('postpartum_post', v); onSaveDraft({ ...formData, postpartum_post: v }) }}
             />
 
             <Field label="Last newsletter issue">

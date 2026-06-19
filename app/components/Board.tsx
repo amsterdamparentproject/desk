@@ -5,8 +5,8 @@ import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity, Location } from '../types/activity'
 import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
-import { archiveActivity, createActivity, deleteActivity, finishNewsletterIssue, moveActivity, pollForUpdates, saveActivity, uploadActivityFile } from '../actions/activities'
-import { Calendar, Check, Newspaper, RotateCcw, Trash2 } from 'lucide-react'
+import { archiveActivity, createActivity, deleteActivity, finishNewsletterIssue, moveActivity, pollForUpdates, saveActivity, updateLocation, uploadActivityFile } from '../actions/activities'
+import { Check, Newspaper, RotateCcw, Trash2, MapPin, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card } from './card/Card'
 import { NewsletterDrawer } from './NewsletterDrawer'
 
@@ -104,6 +104,18 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     const allIds = [...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map(col => col.id)
     return new Set(allIds)
   })
+  const [collapsedPostSections, setCollapsedPostSections] = useState<Set<string>>(new Set())
+  const togglePostSection = (key: string) =>
+    setCollapsedPostSections(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  const [postColFilter, setPostColFilter] = useState<Record<'single' | 'recurring' | 'locations', 'all' | 'post'>>({
+    single: 'all', recurring: 'all', locations: 'all',
+  })
+  const togglePostColFilter = (col: 'single' | 'recurring' | 'locations') =>
+    setPostColFilter(prev => ({ ...prev, [col]: prev[col] === 'all' ? 'post' : 'all' }))
 
   // Returns the newsletter_last value to write when a card moves between lists.
   // undefined = no change needed; null = clear it; string = set it.
@@ -176,6 +188,32 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
         ? { ...e, list_id: activity.list_id, status: activity.status, newsletter_last: activity.newsletter_last }
         : e
       ))
+    }
+  }
+
+  const handleToggleLocationPost = async (id: string) => {
+    const loc = locations.find(l => l.id === id)
+    if (!loc) return
+    const next = !loc.postpartum_post
+    setLocations(prev => prev.map(l => l.id === id ? { ...l, postpartum_post: next } : l))
+    try {
+      await updateLocation(id, { postpartum_post: next })
+    } catch (err) {
+      console.error('Toggle location postpartum_post failed:', err)
+      setLocations(prev => prev.map(l => l.id === id ? { ...l, postpartum_post: !next } : l))
+    }
+  }
+
+  const handleTogglePostpartumPost = async (id: string, type: 'event' | 'resource') => {
+    const activity = activities.find(a => a.id === id)
+    if (!activity) return
+    const next = !activity.postpartum_post
+    setActivities(prev => prev.map(a => a.id === id ? { ...a, postpartum_post: next } : a))
+    try {
+      await saveActivity(id, type, { postpartum_post: next })
+    } catch (err) {
+      console.error('Toggle postpartum_post failed:', err)
+      setActivities(prev => prev.map(a => a.id === id ? { ...a, postpartum_post: !next } : a))
     }
   }
 
@@ -399,58 +437,267 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
   const publishedResources = activities
     .filter(e => e.status === 'published' && e.type === 'resource')
     .sort(byUpdatedDesc)
+  const publishedActivities = [...publishedRecurring, ...publishedPast, ...publishedResources]
   const archivedActivities = activities
     .filter(e => e.status === 'archived')
     .sort(byUpdatedDesc)
-  const allArchiveActivities = [...publishedRecurring, ...publishedPast, ...publishedResources, ...archivedActivities]
+  const activeTabItems = activeTab === 'published' ? publishedActivities : activeTab === 'archived' ? archivedActivities : []
+
+  // Post tab: activities relevant to this calendar month
+  const now = new Date()
+  const today = now.toISOString().split('T')[0]
+  const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0)
+  const postWindowEnd = `${nextMonthEnd.getFullYear()}-${String(nextMonthEnd.getMonth() + 1).padStart(2, '0')}-${String(nextMonthEnd.getDate()).padStart(2, '0')}`
+  const liveEvents = activities.filter(a => a.type === 'event' && a.status !== 'archived')
+  const postSingleEvents = liveEvents.filter(a => !a.repeat_rrule && !!a.start_date && a.start_date >= today && a.start_date <= postWindowEnd)
+  const postRecurringEvents = liveEvents.filter(a => !!a.repeat_rrule && !!a.repeat_next_date && a.repeat_next_date.slice(0, 10) >= today && a.repeat_next_date.slice(0, 10) <= postWindowEnd)
+  const nextMatchDate = new Date(now.getFullYear(), now.getMonth() + 1, 7)
+  const nextMatchStr = `${nextMatchDate.getFullYear()}-${String(nextMatchDate.getMonth() + 1).padStart(2, '0')}-07`
+  const postBeforeMatch = (dateKey: (a: DeskActivity) => string | null | undefined) =>
+    (a: DeskActivity) => { const d = dateKey(a)?.slice(0, 10); return !!d && d < nextMatchStr }
+  const postAfterMatch = (dateKey: (a: DeskActivity) => string | null | undefined) =>
+    (a: DeskActivity) => { const d = dateKey(a)?.slice(0, 10); return !!d && d >= nextMatchStr }
 
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
       <header className="bg-white border-b border-slate-200 z-10">
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8">
-            {(['triage', 'newsletter', 'archived'] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all ${tab === 'archived' ? 'hidden md:block' : ''} ${
-                  activeTab === tab
-                    ? tab === 'archived' ? 'text-red-500' : 'text-blue-600'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {tab === 'archived' ? `archived (${allArchiveActivities.length})` : tab}
-              </button>
-            ))}
+            {(['triage', 'newsletter', 'post', 'published', 'archived'] as Tab[]).map((tab) => {
+              const isDesktopOnly = tab === 'published' || tab === 'archived'
+              const activeColor =
+                tab === 'archived' ? 'text-red-500' :
+                tab === 'published' ? 'text-teal-600' :
+                tab === 'post' ? 'text-violet-600' :
+                'text-blue-600'
+              const label =
+                tab === 'published' ? `published` :
+                tab === 'archived'  ? `archived` :
+                tab === 'post'      ? `post` :
+                tab
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all ${isDesktopOnly ? 'hidden md:block' : ''} ${activeTab === tab ? activeColor : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center gap-2">
-              <Calendar size={12} className="text-slate-400" />
-              <label className="text-[9px] font-black uppercase tracking-widest text-green-600">Next newsletter</label>
-              <input
-                type="date"
-                value={publishDate}
-                onChange={(e) => handlePublishDateChange(e.target.value)}
-                className="text-xs font-bold text-slate-700 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
-              />
-            </div>
             <button
               onClick={() => setNewsletterOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-black uppercase tracking-widest"
             >
-              <Newspaper size={11} /> View
+              <Newspaper size={11} /> Next issue
             </button>
           </div>
         </div>
       </header>
 
-      {activeTab === 'archived' ? (
+      {activeTab === 'post' ? (
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
+          {/* Single Events */}
+          <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
+                Single Events <span className="text-slate-400">({postSingleEvents.length})</span>
+              </span>
+              <button onClick={() => togglePostColFilter('single')} className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black text-slate-400">Post</span>
+                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.single === 'post' ? 'bg-violet-600' : 'bg-slate-200'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${postColFilter.single === 'post' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {postSingleEvents.length === 0 ? (
+
+                <div className="py-10 text-center text-xs text-slate-400 italic">None in range</div>
+              ) : (
+                <>
+                  {[
+                    { label: 'This match', filter: postBeforeMatch(a => a.start_date) },
+                    { label: 'Next match', filter: postAfterMatch(a => a.start_date) },
+                  ].map(({ label, filter }) => {
+                    const key = `single-${label}`
+                    const items = postSingleEvents.filter(filter).filter(a => postColFilter.single === 'all' || a.postpartum_post).sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''))
+                    if (items.length === 0) return null
+                    const collapsed = collapsedPostSections.has(key)
+                    return (
+                      <div key={label}>
+                        <button
+                          onClick={() => togglePostSection(key)}
+                          className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                          {label}
+                          <span className="ml-auto bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">{items.length}</span>
+                        </button>
+                        {!collapsed && (
+                          <div className="space-y-1.5">
+                            {items.map(a => (
+                              <div
+                                key={a.id}
+                                className={`bg-slate-50 border rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : 'border-slate-200'}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <button onClick={() => setSelectedActivity(a)} className="flex-1 text-left">
+                                    <span className="text-xs font-bold text-slate-800 leading-snug">{a.title}</span>
+                                    {a.organization && <p className="text-[10px] text-slate-400 mt-0.5">{a.organization}</p>}
+                                  </button>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-[10px] font-black bg-slate-900 text-white px-1.5 py-0.5 rounded whitespace-nowrap">
+                                      {a.start_date ? new Date(a.start_date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
+                                    </span>
+                                    <button
+                                      onClick={() => handleTogglePostpartumPost(a.id, a.type)}
+                                      className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-colors ${a.postpartum_post ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-400 hover:bg-violet-100 hover:text-violet-600'}`}
+                                    >
+                                      Post
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Recurring Events */}
+          <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
+                Recurring Events <span className="text-slate-400">({postRecurringEvents.length})</span>
+              </span>
+              <button onClick={() => togglePostColFilter('recurring')} className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black text-slate-400">Post</span>
+                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.recurring === 'post' ? 'bg-violet-600' : 'bg-slate-200'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${postColFilter.recurring === 'post' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {postRecurringEvents.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400 italic">None in range</div>
+              ) : (
+                <>
+                  {[
+                    { label: 'This match', filter: postBeforeMatch(a => a.repeat_next_date) },
+                    { label: 'Next match', filter: postAfterMatch(a => a.repeat_next_date) },
+                  ].map(({ label, filter }) => {
+                    const key = `recurring-${label}`
+                    const items = postRecurringEvents.filter(filter).filter(a => postColFilter.recurring === 'all' || a.postpartum_post).sort((a, b) => (a.repeat_next_date ?? '').localeCompare(b.repeat_next_date ?? ''))
+                    if (items.length === 0) return null
+                    const collapsed = collapsedPostSections.has(key)
+                    return (
+                      <div key={label}>
+                        <button
+                          onClick={() => togglePostSection(key)}
+                          className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                          {label}
+                          <span className="ml-auto bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">{items.length}</span>
+                        </button>
+                        {!collapsed && (
+                          <div className="space-y-1.5">
+                            {items.map(a => (
+                              <div
+                                key={a.id}
+                                className={`border rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-slate-50'}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <button onClick={() => setSelectedActivity(a)} className="flex-1 text-left">
+                                    <span className="text-xs font-bold text-slate-800 leading-snug">{a.title}</span>
+                                    {a.organization && <p className="text-[10px] text-slate-400 mt-0.5">{a.organization}</p>}
+                                    {a.repeat_next_date && a.repeat_next_date.length >= 10 && (
+                                      <p className="text-[10px] text-slate-500 mt-0.5">
+                                        Next: {new Date(a.repeat_next_date.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                      </p>
+                                    )}
+                                  </button>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-[10px] font-black bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                      {a.repeat_frequency ?? 'recurring'}
+                                    </span>
+                                    <button
+                                      onClick={() => handleTogglePostpartumPost(a.id, a.type)}
+                                      className={`text-[10px] font-black px-1.5 py-0.5 rounded transition-colors ${a.postpartum_post ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-400 hover:bg-violet-100 hover:text-violet-600'}`}
+                                    >
+                                      Post
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Locations */}
+          <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
+                Locations <span className="text-slate-400">({locations.length})</span>
+              </span>
+              <button onClick={() => togglePostColFilter('locations')} className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black text-slate-400">Post</span>
+                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.locations === 'post' ? 'bg-violet-600' : 'bg-slate-200'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${postColFilter.locations === 'post' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+              {(() => {
+                const filtered = postColFilter.locations === 'post' ? locations.filter(l => l.postpartum_post) : locations
+                return filtered.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-slate-400 italic">No locations saved</div>
+                ) : filtered.map(loc => (
+                  <div key={loc.id} className={`border rounded-lg px-3 py-2 ${loc.postpartum_post ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-1.5 min-w-0">
+                        <MapPin size={11} className="text-slate-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 leading-snug">{loc.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">{loc.address}</p>
+                          {loc.neighborhood && <p className="text-[10px] text-slate-400">{loc.neighborhood}{loc.area ? ` · ${loc.area}` : ''}</p>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleToggleLocationPost(loc.id)}
+                        className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 transition-colors ${loc.postpartum_post ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-400 hover:bg-violet-100 hover:text-violet-600'}`}
+                      >
+                        Post
+                      </button>
+                    </div>
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </div>
+      ) : (activeTab === 'published' || activeTab === 'archived') ? (
         <div className="flex-1 overflow-y-auto">
           {selectedArchiveIds.size > 0 && (
             <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3">
               <span className="text-xs font-black text-slate-700">{selectedArchiveIds.size} selected</span>
               <button
-                onClick={() => setSelectedArchiveIds(new Set(allArchiveActivities.map(a => a.id)))}
+                onClick={() => setSelectedArchiveIds(new Set(activeTabItems.map(a => a.id)))}
                 className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
               >
                 Select all
@@ -489,24 +736,52 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
               </div>
             </div>
           )}
-          <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
-            {([
-              { label: 'Published · Recurring', items: publishedRecurring,  accent: 'text-green-600'  },
-              { label: 'Published · Past',      items: publishedPast,       accent: 'text-blue-600'   },
-              { label: 'Published · Resources', items: publishedResources,  accent: 'text-purple-600' },
-              { label: 'Archive',               items: archivedActivities,  accent: 'text-red-500'    },
-            ] as const).map(({ label, items, accent }) => (
-              <div key={label} className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
+          {activeTab === 'published' ? (
+            <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
+              {([
+                { label: 'Published · Recurring', items: publishedRecurring,  accent: 'text-green-600'  },
+                { label: 'Published · Past',      items: publishedPast,       accent: 'text-blue-600'   },
+                { label: 'Published · Resources', items: publishedResources,  accent: 'text-purple-600' },
+              ] as const).map(({ label, items, accent }) => (
+                <div key={label} className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-slate-200 bg-white">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${accent}`}>
+                      {label} <span className="text-slate-400">({items.length})</span>
+                    </span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                    {items.length === 0 ? (
+                      <div className="py-10 text-center text-xs text-slate-400 italic">None</div>
+                    ) : (
+                      items.map(activity => (
+                        <ArchivedCard
+                          key={activity.id}
+                          activity={activity}
+                          onDetails={setSelectedActivity}
+                          onRestore={handleRestoreEvent}
+                          onDelete={handleDeleteActivity}
+                          isSelected={selectedArchiveIds.has(activity.id)}
+                          onToggleSelect={() => toggleArchiveSelect(activity.id)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
+              <div className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
                 <div className="px-3 py-2 border-b border-slate-200 bg-white">
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${accent}`}>
-                    {label} <span className="text-slate-400">({items.length})</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-red-500">
+                    Archive <span className="text-slate-400">({archivedActivities.length})</span>
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {items.length === 0 ? (
+                  {archivedActivities.length === 0 ? (
                     <div className="py-10 text-center text-xs text-slate-400 italic">None</div>
                   ) : (
-                    items.map(activity => (
+                    archivedActivities.map(activity => (
                       <ArchivedCard
                         key={activity.id}
                         activity={activity}
@@ -520,8 +795,8 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
@@ -604,7 +879,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           publishDate={publishDate}
           onSendToAI={handleSendToAI}
           onDelete={handleDeleteActivity}
-          readOnly={selectedActivity.status === 'archived' || selectedActivity.status === 'published'}
+          readOnly={selectedActivity.status === 'archived'}
           onRestore={() => handleRestoreEvent(selectedActivity.id)}
           locations={locations}
           onLocationSaved={(loc) =>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit, MapPin, Clock, NotepadText, ArrowRight, CalendarCheck } from 'lucide-react'
+import { Edit, MapPin, Clock, NotepadText, ArrowRight, CalendarCheck, RefreshCw } from 'lucide-react'
 import { ALL_LISTS, ListId } from '../../types/list'
 import { CardProps } from '../../types/card'
 
@@ -169,6 +169,14 @@ export function Card({
                   {activity.location}
                 </span>
               </div>
+            </div>
+          )}
+
+          {/* Next occurrence for recurring events */}
+          {!isNewActivity && activity.repeat_next_date && activity.repeat_next_date.length >= 10 && (
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <RefreshCw size={10} />
+              <span className="text-[10px] font-bold">Next: {formatDate(activity.repeat_next_date.slice(0, 10))}</span>
             </div>
           )}
 

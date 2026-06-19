@@ -11,6 +11,10 @@ export interface Location {
   neighborhood: string | null
   latitude: number | null
   longitude: number | null
+  postpartum_post: boolean
+  url: string | null
+  description: string | null
+  categories: string[]
 }
 export type DayName = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 export type RepeatFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
@@ -45,6 +49,9 @@ export interface BaseActivity {
   newsletter_description: string;
   newsletter_last: string | null;
   newsletter_highlight: boolean;
+
+  // Postpartum Post
+  postpartum_post: boolean;
 
   // Location
   location: string | null;
@@ -148,6 +155,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   newsletter_description: '',
   newsletter_last: '',
   newsletter_highlight: false,
+  postpartum_post: true,
   location: '',
   neighborhood: '',
   area: '',

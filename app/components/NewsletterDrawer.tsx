@@ -230,7 +230,7 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
   const [confirming, setConfirming]   = useState(false)
   const [finishing, setFinishing]     = useState(false)
 
-  const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
+  const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived' && a.status !== 'published')
   const windowEnd      = addDaysStr(publishDate, 14)
   const html           = buildNewsletterHTML(nextActivities, publishDate)
   const text           = buildNewsletterText(nextActivities, publishDate)
@@ -259,9 +259,8 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
 
         {/* Body */}
         <div className="flex-1 p-6 overflow-y-auto">
-          {/* Mobile-only date input */}
-          <div className="md:hidden flex items-center gap-2 mb-5">
-            <label className="text-[9px] font-black uppercase tracking-widest text-green-600 shrink-0">Next newsletter</label>
+          <div className="flex items-center gap-2 mb-5">
+            <label className="text-[9px] font-black uppercase tracking-widest text-green-600 shrink-0">Issue date</label>
             <input
               type="date"
               value={publishDate}

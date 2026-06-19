@@ -102,6 +102,7 @@ const EVENT_FIELDS = [
   'title', 'description', 'url', 'organization', 'age_range', 'categories',
   'tagline',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
+  'postpartum_post',
   'location', 'neighborhood', 'area', 'latitude', 'longitude',
   'start_date', 'end_date', 'start_time', 'end_time', 'day_of_week', 'duration_minutes',
   'repeat_rrule', 'repeat_frequency', 'repeat_next_date', 'calendar_skip', 'calendar_sent',
@@ -111,6 +112,7 @@ const RESOURCE_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
   'title', 'description', 'url', 'organization', 'age_range', 'categories',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
+  'postpartum_post',
   'location', 'neighborhood', 'area', 'latitude', 'longitude',
 ] as const satisfies readonly (keyof WritableResource)[]
 
@@ -241,7 +243,7 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
     updated_at: new Date().toISOString(),
   }
 
-  if (type === 'event') {
+  if (type === 'event' && 'repeat_rrule' in data) {
     const { frequency, days, untilDate } = parseRrule(normalized.repeat_rrule)
     update.repeat_next_date = frequency
       ? computeNextDate(frequency, days, untilDate, normalized.start_date)
@@ -335,11 +337,24 @@ export async function getLocations(): Promise<Location[]> {
   return data ?? []
 }
 
+export async function updateLocation(id: string, data: Partial<Omit<Location, 'id'>>): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('locations')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function upsertLocation(data: {
   name: string
   address: string
   area: string | null
   neighborhood: string | null
+  url?: string | null
+  description?: string | null
+  categories?: string[]
+  postpartum_post?: boolean
 }): Promise<Location> {
   const supabase = createAdminClient()
   const coords = await geocodeAddress(data.address)
