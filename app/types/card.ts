@@ -7,9 +7,8 @@ type CardAction =
   | 'edit'
   | 'copy'
   | 'archive'
-  | 'snooze'
 
-export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'published' | 'archived' | 'snoozed';
+export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'published' | 'archived';
 
 // Base card component props
 export interface CardProps {
@@ -17,7 +16,6 @@ export interface CardProps {
   onDetails?: (activity: DeskActivity) => void // Only cards that have been processed can access the Edit pane
   onMove?: (id: string, target: ListId) => void
   onArchive?: (id: string) => void
-  onSnooze?: (id: string) => void
   showApproveButton?: boolean
   detailsAction?: React.ReactNode // Replaces the Edit button in the card header
   children?: React.ReactNode // For extending components to add custom footers

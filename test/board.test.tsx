@@ -35,7 +35,6 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
     organization: null,
     age_range: null,
     categories: [],
-    snooze_until: null,
     last_triaged_at: null,
     triage_notes: null,
     file_url: null,
@@ -169,20 +168,6 @@ describe('card actions', () => {
     await waitFor(() => expect(archiveActivity).toHaveBeenCalledWith('act-1', 'event'))
   })
 
-  it('snoozes event to day after newsletter date', async () => {
-    const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} />)
-
-    await user.click(await screen.findByRole('button', { name: 'Snooze' }))
-
-    await waitFor(() =>
-      expect(saveActivity).toHaveBeenCalledWith(
-        'act-1',
-        'event',
-        expect.objectContaining({ status: 'snoozed', snooze_until: '2026-05-19' }),
-      ),
-    )
-  })
 })
 
 // ─── ActivityDrawer ───────────────────────────────────────────────────────────

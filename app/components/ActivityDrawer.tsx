@@ -54,7 +54,7 @@ const WEEKDAYS = [
   { label: 'Sun', abbr: 'SU' },
 ]
 
-const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'edited', 'published', 'archived', 'snoozed']
+const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'edited', 'published', 'archived']
 
 const STATUS_COLORS: Record<TriageStatus, string> = {
   new:        'bg-blue-600 text-white',
@@ -63,7 +63,6 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   edited:     'bg-green-600 text-white',
   published:  'bg-teal-600 text-white',
   archived:   'bg-red-500 text-white',
-  snoozed:    'bg-slate-500 text-white',
 }
 
 export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved }: ActivityDrawerProps) {
@@ -659,33 +658,19 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 value={formData.status}
                 onChange={e => {
                   const s = e.target.value as TriageStatus
-                  if (s === 'snoozed' && publishDate) {
-                    const d = new Date(publishDate)
-                    d.setDate(d.getDate() + 1)
-                    const next = { ...latestFormData.current, status: 'snoozed' as const, snooze_until: d.toISOString().split('T')[0] }
-                    setFormData(next)
-                    onSaveDraft(next)
-                  } else {
-                    const next = { ...latestFormData.current, status: s, snooze_until: s !== 'snoozed' ? null : latestFormData.current.snooze_until }
-                    setFormData(next)
-                    onSaveDraft(next)
-                  }
+                  const next = { ...latestFormData.current, status: s }
+                  setFormData(next)
+                  onSaveDraft(next)
                 }}
                 className={`w-full rounded-lg py-2 px-3 text-sm font-black uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors border-0 ${STATUS_COLORS[formData.status as TriageStatus] ?? 'bg-slate-100 text-slate-500'}`}
               >
                 {TRIAGE_STATUSES.map(s => (
-                  <option key={s} value={s}>{s === 'snoozed' ? 'Snoozed' : s}</option>
+                  <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </Field>
 
-            {formData.snooze_until && (
-              <Field label="Snoozed until">
-                <div className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}>{formData.snooze_until}</div>
-              </Field>
-            )}
-
-            <div className="flex flex-row items-center gap-2 mb-2">
+<div className="flex flex-row items-center gap-2 mb-2">
               <Field label="Record id">
                 <div className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}>{formData.id ?? 'No id'}</div>
               </Field>

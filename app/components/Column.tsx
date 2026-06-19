@@ -25,7 +25,6 @@ interface ColumnProps {
   onDetails: (activity: DeskActivity) => void
   onMove: (id: string, targetList: ListId) => void
   onArchive: (id: string) => void
-  onSnooze: (id: string) => void
   onAddEvent: (activity: CaptureDataProps) => void
   publishDate: string
 }
@@ -38,7 +37,6 @@ export function Column({
   onDetails,
   onMove,
   onArchive,
-  onSnooze,
   onAddEvent,
   publishDate,
 }: ColumnProps) {
@@ -119,7 +117,6 @@ export function Column({
               onDetails={onDetails}
               onMove={onMove}
               onArchive={onArchive}
-              onSnooze={onSnooze}
               publishDate={publishDate}
             />
           ) : (
@@ -130,8 +127,7 @@ export function Column({
                 onDetails={onDetails}
                 onMove={onMove}
                 onArchive={onArchive}
-                onSnooze={onSnooze}
-              />
+                />
             ))
           )}
         </div>
@@ -145,11 +141,10 @@ interface UpcomingEventsContentProps {
   onDetails: (activity: DeskActivity) => void
   onMove: (id: string, targetList: ListId) => void
   onArchive: (id: string) => void
-  onSnooze: (id: string) => void
   publishDate: string
 }
 
-function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSnooze, publishDate }: UpcomingEventsContentProps) {
+function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publishDate }: UpcomingEventsContentProps) {
   const [showFuture, setShowFuture] = useState(false)
 
   const windowStart = new Date().toISOString().split('T')[0]
@@ -172,7 +167,6 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSno
             onDetails={onDetails}
             onMove={onMove}
             onArchive={onArchive}
-            onSnooze={onSnooze}
           />
         ))
       )}
@@ -200,8 +194,7 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onSno
                   onDetails={onDetails}
                   onMove={onMove}
                   onArchive={onArchive}
-                  onSnooze={onSnooze}
-                />
+                    />
               ))}
             </div>
           )}

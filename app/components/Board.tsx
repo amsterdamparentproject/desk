@@ -211,22 +211,6 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     }
   }
 
-  const handleSnoozeEvent = async (id: string) => {
-    const activity = activities.find(e => e.id === id)
-    if (!activity) return
-    const d = new Date(publishDate)
-    d.setUTCDate(d.getUTCDate() + 1)
-    const snoozeUntil = d.toISOString().split('T')[0]
-    const updated = { ...activity, status: 'snoozed' as const, snooze_until: snoozeUntil }
-    setActivities(prev => prev.map(e => e.id === id ? updated : e))
-    try {
-      await saveActivity(id, activity.type, updated)
-    } catch (err) {
-      console.error('Snooze failed:', err)
-      setActivities(prev => prev.map(e => e.id === id ? activity : e))
-    }
-  }
-
   const handleDeleteActivity = async (id: string, type: 'event' | 'resource') => {
     setActivities(prev => prev.filter(e => e.id !== id))
     try {
@@ -577,7 +561,6 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
               onMove={handleMoveEvent}
               onAddEvent={handleAddEvent}
               onArchive={handleArchiveEvent}
-              onSnooze={handleSnoozeEvent}
               publishDate={publishDate}
             />
           </div>
