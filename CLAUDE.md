@@ -62,7 +62,7 @@ Cookie-based, not session-based. `verifyDeskToken` checks `app_desk_token` cooki
 
 ### Database schema source files
 
-`lib/supabase/` contains the canonical schema definitions (not migrations). To add a new enum value, update the `.sql` file and run `ALTER TYPE ... ADD VALUE '...'` directly in the Supabase SQL editor.
+`lib/supabase/` contains the canonical schema definitions and migrations. Schema changes go in `lib/supabase/migrations/` as `YYYYMMDD_description.sql` files and are run manually in the Supabase SQL editor. Update the relevant `.sql` definition file alongside any migration.
 
 ## Environment variables
 

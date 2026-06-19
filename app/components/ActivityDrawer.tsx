@@ -54,13 +54,14 @@ const WEEKDAYS = [
   { label: 'Sun', abbr: 'SU' },
 ]
 
-const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'edited', 'archived', 'snoozed']
+const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'edited', 'published', 'archived', 'snoozed']
 
 const STATUS_COLORS: Record<TriageStatus, string> = {
   new:        'bg-blue-600 text-white',
   processing: 'bg-amber-500 text-white',
   processed:  'bg-purple-600 text-white',
   edited:     'bg-green-600 text-white',
+  published:  'bg-teal-600 text-white',
   archived:   'bg-red-500 text-white',
   snoozed:    'bg-slate-500 text-white',
 }

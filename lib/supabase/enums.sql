@@ -14,11 +14,12 @@ CREATE TYPE activities.desk_list AS ENUM (
 
 -- 2. Triage Status: The "Health/Phase" of the record
 CREATE TYPE activities.triage_status AS ENUM (
-  'new', 
-  'processing', 
-  'processed', 
-  'edited', 
-  'archived', 
+  'new',
+  'processing',
+  'processed',
+  'edited',
+  'published',
+  'archived',
   'snoozed'
 );
 

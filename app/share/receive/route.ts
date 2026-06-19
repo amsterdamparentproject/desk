@@ -6,7 +6,7 @@ import { createAdminClient } from '@/app/utils/supabase/server'
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
   if (!verifyDeskToken(cookieStore)) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return NextResponse.redirect(new URL('/', request.url), 303)
   }
 
   const formData = await request.formData()
@@ -40,5 +40,8 @@ export async function POST(request: NextRequest) {
 
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host
   const proto = request.headers.get('x-forwarded-proto') ?? 'https'
-  return NextResponse.redirect(new URL(`/share?${params.toString()}`, `${proto}://${host}`))
+  // 303 forces the browser to follow up with a GET. The default (307) preserves
+  // the POST method, which would re-POST to the /share page and make Next.js
+  // treat it as a Server Action call → "Failed to find Server Action".
+  return NextResponse.redirect(new URL(`/share?${params.toString()}`, `${proto}://${host}`), 303)
 }

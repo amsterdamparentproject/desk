@@ -9,7 +9,7 @@ type CardAction =
   | 'archive'
   | 'snooze'
 
-export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'archived' | 'snoozed';
+export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'published' | 'archived' | 'snoozed';
 
 // Base card component props
 export interface CardProps {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/app/utils/supabase/server'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 
 function getYesterday(): string {
@@ -9,28 +10,20 @@ function getYesterday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-n8n-webhook-secret')
-  if (!secret || secret !== process.env.N8N_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const supabase = createAdminClient()
-  const yesterday = getYesterday()
+async function refreshDb(supabase: SupabaseClient, yesterday: string) {
+  const now = new Date().toISOString()
 
   const { data: events, error } = await supabase
     .from('events')
-    .select('id, repeat_rrule, start_date')
+    .select('id, title, repeat_rrule, start_date, repeat_next_date')
     .not('repeat_rrule', 'is', null)
     .neq('status', 'archived')
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
+  if (error) return { error: error.message }
 
-  const now = new Date().toISOString()
   let updated = 0
   let skipped = 0
+  const changes: { title: string; old_date: string | null; new_date: string | null }[] = []
 
   for (const event of events ?? []) {
     const { frequency, days, untilDate } = parseRrule(event.repeat_rrule)
@@ -50,8 +43,44 @@ export async function POST(req: NextRequest) {
       skipped++
     } else {
       updated++
+      changes.push({
+        title: event.title,
+        old_date: event.repeat_next_date ?? null,
+        new_date: nextDate,
+      })
     }
   }
 
-  return NextResponse.json({ updated, skipped })
+  return { updated, skipped, changes }
+}
+
+export async function POST(req: NextRequest) {
+  const secret = req.headers.get('x-n8n-webhook-secret')
+  if (!secret || secret !== process.env.N8N_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const yesterday = getYesterday()
+
+  const prodResult = await refreshDb(createAdminClient(), yesterday)
+  if ('error' in prodResult) {
+    return NextResponse.json({ error: prodResult.error }, { status: 500 })
+  }
+
+  // Refresh test DB if env vars are present
+  let testResult: Awaited<ReturnType<typeof refreshDb>> | null = null
+  const testUrl = process.env.NEXT_PUBLIC_TEST_SUPABASE_URL
+  const testKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY
+  if (testUrl && testKey) {
+    const testClient = createClient(testUrl, testKey, {
+      db: { schema: 'activities' },
+      auth: { persistSession: false },
+    })
+    testResult = await refreshDb(testClient, yesterday)
+  }
+
+  return NextResponse.json({
+    prod: prodResult,
+    ...(testResult !== null ? { test: testResult } : {}),
+  })
 }

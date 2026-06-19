@@ -279,7 +279,7 @@ export async function finishNewsletterIssue(
   publishDate: string,
 ) {
   const supabase = createAdminClient()
-  const update = { newsletter_last: publishDate, status: 'archived', updated_at: new Date().toISOString() }
+  const update = { newsletter_last: publishDate, status: 'published', updated_at: new Date().toISOString() }
   await Promise.all([
     eventIds.length    ? supabase.from('events').update(update).in('id', eventIds)      : Promise.resolve(),
     resourceIds.length ? supabase.from('resources').update(update).in('id', resourceIds) : Promise.resolve(),

@@ -14,7 +14,7 @@ export function computePublishDate(
   today: string,
 ): string {
   const dates = allRows
-    .filter(r => r.status === 'archived')
+    .filter(r => r.status === 'published' || r.status === 'archived')
     .map(r => r.newsletter_last)
     .filter((d): d is string => typeof d === 'string' && d.length > 0)
 

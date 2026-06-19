@@ -396,9 +396,19 @@ export default function Board({ initialActivities, initialLocations = [], initia
   }, [processingActivities.length])
 
   const currentColumns = activeTab === 'triage' ? TRIAGE_LISTS : activeTab === 'newsletter' ? NEWSLETTER_LISTS : []
+  const byUpdatedDesc = (a: DeskActivity, b: DeskActivity) =>
+    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+
+  const publishedRecurring = activities
+    .filter(e => e.status === 'published' && !!e.repeat_rrule)
+    .sort(byUpdatedDesc)
+  const publishedPast = activities
+    .filter(e => e.status === 'published' && !e.repeat_rrule)
+    .sort(byUpdatedDesc)
   const archivedActivities = activities
     .filter(e => e.status === 'archived')
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    .sort(byUpdatedDesc)
+  const allArchiveActivities = [...publishedRecurring, ...publishedPast, ...archivedActivities]
 
   return (
     <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
@@ -415,7 +425,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                {tab === 'archived' ? `archived (${archivedActivities.length})` : tab}
+                {tab === 'archived' ? `archived (${allArchiveActivities.length})` : tab}
               </button>
             ))}
           </div>
@@ -446,7 +456,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
             <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3">
               <span className="text-xs font-black text-slate-700">{selectedArchiveIds.size} selected</span>
               <button
-                onClick={() => setSelectedArchiveIds(new Set(archivedActivities.map(a => a.id)))}
+                onClick={() => setSelectedArchiveIds(new Set(allArchiveActivities.map(a => a.id)))}
                 className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
               >
                 Select all
@@ -485,25 +495,37 @@ export default function Board({ initialActivities, initialLocations = [], initia
               </div>
             </div>
           )}
-          <div className="p-4">
-            {archivedActivities.length === 0 ? (
-              <div className="py-16 text-center text-sm text-slate-400 italic">No archived records</div>
-            ) : (
-              <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-3 space-y-3">
-                {archivedActivities.map(activity => (
-                  <div key={activity.id} className="break-inside-avoid">
-                    <ArchivedCard
-                      activity={activity}
-                      onDetails={setSelectedActivity}
-                      onRestore={handleRestoreEvent}
-                      onDelete={handleDeleteActivity}
-                      isSelected={selectedArchiveIds.has(activity.id)}
-                      onToggleSelect={() => toggleArchiveSelect(activity.id)}
-                    />
-                  </div>
-                ))}
+          <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
+            {([
+              { label: 'Published · Recurring', items: publishedRecurring, accent: 'text-green-600' },
+              { label: 'Published · Past',      items: publishedPast,      accent: 'text-blue-600'  },
+              { label: 'Archive',               items: archivedActivities, accent: 'text-red-500'   },
+            ] as const).map(({ label, items, accent }) => (
+              <div key={label} className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-slate-200 bg-white">
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${accent}`}>
+                    {label} <span className="text-slate-400">({items.length})</span>
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {items.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-slate-400 italic">None</div>
+                  ) : (
+                    items.map(activity => (
+                      <ArchivedCard
+                        key={activity.id}
+                        activity={activity}
+                        onDetails={setSelectedActivity}
+                        onRestore={handleRestoreEvent}
+                        onDelete={handleDeleteActivity}
+                        isSelected={selectedArchiveIds.has(activity.id)}
+                        onToggleSelect={() => toggleArchiveSelect(activity.id)}
+                      />
+                    ))
+                  )}
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
       ) : (
@@ -525,7 +547,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
                 })
               }}
               activities={activities
-                .filter(e => e.list_id === col.id && e.status !== 'archived')
+                .filter(e => e.list_id === col.id && e.status !== 'archived' && e.status !== 'published')
                 .sort((a, b) => {
                   if (col.id === 'upcoming_events') {
                     const today = new Date().toISOString().split('T')[0]
@@ -559,7 +581,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
           onPublishDateChange={handlePublishDateChange}
           onClose={() => setNewsletterOpen(false)}
           onFinishIssue={async () => {
-            const next = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived')
+            const next = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived' && a.status !== 'published')
             if (!next.length) return
             const eventIds    = next.filter(a => a.type === 'event').map(a => a.id)
             const resourceIds = next.filter(a => a.type === 'resource').map(a => a.id)
@@ -567,7 +589,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
             const newPublishDate = d.toISOString().split('T')[0]
             setActivities(prev => prev.map(a =>
               next.some(n => n.id === a.id)
-                ? { ...a, newsletter_last: publishDate, status: 'archived' as const }
+                ? { ...a, newsletter_last: publishDate, status: 'published' as const }
                 : a
             ))
             handlePublishDateChange(newPublishDate)
@@ -588,7 +610,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
           publishDate={publishDate}
           onSendToAI={handleSendToAI}
           onDelete={handleDeleteActivity}
-          readOnly={selectedActivity.status === 'archived'}
+          readOnly={selectedActivity.status === 'archived' || selectedActivity.status === 'published'}
           onRestore={() => handleRestoreEvent(selectedActivity.id)}
           locations={locations}
           onLocationSaved={(loc) =>

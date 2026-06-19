@@ -32,9 +32,9 @@ async function BoardWithData() {
       .eq('status', 'processing').lt('updated_at', staleThreshold),
     supabase.from('resources').update({ list_id: 'error', status: 'new', updated_at: now })
       .eq('status', 'processing').lt('updated_at', staleThreshold),
-    supabase.from('events').update({ status: 'archived', updated_at: now })
+    supabase.from('events').update({ status: 'published', updated_at: now })
       .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
-    supabase.from('resources').update({ status: 'archived', updated_at: now })
+    supabase.from('resources').update({ status: 'published', updated_at: now })
       .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
   ])
 
@@ -57,7 +57,7 @@ async function BoardWithData() {
   }
 
   const events = (eventsResult.data ?? [])
-    .filter(e => e.status === 'archived' || isCurrentEvent(e, today))
+    .filter(e => e.status === 'archived' || e.status === 'published' || isCurrentEvent(e, today))
     .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
 
   const resources = (resourcesResult.data ?? [])
