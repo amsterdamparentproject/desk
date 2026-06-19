@@ -22,19 +22,19 @@ export function computePublishDate(
   if (dates.length === 0) {
     // No newsletters sent yet — default to one week out
     const d = new Date(today)
-    d.setDate(d.getDate() + 7)
+    d.setUTCDate(d.getUTCDate() + 7)
     next = d.toISOString().split('T')[0]
   } else {
     const lastPublished = dates.reduce((max, d) => (d > max ? d : max))
     const d = new Date(lastPublished)
-    d.setDate(d.getDate() + 14)
+    d.setUTCDate(d.getUTCDate() + 14)
     next = d.toISOString().split('T')[0]
   }
 
   // Advance until future
   while (next <= today) {
     const d = new Date(next)
-    d.setDate(d.getDate() + 14)
+    d.setUTCDate(d.getUTCDate() + 14)
     next = d.toISOString().split('T')[0]
   }
 

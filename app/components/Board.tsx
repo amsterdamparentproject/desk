@@ -67,21 +67,28 @@ function ArchivedCard({ activity, onDetails, onRestore, onDelete, isSelected, on
   )
 }
 
+const PUBLISH_DATE_KEY = 'desk_publish_date'
+
 interface BoardProps {
   initialActivities: DeskActivity[];
   initialLocations?: Location[];
-  initialPublishDate: string;
 }
 
-export default function Board({ initialActivities, initialLocations = [], initialPublishDate } : BoardProps) {
+export default function Board({ initialActivities, initialLocations = [] } : BoardProps) {
   const [locations, setLocations] = useState<Location[]>(initialLocations)
   const [activeTab, setActiveTab] = useState<Tab>('triage');
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
-  const [publishDate, setPublishDate] = useState<string>(initialPublishDate);
+  const [publishDate, setPublishDate] = useState<string>('')
+
+  useEffect(() => {
+    const stored = localStorage.getItem(PUBLISH_DATE_KEY)
+    if (stored) setPublishDate(stored)
+  }, [])
 
   const handlePublishDateChange = (date: string) => {
-    setPublishDate(date);
+    setPublishDate(date)
+    localStorage.setItem(PUBLISH_DATE_KEY, date)
   };
 
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
@@ -208,7 +215,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
     const activity = activities.find(e => e.id === id)
     if (!activity) return
     const d = new Date(publishDate)
-    d.setDate(d.getDate() + 1)
+    d.setUTCDate(d.getUTCDate() + 1)
     const snoozeUntil = d.toISOString().split('T')[0]
     const updated = { ...activity, status: 'snoozed' as const, snooze_until: snoozeUntil }
     setActivities(prev => prev.map(e => e.id === id ? updated : e))
@@ -589,7 +596,7 @@ export default function Board({ initialActivities, initialLocations = [], initia
             if (!next.length) return
             const eventIds    = next.filter(a => a.type === 'event').map(a => a.id)
             const resourceIds = next.filter(a => a.type === 'resource').map(a => a.id)
-            const d = new Date(publishDate); d.setDate(d.getDate() + 14)
+            const d = new Date(publishDate); d.setUTCDate(d.getUTCDate() + 14)
             const newPublishDate = d.toISOString().split('T')[0]
             setActivities(prev => prev.map(a =>
               next.some(n => n.id === a.id)

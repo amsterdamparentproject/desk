@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Board from '../app/components/Board'
 import { createActivity, saveActivity, deleteActivity, archiveActivity, uploadActivityFile } from '../app/actions/activities'
-import { postDesk } from '../lib/PostToWebhook'
 import type { DeskActivity } from '../app/types/activity'
 
 vi.mock('../app/actions/activities', () => ({
@@ -16,9 +15,8 @@ vi.mock('../app/actions/activities', () => ({
   pollForUpdates: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('../lib/PostToWebhook', () => ({
-  postDesk: vi.fn(),
-}))
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
 
 const FILE_URL = 'https://storage.example.com/activities/test.jpg'
 
@@ -67,6 +65,9 @@ beforeEach(() => {
   vi.mocked(deleteActivity).mockResolvedValue(undefined)
   vi.mocked(archiveActivity).mockResolvedValue(undefined)
   vi.mocked(uploadActivityFile).mockResolvedValue(FILE_URL)
+  fetchMock.mockResolvedValue({ ok: true } as Response)
+  localStorage.clear()
+  localStorage.setItem('desk_publish_date', DEFAULT_PUBLISH_DATE)
 })
 
 // ─── Capture via AI ───────────────────────────────────────────────────────────
@@ -76,9 +77,7 @@ describe('capture via AI', () => {
     'creates %s without file',
     async (type) => {
       const user = userEvent.setup()
-      vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
-
-      render(<Board initialActivities={[]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+      render(<Board initialActivities={[]} />)
 
 
       const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
@@ -96,7 +95,10 @@ describe('capture via AI', () => {
         type,
         expect.objectContaining({ list_id: 'ideas', status: 'processing' }),
       )
-      expect(postDesk).toHaveBeenCalledWith(expect.objectContaining({ action: 'add', type }))
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+        '/api/desk/send',
+        expect.objectContaining({ method: 'POST', body: expect.stringContaining('"action":"add"') }),
+      ))
     },
   )
 
@@ -104,9 +106,7 @@ describe('capture via AI', () => {
     'creates %s with file (uploads first and preserves file_url)',
     async (type) => {
       const user = userEvent.setup()
-      vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
-
-      render(<Board initialActivities={[]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+      render(<Board initialActivities={[]} />)
 
 
       const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
@@ -135,9 +135,7 @@ describe('capture via AI', () => {
 
   it('fires webhook and creates seed record (multi-item split handled by callback route)', async () => {
     const user = userEvent.setup()
-    vi.mocked(postDesk).mockResolvedValue({ success: true, status: 200, data: null })
-
-    render(<Board initialActivities={[]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+    render(<Board initialActivities={[]} />)
 
     const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
     await user.type(textarea, 'Multi-event description')
@@ -150,7 +148,10 @@ describe('capture via AI', () => {
       expect.any(String),
       expect.objectContaining({ list_id: 'ideas', status: 'processing' }),
     )
-    expect(postDesk).toHaveBeenCalledWith(expect.objectContaining({ action: 'add' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/desk/send',
+      expect.objectContaining({ method: 'POST', body: expect.stringContaining('"action":"add"') }),
+    ))
   })
 })
 
@@ -159,7 +160,7 @@ describe('capture via AI', () => {
 describe('card actions', () => {
   it('archives event', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+    render(<Board initialActivities={[activity()]} />)
 
     // Board starts on triage — 'Archive' button is on the card (exact case avoids
     // matching the 'archived (0)' tab label)
@@ -170,7 +171,7 @@ describe('card actions', () => {
 
   it('snoozes event to day after newsletter date', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+    render(<Board initialActivities={[activity()]} />)
 
     await user.click(await screen.findByRole('button', { name: 'Snooze' }))
 
@@ -189,7 +190,7 @@ describe('card actions', () => {
 describe('ActivityDrawer', () => {
   it('saves newsletter_description', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+    render(<Board initialActivities={[activity()]} />)
 
     // Board starts on triage; activity is in 'review' column
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
@@ -211,7 +212,7 @@ describe('ActivityDrawer', () => {
 
   it('deletes activity (two-step confirm)', async () => {
     const user = userEvent.setup()
-    render(<Board initialActivities={[activity()]} initialPublishDate={DEFAULT_PUBLISH_DATE} />)
+    render(<Board initialActivities={[activity()]} />)
 
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
 

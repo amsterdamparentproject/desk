@@ -6,7 +6,6 @@ import { CaptureShell } from './components/CaptureShell'
 import { verifyDeskToken } from './utils/auth-gate'
 import { createAdminClient } from './utils/supabase/server'
 import { getLocations } from './actions/activities'
-import { computePublishDate } from './utils/publishDate'
 
 function isCurrentEvent(event: any, today: string): boolean {
   const isRecurring = !!event.repeat_frequency
@@ -66,13 +65,8 @@ async function BoardWithData() {
   const activities = [...events, ...resources]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-  const publishDate = computePublishDate(
-    [...(eventsResult.data ?? []), ...(resourcesResult.data ?? [])],
-    today,
-  )
-
   return (
-    <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} initialPublishDate={publishDate} />
+    <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} />
   )
 }
 
