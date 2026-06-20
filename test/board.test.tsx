@@ -1,9 +1,14 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Board from '../app/components/Board'
 import { createActivity, saveActivity, deleteActivity, archiveActivity, uploadActivityFile } from '../app/actions/activities'
 import type { DeskActivity } from '../app/types/activity'
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
 
 vi.mock('../app/actions/activities', () => ({
   createActivity: vi.fn(),
@@ -79,14 +84,13 @@ describe('capture via AI', () => {
       render(<Board initialActivities={[]} />)
 
 
-      const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
+      const sectionLabel = type === 'resource' ? 'Resource' : 'Event'
+      const heading = await screen.findByText(sectionLabel, { selector: 'p' })
+      const form = heading.closest('form')!
+      const textarea = within(form).getByPlaceholderText('Paste links, type titles, or add notes...')
       await user.type(textarea, 'Test description')
 
-      if (type === 'resource') {
-        await user.click(screen.getByText('Res'))
-      }
-
-      fireEvent.submit(textarea.closest('form')!)
+      fireEvent.submit(form)
 
       await waitFor(() => expect(createActivity).toHaveBeenCalledTimes(1))
       expect(createActivity).toHaveBeenCalledWith(
@@ -108,18 +112,17 @@ describe('capture via AI', () => {
       render(<Board initialActivities={[]} />)
 
 
-      const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
+      const sectionLabel = type === 'resource' ? 'Resource' : 'Event'
+      const heading = await screen.findByText(sectionLabel, { selector: 'p' })
+      const form = heading.closest('form')!
+      const textarea = within(form).getByPlaceholderText('Paste links, type titles, or add notes...')
       await user.type(textarea, 'Description with file')
 
-      if (type === 'resource') {
-        await user.click(screen.getByText('Res'))
-      }
-
-      const fileInput = document.querySelector('input[type="file"]')! as HTMLInputElement
+      const fileInput = form.querySelector('input[type="file"]')! as HTMLInputElement
       const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
       await user.upload(fileInput, file)
 
-      fireEvent.submit(textarea.closest('form')!)
+      fireEvent.submit(form)
 
       await waitFor(() => expect(uploadActivityFile).toHaveBeenCalledWith(expect.any(String), file))
       await waitFor(() =>
@@ -136,9 +139,11 @@ describe('capture via AI', () => {
     const user = userEvent.setup()
     render(<Board initialActivities={[]} />)
 
-    const textarea = await screen.findByPlaceholderText('Paste links, type titles, or add notes...')
+    const heading = await screen.findByText('Event', { selector: 'p' })
+    const form = heading.closest('form')!
+    const textarea = within(form).getByPlaceholderText('Paste links, type titles, or add notes...')
     await user.type(textarea, 'Multi-event description')
-    fireEvent.submit(textarea.closest('form')!)
+    fireEvent.submit(form)
 
     // Only the seed createActivity call — extra items created server-side by /api/desk/callback
     await waitFor(() => expect(createActivity).toHaveBeenCalledTimes(1))

@@ -20,6 +20,7 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
         <Image
           src="/app_desk_logo.png"
           alt="Amsterdam Parent Project"
+          loading="eager"
           width={30}
           height={30}
           className="rounded-sm"

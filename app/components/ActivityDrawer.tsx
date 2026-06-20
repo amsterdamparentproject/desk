@@ -253,7 +253,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
         )}
 
         {/* Header */}
-        <div className={`sticky top-0 border-b border-slate-100 p-4 flex items-center justify-between z-20 ${readOnly ? 'bg-slate-500' : 'bg-blue-600'}`}>
+        <div className={`sticky top-0 p-4 flex items-center justify-between z-20 ${readOnly ? 'bg-slate-500' : 'bg-blue-600'}`}>
           <div className="flex items-center gap-2">
             {readOnly ? <Archive size={18} className="text-white ml-3" /> : <Edit size={18} className="text-white ml-3" />}
             <span className="text-lg tracking-wide text-white font-bold pl-2 py-1 rounded">
@@ -268,9 +268,25 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
         {activity.status === 'published' && activity.newsletter_last && (
           <div className="bg-green-800 px-5 py-3 flex items-center gap-2.5">
             <Check size={14} className="text-white shrink-0" />
-            <span className="text-sm font-black text-white tracking-wide">
+            <span className="text-sm font-black text-white tracking-wide flex-1">
               Published in {new Date(activity.newsletter_last + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} issue
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                const next = {
+                  ...latestFormData.current,
+                  newsletter_last: null,
+                  status: 'edited' as const,
+                  list_id: 'review' as import('../types/list').ListId,
+                }
+                setFormData(next)
+                onSaveDraft(next)
+              }}
+              className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-lg bg-white/20 text-white hover:bg-white/30 transition-colors whitespace-nowrap"
+            >
+              Mark as unpublished
+            </button>
           </div>
         )}
 
@@ -308,26 +324,6 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 )}
               </div>
             </Field>
-            <Field label="Host Organization">
-              <OrgCombobox
-                value={formData.organization ?? ''}
-                locations={locations}
-                inputStyle={inputStyle}
-                onChange={(val) => handleChange('organization', val)}
-                onSelectLocation={(loc) => {
-                  handleChange('organization', loc.name)
-                  requestApplyLocation(loc, 'org')
-                }}
-                onBlur={handleBlurSave}
-              />
-            </Field>
-            {pendingLocation && pendingLocationSource === 'org' && (
-              <OverwriteConfirm
-                loc={pendingLocation}
-                onConfirm={() => applyLocation(pendingLocation)}
-                onCancel={() => { setPendingLocation(null); setPendingLocationSource(null) }}
-              />
-            )}
             {formData.organization === 'Amsterdam Parent Project' && (
               <Field label="Website tagline">
                 <input
@@ -351,23 +347,21 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               />
             </Field>
 
-            <Toggle
-              label="Highlight in newsletter"
-              icon={<Star size={14} className={formData.newsletter_highlight ? "fill-current text-amber-500" : "text-slate-400"} />}
-              checked={!!formData.newsletter_highlight}
-              onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
-            />
+            <div className="flex gap-4">
+              <Toggle
+                label="Highlight in newsletter"
+                icon={<Star size={14} className={formData.newsletter_highlight ? "fill-current text-amber-500" : "text-slate-400"} />}
+                checked={!!formData.newsletter_highlight}
+                onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
+              />
+              <Toggle
+                label="Postpartum Post"
+                icon={<Mail size={14} className={formData.postpartum_post ? "text-violet-500" : "text-slate-400"} />}
+                checked={!!formData.postpartum_post}
+                onChange={(v) => { handleChange('postpartum_post', v); onSaveDraft({ ...formData, postpartum_post: v }) }}
+              />
+            </div>
 
-            <Toggle
-              label="Postpartum Post"
-              icon={<Mail size={14} className={formData.postpartum_post ? "text-violet-500" : "text-slate-400"} />}
-              checked={!!formData.postpartum_post}
-              onChange={(v) => { handleChange('postpartum_post', v); onSaveDraft({ ...formData, postpartum_post: v }) }}
-            />
-
-            <Field label="Last newsletter issue">
-              <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>{formData.newsletter_last ?? '—'}</div>
-            </Field>
           </section>
 
           {/* Date & time — events only */}
@@ -544,11 +538,11 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             </section>
           )}
 
-          {/* Location */}
+          {/* Place */}
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <MapPin size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Location</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Place</h2>
               {locations.length > 0 && (
                 <div className="ml-auto">
                   <select
@@ -567,6 +561,50 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 </div>
               )}
             </div>
+
+            {/* Host org + matched location name on same row */}
+            {(() => {
+              const matchedLoc = locations.find(l => l.name.toLowerCase() === (formData.organization ?? '').toLowerCase())
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-2 md:gap-4">
+                    <Field label="Host Organization">
+                      <OrgCombobox
+                        value={formData.organization ?? ''}
+                        locations={locations}
+                        inputStyle={inputStyle}
+                        onChange={(val) => handleChange('organization', val)}
+                        onSelectLocation={(loc) => {
+                          handleChange('organization', loc.name)
+                          requestApplyLocation(loc, 'org')
+                        }}
+                        onBlur={handleBlurSave}
+                      />
+                    </Field>
+                    <Field label="Location name">
+                      <div className={`${inputStyle} text-slate-400 truncate`}>
+                        {matchedLoc ? matchedLoc.name : <span className="italic text-slate-300">No match</span>}
+                      </div>
+                    </Field>
+                  </div>
+                  {matchedLoc && !pendingLocation && (
+                    <OverwriteConfirm
+                      loc={matchedLoc}
+                      onConfirm={() => applyLocation(matchedLoc)}
+                      onCancel={() => {}}
+                      label="Overwrite location"
+                    />
+                  )}
+                  {pendingLocation && pendingLocationSource === 'org' && (
+                    <OverwriteConfirm
+                      loc={pendingLocation}
+                      onConfirm={() => applyLocation(pendingLocation)}
+                      onCancel={() => { setPendingLocation(null); setPendingLocationSource(null) }}
+                    />
+                  )}
+                </>
+              )
+            })()}
 
             {pendingLocation && pendingLocationSource === 'location' && (
               <OverwriteConfirm
@@ -871,11 +909,11 @@ function TimeInput({ value, onChange, onBlur }: { value: string, onChange: (v: s
   )
 }
 
-function OverwriteConfirm({ loc, onConfirm, onCancel }: { loc: Location, onConfirm: () => void, onCancel: () => void }) {
+function OverwriteConfirm({ loc, onConfirm, onCancel, label }: { loc: Location, onConfirm: () => void, onCancel: () => void, label?: string }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm">
       <span className="text-amber-800 font-bold flex-1">
-        Overwrite existing location with <span className="italic">{loc.name}</span>?
+        {label ?? <>Overwrite existing location with <span className="italic">{loc.name}</span>?</>}
       </span>
       <button
         type="button"

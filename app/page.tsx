@@ -55,8 +55,9 @@ async function BoardWithData() {
     )
   }
 
+  const TRIAGE_LIST_IDS = ['ideas', 'review', 'error']
   const events = (eventsResult.data ?? [])
-    .filter(e => e.status === 'archived' || e.status === 'published' || isCurrentEvent(e, today))
+    .filter(e => e.status === 'archived' || e.status === 'published' || TRIAGE_LIST_IDS.includes(e.list_id) || isCurrentEvent(e, today))
     .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
 
   const resources = (resourcesResult.data ?? [])

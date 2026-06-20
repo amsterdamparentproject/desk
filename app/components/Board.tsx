@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity, Location } from '../types/activity'
 import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
@@ -76,6 +77,8 @@ interface BoardProps {
 }
 
 export default function Board({ initialActivities, initialLocations = [] } : BoardProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [locations, setLocations] = useState<Location[]>(initialLocations)
   const [activeTab, setActiveTab] = useState<Tab>('triage');
   const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(new Set())
@@ -110,6 +113,36 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
   const [newsletterOpen, setNewsletterOpen] = useState(false)
+
+  // URL-driven drawer: ?type=event|resource|location&id=<uuid>
+  useEffect(() => {
+    const id   = searchParams.get('id')
+    const type = searchParams.get('type')
+    if (!id || !type) return
+    if (type === 'location') {
+      const loc = initialLocations.find(l => l.id === id)
+      if (loc) setSelectedLocation(loc)
+    } else {
+      const act = initialActivities.find(a => a.id === id)
+      if (act) setSelectedActivity(act)
+    }
+  }, [])
+
+  const openActivity = useCallback((activity: DeskActivity) => {
+    setSelectedActivity(activity)
+    router.replace(`?type=${activity.type}&id=${activity.id}`, { scroll: false })
+  }, [router])
+
+  const openLocation = useCallback((loc: Location) => {
+    setSelectedLocation(loc)
+    router.replace(`?type=location&id=${loc.id}`, { scroll: false })
+  }, [router])
+
+  const closeDrawer = useCallback(() => {
+    setSelectedActivity(null)
+    setSelectedLocation(null)
+    router.replace('?', { scroll: false })
+  }, [router])
   const processingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const disarmProcessingTimeout = (id: string) => {
@@ -174,7 +207,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
       ? { ...updated, status: 'archived' as const }
       : { ...updated, list_id: targetList, status: 'edited' as const, ...(delta !== undefined ? { newsletter_last: delta } : {}) }
     setActivities(prev => prev.map(e => e.id === updated.id ? withListAndStatus : e))
-    setSelectedActivity(null)
+    closeDrawer()
     try {
       if (shouldArchive) {
         await archiveActivity(updated.id, updated.type)
@@ -235,6 +268,26 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     } catch (err) {
       console.error('moveLocation failed:', err)
       setLocations(prev => prev.map(l => l.id === id ? { ...l, list_id: locations.find(x => x.id === id)?.list_id ?? 'ideas' } : l))
+    }
+  }
+
+  const handlePublishLocation = async (id: string, addToPost: boolean) => {
+    setLocations(prev => prev.map(l => l.id === id ? { ...l, status: 'published', postpartum_post: addToPost } : l))
+    try {
+      await updateLocation(id, { status: 'published', postpartum_post: addToPost })
+    } catch (err) {
+      console.error('publishLocation failed:', err)
+      setLocations(prev => prev.map(l => l.id === id ? { ...l, status: 'edited', postpartum_post: false } : l))
+    }
+  }
+
+  const handleArchiveLocation = async (id: string) => {
+    setLocations(prev => prev.map(l => l.id === id ? { ...l, status: 'archived' } : l))
+    try {
+      await updateLocation(id, { status: 'archived' })
+    } catch (err) {
+      console.error('archiveLocation failed:', err)
+      setLocations(prev => prev.map(l => l.id === id ? { ...l, status: 'edited' } : l))
     }
   }
 
@@ -580,7 +633,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                                 className={`bg-slate-50 border-2 rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : a.type === 'resource' ? 'border-orange-200' : 'border-blue-200'}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <button onClick={() => setSelectedActivity(a)} className="flex-1 text-left">
+                                  <button onClick={() => openActivity(a)} className="flex-1 text-left">
                                     <span className="text-xs font-bold text-slate-800 leading-snug">{a.title}</span>
                                     {a.organization && <p className="text-[10px] text-slate-400 mt-0.5">{a.organization}</p>}
                                   </button>
@@ -653,7 +706,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                                 className={`border-2 rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : a.type === 'resource' ? 'border-orange-200 bg-slate-50' : 'border-blue-200 bg-slate-50'}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
-                                  <button onClick={() => setSelectedActivity(a)} className="flex-1 text-left">
+                                  <button onClick={() => openActivity(a)} className="flex-1 text-left">
                                     <span className="text-xs font-bold text-slate-800 leading-snug">{a.title}</span>
                                     {a.organization && <p className="text-[10px] text-slate-400 mt-0.5">{a.organization}</p>}
                                     {a.repeat_next_date && a.repeat_next_date.length >= 10 && (
@@ -709,7 +762,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                 const renderCard = (loc: Location) => (
                   <div key={loc.id} className={`border rounded-lg px-3 py-2 ${loc.postpartum_post ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => setSelectedLocation(loc)} className="flex items-start gap-1.5 min-w-0 text-left hover:opacity-70 transition-opacity">
+                      <button onClick={() => openLocation(loc)} className="flex items-start gap-1.5 min-w-0 text-left hover:opacity-70 transition-opacity">
                         <MapPin size={11} className="text-slate-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-800 leading-snug">{loc.name}</p>
@@ -802,9 +855,9 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           {activeTab === 'published' ? (
             <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
               {([
-                { label: 'Recurring', items: publishedRecurring },
-                { label: 'Past',      items: publishedPast      },
-                { label: 'Resources', items: publishedResources },
+                { label: 'Recurring',  items: publishedRecurring,  isLocation: false },
+                { label: 'Past',       items: publishedPast,       isLocation: false },
+                { label: 'Resources',  items: publishedResources,  isLocation: false },
               ] as const).map(({ label, items }) => (
                 <div key={label} className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
                   <div className="p-4 bg-green-600 flex items-center justify-between">
@@ -819,7 +872,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                         <ArchivedCard
                           key={activity.id}
                           activity={activity}
-                          onDetails={setSelectedActivity}
+                          onDetails={openActivity}
                           onRestore={handleRestoreEvent}
                           onDelete={handleDeleteActivity}
                           isSelected={selectedArchiveIds.has(activity.id)}
@@ -830,6 +883,38 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                   </div>
                 </div>
               ))}
+              {/* Locations */}
+              {(() => {
+                const publishedLocs = locations.filter(l => l.status === 'published')
+                return (
+                  <div className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
+                    <div className="p-4 bg-green-600 flex items-center justify-between">
+                      <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Locations</h2>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-700 text-white">{publishedLocs.length}</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                      {publishedLocs.length === 0 ? (
+                        <div className="py-10 text-center text-xs text-slate-400 italic">None</div>
+                      ) : publishedLocs.map(loc => (
+                        <div
+                          key={loc.id}
+                          onClick={() => openLocation(loc)}
+                          className="bg-white border-2 border-violet-200 rounded-xl px-3 py-2 cursor-pointer hover:border-violet-400 transition-colors"
+                        >
+                          <div className="flex items-start gap-1.5">
+                            <MapPin size={11} className="text-violet-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-black text-slate-800 truncate">{loc.name}</p>
+                              {loc.neighborhood && <p className="text-[10px] text-slate-400">{loc.neighborhood}{loc.area ? ` · ${loc.area}` : ''}</p>}
+                            </div>
+                            {loc.postpartum_post && <span className="text-[9px] font-black uppercase tracking-widest text-violet-500 shrink-0">Post</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           ) : (
             <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
@@ -843,12 +928,27 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                         <ArchivedCard
                           key={activity.id}
                           activity={activity}
-                          onDetails={setSelectedActivity}
+                          onDetails={openActivity}
                           onRestore={handleRestoreEvent}
                           onDelete={handleDeleteActivity}
                           isSelected={selectedArchiveIds.has(activity.id)}
                           onToggleSelect={() => toggleArchiveSelect(activity.id)}
                         />
+                      ))}
+                      {locations.filter(l => l.status === 'archived').map(loc => (
+                        <div
+                          key={loc.id}
+                          onClick={() => openLocation(loc)}
+                          className="bg-white border-2 border-violet-200 rounded-xl px-3 py-2.5 cursor-pointer hover:border-violet-400 transition-colors flex flex-col"
+                        >
+                          <div className="flex items-start gap-1.5 flex-1">
+                            <MapPin size={11} className="text-violet-300 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-slate-500 truncate">{loc.name}</p>
+                              {loc.neighborhood && <p className="text-[10px] text-slate-400">{loc.neighborhood}{loc.area ? ` · ${loc.area}` : ''}</p>}
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -892,13 +992,14 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                   return a.start_date.localeCompare(b.start_date)
                 })
               }
-              onDetails={setSelectedActivity}
+              onDetails={openActivity}
               onMove={handleMoveEvent}
               onAddEvent={handleAddEvent}
               onAddLocation={handleAddLocation}
-              locations={locations.filter(l => l.list_id === col.id && l.status !== 'archived')}
-              onLocationDetails={setSelectedLocation}
-              onMoveLocation={handleMoveLocation}
+              locations={locations.filter(l => l.list_id === col.id && l.status !== 'archived' && l.status !== 'published')}
+              onLocationDetails={openLocation}
+              onMoveLocation={col.id === 'ideas' ? handleMoveLocation : undefined}
+              onPublishLocation={col.id === 'review' ? handlePublishLocation : undefined}
               pastEvents={col.id === 'review' ? activities.filter(a =>
                   a.type === 'event' &&
                   a.list_id === 'review' &&
@@ -944,11 +1045,12 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
       {selectedLocation && (
         <LocationDrawer
           location={locations.find(l => l.id === selectedLocation.id) ?? selectedLocation}
-          onClose={() => setSelectedLocation(null)}
+          onClose={closeDrawer}
           onSaved={(loc) => {
             setLocations(prev => prev.map(l => l.id === loc.id ? loc : l))
-            setSelectedLocation(null)
+            closeDrawer()
           }}
+          onArchive={handleArchiveLocation}
         />
       )}
 
@@ -957,7 +1059,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           activity={activities.find(e => e.id === selectedActivity.id) ?? selectedActivity}
           onSaveDraft={handleSaveDraft}
           onFinishEditing={handleFinishEditing}
-          onClose={() => setSelectedActivity(null)}
+          onClose={closeDrawer}
           publishDate={publishDate}
           onSendToAI={handleSendToAI}
           onDelete={handleDeleteActivity}

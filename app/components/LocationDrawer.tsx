@@ -1,7 +1,7 @@
 // components/LocationDrawer.tsx
 import { ReactNode, useState, useRef } from 'react'
 import { useAutosizeTextArea } from '../hooks/useAutosizeTextArea'
-import { X, MapPin, Edit, Check, ExternalLink, Globe, FileText, Tag, Mail } from 'lucide-react'
+import { X, MapPin, Edit, Check, ExternalLink, Globe, FileText, Tag, Mail, Trash2 } from 'lucide-react'
 import { Location } from '../types/activity'
 import { updateLocation } from '../actions/activities'
 
@@ -16,9 +16,10 @@ interface LocationDrawerProps {
   location: Location
   onClose: () => void
   onSaved: (loc: Location) => void
+  onArchive?: (id: string) => void
 }
 
-export function LocationDrawer({ location, onClose, onSaved }: LocationDrawerProps) {
+export function LocationDrawer({ location, onClose, onSaved, onArchive }: LocationDrawerProps) {
   const [formData, setFormData] = useState<Location>({ ...location })
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [categoryInput, setCategoryInput] = useState('')
@@ -247,11 +248,19 @@ export function LocationDrawer({ location, onClose, onSaved }: LocationDrawerPro
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20">
+        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-3">
+          {onArchive && (
+            <button
+              onClick={() => { onArchive(location.id); onClose() }}
+              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={saveState === 'saving'}
-            className="w-full bg-violet-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+            className="flex-1 bg-violet-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-violet-700 disabled:opacity-50 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
           >
             {saveState === 'saved'
               ? <><Check size={18} strokeWidth={3} /> Saved</>

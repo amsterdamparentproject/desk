@@ -1,5 +1,5 @@
 // components/Column.tsx
-import { ChevronDown, ChevronRight, MapPin } from 'lucide-react'
+import { ChevronDown, ChevronRight, MapPin, Check, ArrowRight, Edit, NotepadText } from 'lucide-react'
 import { ActivityCard, CaptureCardForm } from './card'
 import { CaptureDataProps, DeskActivity, Location } from '../types/activity'
 import { ListProps, ListId } from '../types/list'
@@ -32,6 +32,7 @@ interface ColumnProps {
   locations?: Location[]
   onLocationDetails?: (loc: Location) => void
   onMoveLocation?: (id: string, targetList: ListId) => void
+  onPublishLocation?: (id: string, addToPost: boolean) => void
   pastEvents?: DeskActivity[]
   publishDate: string
   color?: 'orange' | 'blue'
@@ -50,6 +51,7 @@ export function Column({
   locations = [],
   onLocationDetails,
   onMoveLocation,
+  onPublishLocation,
   pastEvents = [],
   publishDate,
   color = 'orange',
@@ -120,7 +122,7 @@ export function Column({
               <CaptureCardForm onAdd={onAddEvent} onAddLocation={onAddLocation} listId={list.id} />
             </div>
           )}
-          {list.id !== 'ideas' && list.id !== 'error' && color !== 'blue' && (
+          {list.id === 'upcoming_events' && color !== 'blue' && (
             <InlineCaptureAdd onAddEvent={onAddEvent} listId={list.id} />
           )}
 
@@ -130,6 +132,7 @@ export function Column({
               location={loc}
               onDetails={onLocationDetails}
               onMove={onMoveLocation}
+              onPublish={onPublishLocation}
             />
           ))}
 
@@ -157,20 +160,26 @@ export function Column({
             ))
           )}
 
-          {list.id === 'review' && pastEvents.length > 0 && (
+          {list.id === 'review' && (
             <div className="mt-2">
               <button
                 type="button"
-                onClick={() => setPastEventsOpen(v => !v)}
-                className="w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest text-amber-500 hover:text-amber-600 transition-colors"
+                onClick={() => pastEvents.length > 0 && setPastEventsOpen(v => !v)}
+                className={`w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                  pastEvents.length > 0
+                    ? 'text-amber-500 hover:text-amber-600 cursor-pointer'
+                    : 'text-slate-300 cursor-default'
+                }`}
               >
                 {pastEventsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 Past events
-                <span className="ml-auto bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  pastEvents.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-300'
+                }`}>
                   {pastEvents.length}
                 </span>
               </button>
-              {pastEventsOpen && (
+              {pastEventsOpen && pastEvents.length > 0 && (
                 <div className="space-y-3 mt-1">
                   {pastEvents.map(activity => (
                     <ActivityCard
@@ -259,38 +268,90 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publi
   )
 }
 
-function LocationCard({ location, onDetails, onMove }: {
+function LocationCard({ location, onDetails, onMove, onPublish }: {
   location: Location
   onDetails?: (loc: Location) => void
   onMove?: (id: string, targetList: ListId) => void
+  onPublish?: (id: string, addToPost: boolean) => void
 }) {
   return (
-    <div
-      className="bg-white border-2 border-violet-300 rounded-xl px-3 py-2.5 shadow-sm cursor-pointer hover:border-violet-400 transition-colors"
-      onClick={() => onDetails?.(location)}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-1.5 min-w-0">
-          <MapPin size={12} className="text-violet-400 mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-xs font-black text-slate-800 leading-snug truncate">{location.name}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{location.address}</p>
-            {location.neighborhood && (
-              <p className="text-[10px] text-slate-400">{location.neighborhood}{location.area ? ` · ${location.area}` : ''}</p>
-            )}
-          </div>
+    <div className="relative bg-white rounded-xl border-2 border-violet-200 hover:border-violet-400 shadow-sm overflow-hidden flex flex-col transition-all">
+      <div className="p-3 space-y-2">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <span className="text-xs font-black bg-violet-600 text-white px-1.5 py-0.5 rounded tracking-wider">
+            Location
+          </span>
+          {onDetails && (
+            <button
+              onClick={() => onDetails(location)}
+              className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+            >
+              <Edit size={12} /> Edit
+            </button>
+          )}
         </div>
-        <span className="text-[9px] font-black uppercase tracking-widest text-violet-400 shrink-0 mt-0.5">Location</span>
+
+        {/* Name */}
+        <h3
+          onClick={() => onDetails?.(location)}
+          className="font-black text-slate-900 text-sm leading-tight uppercase tracking-tight cursor-pointer hover:text-violet-600 transition-colors"
+        >
+          {location.name}
+        </h3>
+
+        {/* Meta */}
+        <div className="space-y-1">
+          {(location.neighborhood || location.area) && (
+            <div className="flex items-start gap-1.5 text-slate-500">
+              <MapPin size={10} className="mt-0.5 shrink-0" />
+              <div className="flex flex-col leading-tight overflow-hidden">
+                <span className="text-[10px] font-bold text-slate-700 uppercase">
+                  {location.neighborhood || ''}{location.neighborhood && location.area ? ` (${location.area})` : location.area ?? ''}
+                </span>
+                {location.address && <span className="text-[10px] truncate italic text-slate-400">{location.address}</span>}
+              </div>
+            </div>
+          )}
+          {location.description && (
+            <div className="flex items-start gap-1.5 text-slate-500">
+              <NotepadText size={12} className="mt-0.5 shrink-0" />
+              <span className="text-xs text-slate-500 line-clamp-3">{location.description}</span>
+            </div>
+          )}
+        </div>
       </div>
-      {onMove && (
-        <div className="mt-2 flex gap-1.5">
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); onMove(location.id, 'review') }}
-            className="px-2 py-1 text-[10px] font-black uppercase tracking-wide bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
-          >
-            Send to review
-          </button>
+
+      {/* Footer buttons */}
+      {(onMove || onPublish) && (
+        <div className="flex h-10 px-2 py-1.5 gap-1" onClick={e => e.stopPropagation()}>
+          {onMove && (
+            <button
+              type="button"
+              onClick={() => onMove(location.id, 'review')}
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-600 hover:text-white transition-colors uppercase"
+            >
+              <ArrowRight size={12} /> To review
+            </button>
+          )}
+          {onPublish && (
+            <>
+              <button
+                type="button"
+                onClick={() => onPublish(location.id, true)}
+                className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
+              >
+                <Check size={14} strokeWidth={3} /> Add to Post
+              </button>
+              <button
+                type="button"
+                onClick={() => onPublish(location.id, false)}
+                className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors uppercase"
+              >
+                <ArrowRight size={12} /> Skip Post
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
