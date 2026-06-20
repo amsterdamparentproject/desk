@@ -48,7 +48,9 @@ export function Card({
               {displayDate}
             </span>
             {activity.source === 'app_website' && (
-              <Globe size={12} className="text-green-500 shrink-0" title="Submitted via website" />
+              <span title="Submitted via website">
+                <Globe size={12} className="text-green-500 shrink-0" />
+              </span>
             )}
             <div
               ref={calIconRef}
