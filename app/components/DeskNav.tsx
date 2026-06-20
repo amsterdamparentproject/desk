@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 const NAV_LINKS = [
   { href: '/',          label: 'Activities' },
   { href: '/finances',  label: 'Finances'   },
+  { href: '/sources',   label: 'Sources'    },
 ]
 
 export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
