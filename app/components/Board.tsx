@@ -33,7 +33,7 @@ function ArchivedCard({ activity, onDetails, onRestore, onDelete, isSelected, on
 
   return (
     <Card activity={activity} onDetails={onDetails} detailsAction={checkbox}>
-      <div className="flex h-10 px-2 py-1.5 gap-1.5">
+      <div className="mt-auto flex h-10 px-2 py-1.5 gap-1.5">
         <button
           onClick={() => onRestore(activity.id)}
           className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-colors uppercase"
@@ -92,6 +92,20 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     localStorage.setItem(PUBLISH_DATE_KEY, date)
   };
 
+  // Auto-move past next_newsletter events to review
+  useEffect(() => {
+    if (!publishDate) return
+    const toMove = activities.filter(a =>
+      a.type === 'event' &&
+      a.list_id === 'next_newsletter' &&
+      a.status !== 'archived' && a.status !== 'published' &&
+      (a.end_date ? a.end_date < publishDate : (!!a.start_date && !a.repeat_rrule && a.start_date < publishDate))
+    )
+    if (toMove.length === 0) return
+    setActivities(prev => prev.map(a => toMove.find(m => m.id === a.id) ? { ...a, list_id: 'review' } : a))
+    toMove.forEach(a => moveActivity(a.id, a.type, 'review').catch(console.error))
+  }, [publishDate])
+
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
@@ -126,7 +140,6 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     toList: string,
     currentNewsletterLast: string | null | undefined,
   ): string | null | undefined => {
-    if (toList === 'next_newsletter') return publishDate
     if (fromList === 'next_newsletter' && currentNewsletterLast === publishDate) return null
     return undefined
   }
@@ -487,9 +500,10 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
             {(['triage', 'newsletter', 'post', 'published', 'archived'] as Tab[]).map((tab) => {
               const isDesktopOnly = tab === 'published' || tab === 'archived'
               const activeColor =
-                tab === 'archived' ? 'text-red-500' :
-                tab === 'published' ? 'text-teal-600' :
-                tab === 'post' ? 'text-violet-600' :
+                tab === 'archived'  ? 'text-red-500' :
+                tab === 'published' ? 'text-green-600' :
+                tab === 'post'      ? 'text-violet-600' :
+                tab === 'triage'    ? 'text-orange-500' :
                 'text-blue-600'
               const label =
                 tab === 'published' ? `published` :
@@ -522,14 +536,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
         <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
           {/* Single Events */}
           <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
-                Single Events <span className="text-slate-400">({postSingleEvents.length})</span>
-              </span>
+            <div className="p-4 bg-violet-600 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Single Events</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">{postSingleEvents.length}</span>
+              </div>
               <button onClick={() => togglePostColFilter('single')} className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black text-slate-400">Post</span>
-                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.single === 'post' ? 'bg-violet-600' : 'bg-slate-200'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${postColFilter.single === 'post' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                <span className="text-[10px] font-black text-violet-200">Post</span>
+                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.single === 'post' ? 'bg-white' : 'bg-violet-500'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full shadow transition-transform ${postColFilter.single === 'post' ? 'bg-violet-600 translate-x-3.5' : 'bg-white translate-x-0.5'}`} />
                 </div>
               </button>
             </div>
@@ -595,14 +610,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
 
           {/* Recurring Events */}
           <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
-                Recurring Events <span className="text-slate-400">({postRecurringEvents.length})</span>
-              </span>
+            <div className="p-4 bg-violet-600 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Recurring Events</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">{postRecurringEvents.length}</span>
+              </div>
               <button onClick={() => togglePostColFilter('recurring')} className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black text-slate-400">Post</span>
-                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.recurring === 'post' ? 'bg-violet-600' : 'bg-slate-200'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${postColFilter.recurring === 'post' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                <span className="text-[10px] font-black text-violet-200">Post</span>
+                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.recurring === 'post' ? 'bg-white' : 'bg-violet-500'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full shadow transition-transform ${postColFilter.recurring === 'post' ? 'bg-violet-600 translate-x-3.5' : 'bg-white translate-x-0.5'}`} />
                 </div>
               </button>
             </div>
@@ -672,14 +688,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
 
           {/* Locations */}
           <div className="flex-1 min-w-0 flex flex-col bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-3 py-2.5 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-violet-600">
-                Locations <span className="text-slate-400">({locations.length})</span>
-              </span>
+            <div className="p-4 bg-violet-600 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Locations</h2>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">{locations.length}</span>
+              </div>
               <button onClick={() => togglePostColFilter('locations')} className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black text-slate-400">Post</span>
-                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.locations === 'post' ? 'bg-violet-600' : 'bg-slate-200'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${postColFilter.locations === 'post' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                <span className="text-[10px] font-black text-violet-200">Post</span>
+                <div className={`w-7 h-4 rounded-full transition-colors relative ${postColFilter.locations === 'post' ? 'bg-white' : 'bg-violet-500'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full shadow transition-transform ${postColFilter.locations === 'post' ? 'bg-violet-600 translate-x-3.5' : 'bg-white translate-x-0.5'}`} />
                 </div>
               </button>
             </div>
@@ -785,15 +802,14 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           {activeTab === 'published' ? (
             <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
               {([
-                { label: 'Published · Recurring', items: publishedRecurring,  accent: 'text-green-600'  },
-                { label: 'Published · Past',      items: publishedPast,       accent: 'text-blue-600'   },
-                { label: 'Published · Resources', items: publishedResources,  accent: 'text-purple-600' },
-              ] as const).map(({ label, items, accent }) => (
+                { label: 'Recurring', items: publishedRecurring },
+                { label: 'Past',      items: publishedPast      },
+                { label: 'Resources', items: publishedResources },
+              ] as const).map(({ label, items }) => (
                 <div key={label} className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
-                  <div className="px-3 py-2 border-b border-slate-200 bg-white">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${accent}`}>
-                      {label} <span className="text-slate-400">({items.length})</span>
-                    </span>
+                  <div className="p-4 bg-green-600 flex items-center justify-between">
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-white">{label}</h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-700 text-white">{items.length}</span>
                   </div>
                   <div className="flex-1 overflow-y-auto p-2 space-y-2">
                     {items.length === 0 ? (
@@ -818,26 +834,23 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           ) : (
             <div className="flex flex-col md:flex-row gap-2 p-2 min-h-0 flex-1">
               <div className="flex-1 min-w-0 flex flex-col bg-slate-100 rounded-xl overflow-hidden">
-                <div className="px-3 py-2 border-b border-slate-200 bg-white">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-red-500">
-                    Archive <span className="text-slate-400">({archivedActivities.length})</span>
-                  </span>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                <div className="flex-1 overflow-y-auto p-2">
                   {archivedActivities.length === 0 ? (
                     <div className="py-10 text-center text-xs text-slate-400 italic">None</div>
                   ) : (
-                    archivedActivities.map(activity => (
-                      <ArchivedCard
-                        key={activity.id}
-                        activity={activity}
-                        onDetails={setSelectedActivity}
-                        onRestore={handleRestoreEvent}
-                        onDelete={handleDeleteActivity}
-                        isSelected={selectedArchiveIds.has(activity.id)}
-                        onToggleSelect={() => toggleArchiveSelect(activity.id)}
-                      />
-                    ))
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {archivedActivities.map(activity => (
+                        <ArchivedCard
+                          key={activity.id}
+                          activity={activity}
+                          onDetails={setSelectedActivity}
+                          onRestore={handleRestoreEvent}
+                          onDelete={handleDeleteActivity}
+                          isSelected={selectedArchiveIds.has(activity.id)}
+                          onToggleSelect={() => toggleArchiveSelect(activity.id)}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -864,6 +877,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
               }}
               activities={activities
                 .filter(e => e.list_id === col.id && e.status !== 'archived' && e.status !== 'published')
+                .filter(e => col.id !== 'review' || e.type !== 'event' || !(e.end_date ? e.end_date < publishDate : (!!e.start_date && !e.repeat_rrule && e.start_date < publishDate)))
                 .sort((a, b) => {
                   if (col.id === 'upcoming_events') {
                     const today = new Date().toISOString().split('T')[0]
@@ -885,8 +899,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
               locations={locations.filter(l => l.list_id === col.id && l.status !== 'archived')}
               onLocationDetails={setSelectedLocation}
               onMoveLocation={handleMoveLocation}
+              pastEvents={col.id === 'review' ? activities.filter(a =>
+                  a.type === 'event' &&
+                  a.list_id === 'review' &&
+                  a.status !== 'archived' && a.status !== 'published' &&
+                  (a.end_date ? a.end_date < publishDate : (!!a.start_date && !a.repeat_rrule && a.start_date < publishDate))
+                ) : undefined}
               onArchive={handleArchiveEvent}
               publishDate={publishDate}
+              color={activeTab === 'newsletter' ? 'blue' : 'orange'}
             />
           </div>
         ))}

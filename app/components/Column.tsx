@@ -32,7 +32,9 @@ interface ColumnProps {
   locations?: Location[]
   onLocationDetails?: (loc: Location) => void
   onMoveLocation?: (id: string, targetList: ListId) => void
+  pastEvents?: DeskActivity[]
   publishDate: string
+  color?: 'orange' | 'blue'
 }
 
 export function Column({
@@ -48,9 +50,12 @@ export function Column({
   locations = [],
   onLocationDetails,
   onMoveLocation,
+  pastEvents = [],
   publishDate,
+  color = 'orange',
 }: ColumnProps) {
   const [isMobile, setIsMobile] = useState(false);
+  const [pastEventsOpen, setPastEventsOpen] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -74,7 +79,9 @@ export function Column({
         }}
         disabled={isMobile ? false : true}
         className={`w-full flex items-center justify-between p-4 transition-colors md:cursor-default ${
-          isOpen ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-700'
+          isOpen
+            ? color === 'blue' ? 'bg-blue-600 text-white' : 'bg-orange-500 text-white'
+            : 'bg-slate-50 text-slate-700'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -85,7 +92,7 @@ export function Column({
               <ChevronRight size={16} className="text-slate-400" />
             )}
           </div>
-          <h2 className="font-black text-xs uppercase tracking-tighter">
+          <h2 className="text-[10px] font-black uppercase tracking-widest">
             {list.label}
           </h2>
         </div>
@@ -93,7 +100,7 @@ export function Column({
         <span
           className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
             isOpen
-              ? 'bg-blue-600 text-white'
+              ? color === 'blue' ? 'bg-blue-700 text-white' : 'bg-orange-600 text-white'
               : 'bg-slate-200 text-slate-500 md:bg-slate-100'
           }`}
         >
@@ -148,6 +155,35 @@ export function Column({
                 onArchive={onArchive}
                 />
             ))
+          )}
+
+          {list.id === 'review' && pastEvents.length > 0 && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setPastEventsOpen(v => !v)}
+                className="w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest text-amber-500 hover:text-amber-600 transition-colors"
+              >
+                {pastEventsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                Past events
+                <span className="ml-auto bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+                  {pastEvents.length}
+                </span>
+              </button>
+              {pastEventsOpen && (
+                <div className="space-y-3 mt-1">
+                  {pastEvents.map(activity => (
+                    <ActivityCard
+                      key={activity.id}
+                      activity={activity}
+                      onDetails={onDetails}
+                      onMove={onMove}
+                      onArchive={onArchive}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

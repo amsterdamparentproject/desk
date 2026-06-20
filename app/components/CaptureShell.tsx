@@ -33,7 +33,7 @@ export function CaptureShell() {
       <header className="bg-white border-b border-slate-200 z-10">
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8">
-            <span className="py-4 text-xs sm:text-sm font-black uppercase tracking-widest text-blue-600">
+            <span className="py-4 text-xs sm:text-sm font-black uppercase tracking-widest text-orange-500">
               Triage
             </span>
             <span className="py-4 text-xs sm:text-sm font-black uppercase tracking-widest text-slate-400">
