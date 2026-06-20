@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit, MapPin, Clock, NotepadText, ArrowRight, CalendarCheck, RefreshCw } from 'lucide-react'
+import { Edit, MapPin, Clock, NotepadText, CalendarCheck, RefreshCw, Globe } from 'lucide-react'
 import { ALL_LISTS, ListId } from '../../types/list'
 import { CardProps } from '../../types/card'
 
@@ -19,9 +19,6 @@ export function Card({
   detailsAction,
   children
 }: CardProps) {
-  const [showMoveMenu, setShowMoveMenu] = useState(false)
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
   const calIconRef = useRef<HTMLDivElement>(null)
   const [calTooltipPos, setCalTooltipPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -40,22 +37,8 @@ export function Card({
     ? `${activity.start_time} - ${activity.end_time ?? ''}`
     : ''
 
-  // 3. Dropdown Menu Positioning Trigger
-  const handleMoveClick = () => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
-      const MENU_WIDTH = 160
-      const left = rect.right + window.scrollX - MENU_WIDTH
-      setMenuPos({
-        top: rect.bottom + window.scrollY + 4,
-        left: Math.max(8, left),
-      })
-    }
-    setShowMoveMenu(prev => !prev)
-  }
-
   return (
-    <div className={`relative bg-white rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${showMoveMenu ? 'z-[100]' : 'z-0'} ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}>
+    <div className={`relative bg-white rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}>
       <div className="p-3 space-y-2">
         
         {/* Header: Date Badge & Action Buttons */}
@@ -64,6 +47,9 @@ export function Card({
             <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
               {displayDate}
             </span>
+            {activity.source === 'app_website' && (
+              <Globe size={12} className="text-green-500 shrink-0" title="Submitted via website" />
+            )}
             <div
               ref={calIconRef}
               onMouseEnter={() => {
@@ -89,45 +75,6 @@ export function Card({
           </div>
 
           <div className="flex flex-row gap-3">
-            {/* Move Column Dropdown Action */}
-            { onMove && !isNewActivity && (
-              <div className="relative">
-                <button
-                  ref={buttonRef}
-                  onClick={handleMoveClick}
-                  className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
-                >
-                  <ArrowRight size={12} /> Move
-                </button>
-
-                {showMoveMenu && menuPos && createPortal(
-                  <>
-                    <div className="fixed inset-0 z-[110]" onClick={() => setShowMoveMenu(false)} />
-                    <div
-                      className="fixed w-40 bg-white border border-slate-200 rounded-lg shadow-xl z-[120] py-1"
-                      style={{ top: menuPos.top, left: menuPos.left }}
-                    >
-                      {ALL_LISTS.map((list) => (
-                        <button
-                          key={list.id}
-                          disabled={activity.list_id === list.id}
-                          onClick={() => { 
-                            onMove(activity.id, list.id as ListId)
-                            setShowMoveMenu(false)
-                          }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30"
-                        >
-                          {list.label}
-                          {activity.list_id === list.id && <div className="w-1 h-1 bg-blue-600 rounded-full" />}
-                        </button>
-                      ))}
-                    </div>
-                  </>,
-                  document.body
-                )}
-              </div> 
-            )}
-
             {detailsAction ?? (onDetails && !isNewActivity && (
               <button
                 onClick={() => onDetails(activity)}

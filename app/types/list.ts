@@ -28,8 +28,8 @@ export const TRIAGE_LISTS: ListProps[] = [
 ]
 
 export const NEWSLETTER_LISTS: ListProps[] = [
-  { id: 'upcoming_events', label: 'Upcoming events', finishLabel: 'Add to newsletter', finishTarget: () => 'next_newsletter' },
-  { id: 'new_resources',   label: 'New resources',   finishLabel: 'Add to newsletter', finishTarget: () => 'next_newsletter' },
+  { id: 'upcoming_events', label: 'Upcoming events', finishLabel: 'Add', finishTarget: () => 'next_newsletter' },
+  { id: 'new_resources',   label: 'New resources',   finishLabel: 'Add', finishTarget: () => 'next_newsletter' },
   { id: 'next_newsletter', label: 'Next newsletter' },
 ]
 
