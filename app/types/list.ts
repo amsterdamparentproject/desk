@@ -22,7 +22,7 @@ export const CAPTURE_LISTS: ListProps[] = [
 ]
 
 export const TRIAGE_LISTS: ListProps[] = [
-  { id: 'ideas',  label: 'Ideas',      finishLabel: 'Send to review', finishTarget: () => 'review' },
+  { id: 'ideas',  label: 'Capture',     finishLabel: 'Send to review', finishTarget: () => 'review' },
   { id: 'review', label: 'To review',  finishLabel: 'Accept',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
   { id: 'error',  label: 'Errors',     finishLabel: 'Accept',   finishTarget: t => t === 'event' ? 'upcoming_events' : 'new_resources' },
 ]

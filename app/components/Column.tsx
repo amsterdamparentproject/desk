@@ -1,7 +1,7 @@
 // components/Column.tsx
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, MapPin } from 'lucide-react'
 import { ActivityCard, CaptureCardForm } from './card'
-import { CaptureDataProps, DeskActivity } from '../types/activity'
+import { CaptureDataProps, DeskActivity, Location } from '../types/activity'
 import { ListProps, ListId } from '../types/list'
 import { useEffect, useState } from 'react'
 
@@ -28,6 +28,10 @@ interface ColumnProps {
   onMove: (id: string, targetList: ListId) => void
   onArchive: (id: string) => void
   onAddEvent: (activity: CaptureDataProps) => void
+  onAddLocation?: (data: { name: string; address: string; area?: string | null; neighborhood?: string | null }) => void
+  locations?: Location[]
+  onLocationDetails?: (loc: Location) => void
+  onMoveLocation?: (id: string, targetList: ListId) => void
   publishDate: string
 }
 
@@ -40,6 +44,10 @@ export function Column({
   onMove,
   onArchive,
   onAddEvent,
+  onAddLocation,
+  locations = [],
+  onLocationDetails,
+  onMoveLocation,
   publishDate,
 }: ColumnProps) {
   const [isMobile, setIsMobile] = useState(false);
@@ -89,7 +97,7 @@ export function Column({
               : 'bg-slate-200 text-slate-500 md:bg-slate-100'
           }`}
         >
-          {activities.length}
+          {activities.length + locations.length}
         </span>
       </button>
 
@@ -102,14 +110,23 @@ export function Column({
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {list.id === 'ideas' && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <CaptureCardForm onAdd={onAddEvent} listId={list.id} />
+              <CaptureCardForm onAdd={onAddEvent} onAddLocation={onAddLocation} listId={list.id} />
             </div>
           )}
           {list.id !== 'ideas' && list.id !== 'error' && (
             <InlineCaptureAdd onAddEvent={onAddEvent} listId={list.id} />
           )}
 
-          {activities.length === 0 ? (
+          {locations.map(loc => (
+            <LocationCard
+              key={loc.id}
+              location={loc}
+              onDetails={onLocationDetails}
+              onMove={onMoveLocation}
+            />
+          ))}
+
+          {activities.length === 0 && locations.length === 0 ? (
             <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
               Nothing to see here 🌬️ 🛼
             </div>
@@ -203,6 +220,44 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, publi
         </div>
       )}
     </>
+  )
+}
+
+function LocationCard({ location, onDetails, onMove }: {
+  location: Location
+  onDetails?: (loc: Location) => void
+  onMove?: (id: string, targetList: ListId) => void
+}) {
+  return (
+    <div
+      className="bg-white border-2 border-violet-300 rounded-xl px-3 py-2.5 shadow-sm cursor-pointer hover:border-violet-400 transition-colors"
+      onClick={() => onDetails?.(location)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-1.5 min-w-0">
+          <MapPin size={12} className="text-violet-400 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-black text-slate-800 leading-snug truncate">{location.name}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{location.address}</p>
+            {location.neighborhood && (
+              <p className="text-[10px] text-slate-400">{location.neighborhood}{location.area ? ` · ${location.area}` : ''}</p>
+            )}
+          </div>
+        </div>
+        <span className="text-[9px] font-black uppercase tracking-widest text-violet-400 shrink-0 mt-0.5">Location</span>
+      </div>
+      {onMove && (
+        <div className="mt-2 flex gap-1.5">
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onMove(location.id, 'review') }}
+            className="px-2 py-1 text-[10px] font-black uppercase tracking-wide bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
+          >
+            Send to review
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 

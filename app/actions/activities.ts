@@ -337,6 +337,23 @@ export async function getLocations(): Promise<Location[]> {
   return data ?? []
 }
 
+export async function createLocation(data: {
+  name: string
+  address: string
+  area?: string | null
+  neighborhood?: string | null
+}): Promise<Location> {
+  const supabase = createAdminClient()
+  const coords = await geocodeAddress(data.address)
+  const { data: row, error } = await supabase
+    .from('locations')
+    .insert({ ...data, ...(coords ?? {}), list_id: 'ideas', status: 'new' })
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return row
+}
+
 export async function updateLocation(id: string, data: Partial<Omit<Location, 'id'>>): Promise<void> {
   const supabase = createAdminClient()
   const { error } = await supabase

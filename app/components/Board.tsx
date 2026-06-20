@@ -5,7 +5,8 @@ import { Column } from './Column'
 import { CaptureDataProps, createNewActivity, DeskActivity, Location } from '../types/activity'
 import { ALL_LISTS, NEWSLETTER_LISTS, TRIAGE_LISTS, ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
-import { archiveActivity, createActivity, deleteActivity, finishNewsletterIssue, moveActivity, pollForUpdates, saveActivity, updateLocation, uploadActivityFile } from '../actions/activities'
+import { LocationDrawer } from './LocationDrawer'
+import { archiveActivity, createActivity, createLocation, deleteActivity, finishNewsletterIssue, moveActivity, pollForUpdates, saveActivity, updateLocation, uploadActivityFile } from '../actions/activities'
 import { Check, Newspaper, RotateCcw, Trash2, MapPin, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card } from './card/Card'
 import { NewsletterDrawer } from './NewsletterDrawer'
@@ -93,6 +94,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
 
   const [activities, setActivities] = useState<DeskActivity[]>(initialActivities)
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
   const [newsletterOpen, setNewsletterOpen] = useState(false)
   const processingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
@@ -201,6 +203,25 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     } catch (err) {
       console.error('Toggle location postpartum_post failed:', err)
       setLocations(prev => prev.map(l => l.id === id ? { ...l, postpartum_post: !next } : l))
+    }
+  }
+
+  const handleAddLocation = async (data: { name: string; address: string; area?: string | null; neighborhood?: string | null }) => {
+    try {
+      const loc = await createLocation(data)
+      setLocations(prev => [...prev, loc])
+    } catch (err) {
+      console.error('createLocation failed:', err)
+    }
+  }
+
+  const handleMoveLocation = async (id: string, targetList: ListId) => {
+    setLocations(prev => prev.map(l => l.id === id ? { ...l, list_id: targetList } : l))
+    try {
+      await updateLocation(id, { list_id: targetList })
+    } catch (err) {
+      console.error('moveLocation failed:', err)
+      setLocations(prev => prev.map(l => l.id === id ? { ...l, list_id: locations.find(x => x.id === id)?.list_id ?? 'ideas' } : l))
     }
   }
 
@@ -541,7 +562,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                             {items.map(a => (
                               <div
                                 key={a.id}
-                                className={`bg-slate-50 border rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : 'border-slate-200'}`}
+                                className={`bg-slate-50 border-2 rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : a.type === 'resource' ? 'border-orange-200' : 'border-blue-200'}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <button onClick={() => setSelectedActivity(a)} className="flex-1 text-left">
@@ -613,7 +634,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                             {items.map(a => (
                               <div
                                 key={a.id}
-                                className={`border rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-slate-50'}`}
+                                className={`border-2 rounded-lg px-3 py-2 transition-colors ${a.postpartum_post ? 'border-violet-300 bg-violet-50' : a.type === 'resource' ? 'border-orange-200 bg-slate-50' : 'border-blue-200 bg-slate-50'}`}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <button onClick={() => setSelectedActivity(a)} className="flex-1 text-left">
@@ -665,19 +686,20 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
             <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
               {(() => {
                 const filtered = postColFilter.locations === 'post' ? locations.filter(l => l.postpartum_post) : locations
-                return filtered.length === 0 ? (
-                  <div className="py-10 text-center text-xs text-slate-400 italic">No locations saved</div>
-                ) : filtered.map(loc => (
+                if (filtered.length === 0) return <div className="py-10 text-center text-xs text-slate-400 italic">No locations saved</div>
+                const complete = filtered.filter(l => l.url && l.description)
+                const incomplete = filtered.filter(l => !l.url || !l.description)
+                const renderCard = (loc: Location) => (
                   <div key={loc.id} className={`border rounded-lg px-3 py-2 ${loc.postpartum_post ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-1.5 min-w-0">
+                      <button onClick={() => setSelectedLocation(loc)} className="flex items-start gap-1.5 min-w-0 text-left hover:opacity-70 transition-opacity">
                         <MapPin size={11} className="text-slate-400 mt-0.5 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-800 leading-snug">{loc.name}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5 truncate">{loc.address}</p>
                           {loc.neighborhood && <p className="text-[10px] text-slate-400">{loc.neighborhood}{loc.area ? ` · ${loc.area}` : ''}</p>}
                         </div>
-                      </div>
+                      </button>
                       <button
                         onClick={() => handleToggleLocationPost(loc.id)}
                         className={`text-[10px] font-black px-1.5 py-0.5 rounded shrink-0 transition-colors ${loc.postpartum_post ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-400 hover:bg-violet-100 hover:text-violet-600'}`}
@@ -686,7 +708,31 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                       </button>
                     </div>
                   </div>
-                ))
+                )
+                return (
+                  <>
+                    {[
+                      { key: 'locations-incomplete', label: 'Needs info', items: incomplete },
+                      { key: 'locations-complete', label: 'Ready', items: complete },
+                    ].map(({ key, label, items }) => {
+                      if (items.length === 0) return null
+                      const collapsed = collapsedPostSections.has(key)
+                      return (
+                        <div key={key}>
+                          <button
+                            onClick={() => togglePostSection(key)}
+                            className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                            {label}
+                            <span className="ml-auto bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">{items.length}</span>
+                          </button>
+                          {!collapsed && <div className="space-y-1.5">{items.map(renderCard)}</div>}
+                        </div>
+                      )
+                    })}
+                  </>
+                )
               })()}
             </div>
           </div>
@@ -835,6 +881,10 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
               onDetails={setSelectedActivity}
               onMove={handleMoveEvent}
               onAddEvent={handleAddEvent}
+              onAddLocation={handleAddLocation}
+              locations={locations.filter(l => l.list_id === col.id && l.status !== 'archived')}
+              onLocationDetails={setSelectedLocation}
+              onMoveLocation={handleMoveLocation}
               onArchive={handleArchiveEvent}
               publishDate={publishDate}
             />
@@ -866,6 +916,17 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
             await finishNewsletterIssue(eventIds, resourceIds, publishDate).catch(err =>
               console.error('Failed to finish newsletter issue:', err)
             )
+          }}
+        />
+      )}
+
+      {selectedLocation && (
+        <LocationDrawer
+          location={locations.find(l => l.id === selectedLocation.id) ?? selectedLocation}
+          onClose={() => setSelectedLocation(null)}
+          onSaved={(loc) => {
+            setLocations(prev => prev.map(l => l.id === loc.id ? loc : l))
+            setSelectedLocation(null)
           }}
         />
       )}

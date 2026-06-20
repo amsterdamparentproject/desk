@@ -15,6 +15,11 @@ export interface Location {
   url: string | null
   description: string | null
   categories: string[]
+  list_id: ListId
+  status: TriageStatus
+  triage_notes: string | null
+  created_at: string
+  updated_at: string
 }
 export type DayName = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 export type RepeatFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';

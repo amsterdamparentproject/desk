@@ -55,7 +55,7 @@ export function Card({
   }
 
   return (
-    <div className={`relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-blue-300 transition-all ${showMoveMenu ? 'z-[100]' : 'z-0'}`}>
+    <div className={`relative bg-white rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${showMoveMenu ? 'z-[100]' : 'z-0'} ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}>
       <div className="p-3 space-y-2">
         
         {/* Header: Date Badge & Action Buttons */}
