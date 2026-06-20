@@ -243,13 +243,6 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
     updated_at: new Date().toISOString(),
   }
 
-  if (type === 'event' && 'repeat_rrule' in data) {
-    const { frequency, days, untilDate } = parseRrule(normalized.repeat_rrule)
-    update.repeat_next_date = frequency
-      ? computeNextDate(frequency, days, untilDate, normalized.start_date)
-      : null
-  }
-
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 

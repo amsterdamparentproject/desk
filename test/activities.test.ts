@@ -48,31 +48,31 @@ describe('saveActivity – date & time', () => {
 })
 
 describe('saveActivity – repeat fields', () => {
-  it('computes repeat_next_date for weekly rrule', async () => {
+  it('passes repeat_next_date through as-is (no auto-recompute)', async () => {
+    // saveActivity no longer recomputes repeat_next_date — whatever is in the
+    // payload is saved verbatim. Recalculation is done on demand in the UI.
     const { client, mockUpdate } = makeSupabaseMock()
     vi.mocked(createAdminClient).mockReturnValue(client as any)
 
-    // 2026-06-01 is a Monday; BYDAY=MO → next occurrence is 2026-06-08
     await saveActivity('id-1', 'event', {
       repeat_rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
       repeat_frequency: 'weekly',
+      repeat_next_date: '2026-06-22',
       start_date: '2026-06-01',
     })
 
     const [updatePayload] = vi.mocked(mockUpdate).mock.calls[0]
-    const nextDate: string = updatePayload.repeat_next_date
-    expect(nextDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    const day = new Date(nextDate + 'T00:00:00').getDay() // 0=Sun, 1=Mon
-    expect(day).toBe(1) // next occurrence must be a Monday
+    expect(updatePayload.repeat_next_date).toBe('2026-06-22')
   })
 
-  it('sets repeat_next_date to null when rrule is cleared', async () => {
+  it('saves null repeat_next_date when explicitly cleared', async () => {
     const { client, mockUpdate } = makeSupabaseMock()
     vi.mocked(createAdminClient).mockReturnValue(client as any)
 
     await saveActivity('id-1', 'event', {
       repeat_rrule: null,
       repeat_frequency: null,
+      repeat_next_date: null,
       start_date: '2026-06-01',
     })
 

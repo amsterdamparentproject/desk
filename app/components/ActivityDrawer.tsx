@@ -438,29 +438,6 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                   </select>
                 </Field>
               </div>
-              <Field label="Next occurrence">
-                <div className="flex gap-2">
-                  <DateInput
-                    value={(formData.repeat_next_date ?? '').slice(0, 10)}
-                    onChange={v => handleChange('repeat_next_date', v || null)}
-                    onBlur={handleBlurSave}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = computeNextDate(repeatFrequency, effectiveDays, repeatUntil, formData.start_date)
-                      const updated = { ...latestFormData.current, repeat_next_date: next }
-                      setFormData(updated)
-                      onSaveDraft(updated)
-                    }}
-                    disabled={!repeatFrequency}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors text-xs font-black whitespace-nowrap"
-                  >
-                    <RefreshCw size={12} /> Recalculate
-                  </button>
-                </div>
-              </Field>
-
               {repeatFrequency === 'monthly' && (
                 <Field label="On">
                   <div className="flex gap-2">
@@ -495,27 +472,32 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               )}
 
               {(repeatFrequency === 'weekly' || repeatFrequency === 'biweekly') && (
-                <Field label="Days of week">
-                  <div className="flex gap-1.5 flex-wrap">
-                    {WEEKDAYS.map(({ label, abbr }) => (
-                      <button
-                        key={abbr}
-                        type="button"
-                        onClick={() => toggleRepeatDay(abbr)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
-                          repeatDays.includes(abbr)
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 items-end">
+                  <Field label="Days of week">
+                    <div className="flex gap-1.5 flex-wrap">
+                      {WEEKDAYS.map(({ label, abbr }) => (
+                        <button
+                          key={abbr}
+                          type="button"
+                          onClick={() => toggleRepeatDay(abbr)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
+                            repeatDays.includes(abbr)
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <Field label="Repeat ends (until date)">
+                    <DateInput value={repeatUntil} onChange={setRepeatUntil} onBlur={handleBlurSave} />
+                  </Field>
+                </div>
               )}
 
-              {repeatFrequency && (
+              {repeatFrequency && repeatFrequency !== 'weekly' && repeatFrequency !== 'biweekly' && (
                 <Field label="Repeat ends (until date)">
                   <DateInput value={repeatUntil} onChange={setRepeatUntil} onBlur={handleBlurSave} />
                 </Field>
@@ -526,6 +508,30 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                   <span className="text-[9px] text-green-600 font-black uppercase tracking-widest">RRULE</span>
                   <code className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg font-mono break-all">{rrulePreview}</code>
                 </div>
+              )}
+
+              {repeatFrequency && (
+                <Field label="Next occurrence">
+                  <div className="flex gap-2">
+                    <DateInput
+                      value={(formData.repeat_next_date ?? '').slice(0, 10)}
+                      onChange={v => handleChange('repeat_next_date', v || null)}
+                      onBlur={handleBlurSave}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = computeNextDate(repeatFrequency, effectiveDays, repeatUntil, formData.start_date)
+                        const updated = { ...latestFormData.current, repeat_next_date: next }
+                        setFormData(updated)
+                        onSaveDraft(updated)
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-black whitespace-nowrap"
+                    >
+                      <RefreshCw size={12} /> Recalculate
+                    </button>
+                  </div>
+                </Field>
               )}
             </section>
           )}
