@@ -1,19 +1,20 @@
 // components/card/CaptureCardForm.tsx
 import { useState, useRef, useEffect } from 'react'
-import { Paperclip, X, Send, Sparkles, MapPin } from 'lucide-react'
+import { Paperclip, X, Send, Sparkles, MapPin, AlertTriangle } from 'lucide-react'
 import { CaptureCardProps } from '../../types/card'
+import { Location } from '../../types/activity'
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 
 const fieldStyle = (ring: string) =>
   `w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 ${ring} transition-colors bg-white`
 
-export function CaptureCardForm({ onAdd, onAddLocation, listId }: CaptureCardProps) {
+export function CaptureCardForm({ onAdd, onAddLocation, listId, locations = [] }: CaptureCardProps) {
   return (
     <div className="space-y-3">
       <EventForm onAdd={onAdd} listId={listId} />
       <ResourceForm onAdd={onAdd} listId={listId} />
-      <LocationForm onAddLocation={onAddLocation} />
+      <LocationForm onAddLocation={onAddLocation} locations={locations} />
     </div>
   )
 }
@@ -150,11 +151,24 @@ function ResourceForm({ onAdd, listId }: Pick<CaptureCardProps, 'onAdd' | 'listI
   )
 }
 
-function LocationForm({ onAddLocation }: Pick<CaptureCardProps, 'onAddLocation'>) {
+function LocationForm({ onAddLocation, locations }: Pick<CaptureCardProps, 'onAddLocation'> & { locations: Location[] }) {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [area, setArea] = useState('')
   const [neighborhood, setNeighborhood] = useState('')
+  const [open, setOpen] = useState(false)
+  const comboRef = useRef<HTMLDivElement>(null)
+
+  const filtered = locations.filter(l => l.name.toLowerCase().includes(name.toLowerCase()))
+  const exactMatch = locations.find(l => l.name.toLowerCase() === name.trim().toLowerCase())
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -168,7 +182,49 @@ function LocationForm({ onAddLocation }: Pick<CaptureCardProps, 'onAddLocation'>
   return (
     <form onSubmit={handleSubmit} className="bg-white border-2 border-violet-200 rounded-xl p-3 shadow-sm space-y-2">
       <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">Location</p>
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Venue or organization name" className={f} />
+
+      {/* Name with autocomplete */}
+      <div ref={comboRef} className="relative">
+        <input
+          value={name}
+          onChange={e => { setName(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Venue or organization name"
+          className={f}
+        />
+        {open && name && filtered.length > 0 && (
+          <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-44 overflow-y-auto">
+            {filtered.map(loc => (
+              <li key={loc.id}>
+                <button
+                  type="button"
+                  onMouseDown={e => {
+                    e.preventDefault()
+                    setName(loc.name)
+                    setAddress(loc.address)
+                    setArea(loc.area ?? '')
+                    setNeighborhood(loc.neighborhood ?? '')
+                    setOpen(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-violet-50 flex items-center gap-2"
+                >
+                  <MapPin size={12} className="text-slate-400 shrink-0" />
+                  <span className="font-bold text-slate-700">{loc.name}</span>
+                  <span className="text-slate-400 text-xs truncate">{loc.address}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {exactMatch && (
+        <div className="flex items-center gap-2 px-2.5 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-700">
+          <AlertTriangle size={12} className="shrink-0" />
+          Already saved — submitting will update the existing record
+        </div>
+      )}
+
       <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Address" className={f} />
       <div className="grid grid-cols-2 gap-2">
         <select value={area} onChange={e => setArea(e.target.value)} className={`${f} cursor-pointer`}>

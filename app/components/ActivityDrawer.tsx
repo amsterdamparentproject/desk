@@ -35,7 +35,6 @@ interface ActivityDrawerProps {
   onSaveDraft: (data: DeskActivity) => void,
   onFinishEditing: (data: DeskActivity) => void,
   onClose: () => void,
-  publishDate?: string,
   onSendToAI?: (data: DeskActivity) => void,
   onDelete?: (id: string, type: 'event' | 'resource') => void,
   readOnly?: boolean,
@@ -65,7 +64,7 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   archived:   'bg-red-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, publishDate, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved }: ActivityDrawerProps) {
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
@@ -90,32 +89,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   })
   const [repeatMonthlyPos, setRepeatMonthlyPos] = useState<string>(parsedMonthly ? String(parsedMonthly.pos) : '')
   const [repeatMonthlyDay, setRepeatMonthlyDay] = useState<string>(parsedMonthly ? parsedMonthly.abbr : '')
-  const [deriveDate, setDeriveDate] = useState<string>('')
-
   const DOW_TO_ABBR = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
-
-  const handleDeriveRrule = () => {
-    const dateStr = deriveDate || repeatNextDate
-    if (!dateStr) return
-    const [y, m, day] = dateStr.split('-').map(Number)
-    const d = new Date(y, m - 1, day)
-    const abbr = DOW_TO_ABBR[d.getDay()]
-    const effectiveFreq = repeatFrequency || 'weekly'
-    setRepeatFrequency(effectiveFreq)
-    if (effectiveFreq === 'weekly' || effectiveFreq === 'biweekly') {
-      setRepeatDays([abbr])
-      setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
-    } else if (effectiveFreq === 'monthly') {
-      const dayOfMonth = d.getDate()
-      const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
-      const isLast = dayOfMonth + 7 > daysInMonth
-      const pos = isLast ? -1 : Math.ceil(dayOfMonth / 7)
-      setRepeatMonthlyPos(String(pos)); setRepeatMonthlyDay(abbr)
-      setRepeatDays([])
-    } else {
-      setRepeatDays([]); setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
-    }
-  }
 
   const effectiveDays =
     repeatFrequency === 'monthly' && repeatMonthlyPos && repeatMonthlyDay
@@ -139,7 +113,6 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     )
   }
 
-  const repeatNextDate = (formData.repeat_next_date && formData.repeat_next_date.length >= 10 ? formData.repeat_next_date.slice(0, 10) : null) ?? computeNextDate(repeatFrequency, effectiveDays, '', formData.start_date)
   const rrulePreview = buildRrule({ frequency: repeatFrequency, days: effectiveDays, untilDate: repeatUntil })
 
   const [isMultiDay, setIsMultiDay] = useState(() => {
@@ -347,6 +320,20 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               />
             </Field>
 
+            <Field label="Next issue date">
+              <input
+                type="date"
+                value={formData.newsletter_last ?? ''}
+                onChange={e => {
+                  const val = e.target.value || null
+                  const next = { ...latestFormData.current, newsletter_last: val }
+                  setFormData(next)
+                  onSaveDraft(next)
+                }}
+                className={inputStyle}
+              />
+            </Field>
+
             <div className="flex gap-4">
               <Toggle
                 label="Highlight in newsletter"
@@ -415,7 +402,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 <RefreshCw size={18} className="text-slate-700" />
                 <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Repeat</h2>
               </div>
-              <div className="grid grid-cols-2 gap-2 md:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
                 <Field label="Frequency">
                   <select
                     value={repeatFrequency}
@@ -450,24 +437,29 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     <option value="monthly">Monthly</option>
                   </select>
                 </Field>
-                <Field label="Next occurrence">
-                  <div className="flex gap-2">
-                    <DateInput
-                      value={deriveDate || repeatNextDate || ''}
-                      onChange={setDeriveDate}
-                      onBlur={handleBlurSave}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleDeriveRrule}
-                      disabled={!(deriveDate || repeatNextDate)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors text-xs font-black whitespace-nowrap"
-                    >
-                      <RefreshCw size={12} /> Derive
-                    </button>
-                  </div>
-                </Field>
               </div>
+              <Field label="Next occurrence">
+                <div className="flex gap-2">
+                  <DateInput
+                    value={(formData.repeat_next_date ?? '').slice(0, 10)}
+                    onChange={v => handleChange('repeat_next_date', v || null)}
+                    onBlur={handleBlurSave}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = computeNextDate(repeatFrequency, effectiveDays, repeatUntil, formData.start_date)
+                      const updated = { ...latestFormData.current, repeat_next_date: next }
+                      setFormData(updated)
+                      onSaveDraft(updated)
+                    }}
+                    disabled={!repeatFrequency}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors text-xs font-black whitespace-nowrap"
+                  >
+                    <RefreshCw size={12} /> Recalculate
+                  </button>
+                </div>
+              </Field>
 
               {repeatFrequency === 'monthly' && (
                 <Field label="On">
@@ -543,70 +535,35 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <div className="flex flex-row items-center gap-2 mb-2">
               <MapPin size={18} className="text-slate-700" />
               <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Place</h2>
-              {locations.length > 0 && (
-                <div className="ml-auto">
-                  <select
-                    className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 max-w-[180px]"
-                    value=""
-                    onChange={(e) => {
-                      const loc = locations.find(l => l.id === e.target.value)
-                      if (loc) requestApplyLocation(loc, 'location')
-                    }}
-                  >
-                    <option value="">Apply saved location…</option>
-                    {locations.map(loc => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
 
-            {/* Host org + matched location name on same row */}
-            {(() => {
-              const matchedLoc = locations.find(l => l.name.toLowerCase() === (formData.organization ?? '').toLowerCase())
-              return (
-                <>
-                  <div className="grid grid-cols-2 gap-2 md:gap-4">
-                    <Field label="Host Organization">
-                      <OrgCombobox
-                        value={formData.organization ?? ''}
-                        locations={locations}
-                        inputStyle={inputStyle}
-                        onChange={(val) => handleChange('organization', val)}
-                        onSelectLocation={(loc) => {
-                          handleChange('organization', loc.name)
-                          requestApplyLocation(loc, 'org')
-                        }}
-                        onBlur={handleBlurSave}
-                      />
-                    </Field>
-                    <Field label="Location name">
-                      <div className={`${inputStyle} text-slate-400 truncate`}>
-                        {matchedLoc ? matchedLoc.name : <span className="italic text-slate-300">No match</span>}
-                      </div>
-                    </Field>
-                  </div>
-                  {matchedLoc && !pendingLocation && (
-                    <OverwriteConfirm
-                      loc={matchedLoc}
-                      onConfirm={() => applyLocation(matchedLoc)}
-                      onCancel={() => {}}
-                      label="Overwrite location"
-                    />
-                  )}
-                  {pendingLocation && pendingLocationSource === 'org' && (
-                    <OverwriteConfirm
-                      loc={pendingLocation}
-                      onConfirm={() => applyLocation(pendingLocation)}
-                      onCancel={() => { setPendingLocation(null); setPendingLocationSource(null) }}
-                    />
-                  )}
-                </>
-              )
-            })()}
+            <div className="grid grid-cols-2 gap-2 md:gap-4">
+              <Field label="Host Organization">
+                <PlaceCombobox
+                  value={formData.organization ?? ''}
+                  locations={locations}
+                  inputStyle={inputStyle}
+                  onChange={(val) => handleChange('organization', val)}
+                  onSelectLocation={(loc) => {
+                    handleChange('organization', loc.name)
+                    requestApplyLocation(loc, 'org')
+                  }}
+                  onBlur={handleBlurSave}
+                />
+              </Field>
+              <Field label="Location name">
+                <PlaceCombobox
+                  value={pendingLocation?.name ?? locations.find(l => l.name.toLowerCase() === (formData.organization ?? '').toLowerCase())?.name ?? ''}
+                  locations={locations}
+                  inputStyle={inputStyle}
+                  onChange={() => {}}
+                  onSelectLocation={(loc) => requestApplyLocation(loc, 'location')}
+                  onBlur={handleBlurSave}
+                />
+              </Field>
+            </div>
 
-            {pendingLocation && pendingLocationSource === 'location' && (
+            {pendingLocation && (
               <OverwriteConfirm
                 loc={pendingLocation}
                 onConfirm={() => applyLocation(pendingLocation)}
@@ -933,7 +890,7 @@ function OverwriteConfirm({ loc, onConfirm, onCancel, label }: { loc: Location, 
   )
 }
 
-function OrgCombobox({ value, locations, inputStyle, onChange, onSelectLocation, onBlur }: {
+function PlaceCombobox({ value, locations, inputStyle, onChange, onSelectLocation, onBlur }: {
   value: string
   locations: Location[]
   inputStyle: string

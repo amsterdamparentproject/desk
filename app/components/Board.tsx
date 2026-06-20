@@ -1060,7 +1060,6 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           onSaveDraft={handleSaveDraft}
           onFinishEditing={handleFinishEditing}
           onClose={closeDrawer}
-          publishDate={publishDate}
           onSendToAI={handleSendToAI}
           onDelete={handleDeleteActivity}
           readOnly={selectedActivity.status === 'archived'}

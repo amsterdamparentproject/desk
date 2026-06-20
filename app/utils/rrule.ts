@@ -133,9 +133,10 @@ export function computeNextDate(
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Use startDate as the reference point (the known current occurrence);
-  // fall back to today if not provided.
-  const after = startDate ? parseLocalDate(startDate) : today
+  // Use the later of startDate and today as the reference point, so we always
+  // return a future date even if the series started in the past.
+  const start = startDate ? parseLocalDate(startDate) : today
+  const after = start > today ? start : today
 
   // If UNTIL has already passed relative to today, the series is globally over
   if (untilDate) {

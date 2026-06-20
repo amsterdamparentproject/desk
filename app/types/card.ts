@@ -26,4 +26,5 @@ export interface CaptureCardProps {
   onAdd: (data: CaptureDataProps) => void
   onAddLocation?: (data: { name: string; address: string; area?: string | null; neighborhood?: string | null }) => void
   listId: ListId
+  locations?: import('./activity').Location[]
 }

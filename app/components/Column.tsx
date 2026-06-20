@@ -119,7 +119,7 @@ export function Column({
         <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent h-full overflow-y-auto">
           {list.id === 'ideas' && (
             <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
-              <CaptureCardForm onAdd={onAddEvent} onAddLocation={onAddLocation} listId={list.id} />
+              <CaptureCardForm onAdd={onAddEvent} onAddLocation={onAddLocation} listId={list.id} locations={locations} />
             </div>
           )}
           {list.id === 'upcoming_events' && color !== 'blue' && (
