@@ -120,7 +120,7 @@ export function Column({
               <CaptureCardForm onAdd={onAddEvent} onAddLocation={onAddLocation} listId={list.id} />
             </div>
           )}
-          {list.id !== 'ideas' && list.id !== 'error' && (
+          {list.id !== 'ideas' && list.id !== 'error' && color !== 'blue' && (
             <InlineCaptureAdd onAddEvent={onAddEvent} listId={list.id} />
           )}
 
