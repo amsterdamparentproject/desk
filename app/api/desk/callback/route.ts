@@ -22,12 +22,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
   }
 
-  await saveActivity(first.id, first.type, { ...first, list_id: 'review', status: 'processed' })
+  // Strip fields n8n injects that aren't part of the DB schema
+  const sanitize = <T extends Record<string, unknown>>(item: T): T => {
+    const { error: _error, ...clean } = item as any
+    return clean
+  }
+
+  await saveActivity(first.id, first.type, { ...sanitize(first), list_id: 'review', status: 'processed' })
 
   for (const item of rest) {
     const newId = crypto.randomUUID()
     await upsertEnrichedActivity(newId, item.type ?? first.type, {
-      ...item,
+      ...sanitize(item),
       id: newId,
       description: item.description ?? '',
       list_id: 'review',
