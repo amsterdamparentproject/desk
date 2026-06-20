@@ -6,14 +6,16 @@ import { ListProps, ListId } from '../types/list'
 import { useEffect, useState } from 'react'
 
 function addDays(dateStr: string, days: number): string {
+  if (!dateStr) return ''
   const d = new Date(dateStr)
-  d.setDate(d.getDate() + days)
+  if (isNaN(d.getTime())) return ''
+  d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().split('T')[0]
 }
 
 function isInNewsletterWindow(activity: DeskActivity, windowStart: string, windowEnd: string): boolean {
   const inWindow = (date: string | null | undefined) =>
-    !!date && date >= windowStart && date <= windowEnd
+    !!date && date >= windowStart && (!windowEnd || date <= windowEnd)
   return inWindow(activity.start_date) || inWindow(activity.repeat_next_date)
 }
 
