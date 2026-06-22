@@ -15,6 +15,7 @@ CREATE TABLE activities.locations (
   url text,
   description text,
   categories text[] DEFAULT '{}',
+  age_categories text[] DEFAULT '{}',
 
   -- Coordinates (optional, for future map use)
   latitude numeric(9, 6),

@@ -623,6 +623,13 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <Field label="Target Age Range">
               <input value={formData.age_range ?? ''} onChange={(e) => handleChange('age_range', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
             </Field>
+            <Field label="Age Categories">
+              <AgeCategorySelector
+                selected={formData.age_categories ?? []}
+                onChange={(cats) => { handleChange('age_categories', cats); }}
+                onBlur={handleBlurSave}
+              />
+            </Field>
             <Field label="Description">
               <textarea
                 ref={rawDescRef}
@@ -963,6 +970,43 @@ function Field({ label, children }: { label: string, children: ReactNode }) {
     <div className="flex flex-col gap-1.5">
       <label className="text-[9px] text-green-600 font-black uppercase tracking-widest">{label}</label>
       {children}
+    </div>
+  )
+}
+
+const AGE_CATEGORY_OPTIONS = [
+  'expecting',
+  'newborn',
+  'baby',
+  'toddler',
+  'all ages',
+]
+
+function AgeCategorySelector({ selected, onChange, onBlur }: { selected: string[], onChange: (cats: string[]) => void, onBlur?: () => void }) {
+  const toggle = (cat: string) => {
+    const next = selected.includes(cat) ? selected.filter(c => c !== cat) : [...selected, cat]
+    onChange(next)
+    setTimeout(() => onBlur?.(), 0)
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {AGE_CATEGORY_OPTIONS.map(cat => {
+        const active = selected.includes(cat)
+        return (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => toggle(cat)}
+            className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors border ${
+              active
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+            }`}
+          >
+            {cat}
+          </button>
+        )
+      })}
     </div>
   )
 }

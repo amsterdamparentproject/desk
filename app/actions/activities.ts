@@ -99,7 +99,7 @@ export async function createActivity(
 
 const EVENT_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
-  'title', 'description', 'url', 'organization', 'age_range', 'categories',
+  'title', 'description', 'url', 'organization', 'age_range', 'age_categories', 'categories',
   'tagline',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
   'postpartum_post',
@@ -110,7 +110,7 @@ const EVENT_FIELDS = [
 
 const RESOURCE_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
-  'title', 'description', 'url', 'organization', 'age_range', 'categories',
+  'title', 'description', 'url', 'organization', 'age_range', 'age_categories', 'categories',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
   'postpartum_post',
   'location', 'neighborhood', 'area', 'latitude', 'longitude',

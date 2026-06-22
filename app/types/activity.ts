@@ -15,6 +15,7 @@ export interface Location {
   url: string | null
   description: string | null
   categories: string[]
+  age_categories: string[]
   list_id: ListId
   status: TriageStatus
   triage_notes: string | null
@@ -48,6 +49,7 @@ export interface BaseActivity {
   url: string | null;
   organization: string | null;
   age_range: string | null;
+  age_categories: string[];
   categories: string[];
 
   // Newsletter
@@ -156,6 +158,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   url: '',
   organization: '',
   age_range: '',
+  age_categories: [],
   categories: [],
   newsletter_description: '',
   newsletter_last: '',

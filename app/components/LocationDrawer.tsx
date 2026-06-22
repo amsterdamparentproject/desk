@@ -7,6 +7,14 @@ import { updateLocation } from '../actions/activities'
 
 const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
 
+const AGE_CATEGORY_OPTIONS = [
+  'expecting',
+  'newborn',
+  'baby',
+  'toddler',
+  'all ages',
+]
+
 const baseInputStyle = "w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400 transition-colors bg-white"
 const inputStyle = `${baseInputStyle} px-3`
 const selectStyle = `${baseInputStyle} pl-3 pr-8 cursor-pointer`
@@ -42,6 +50,7 @@ export function LocationDrawer({ location, onClose, onSaved, onArchive }: Locati
         url: formData.url,
         description: formData.description,
         categories: formData.categories,
+        age_categories: formData.age_categories,
         postpartum_post: formData.postpartum_post,
       })
       setSaveState('saved')
@@ -223,6 +232,39 @@ export function LocationDrawer({ location, onClose, onSaved, onArchive }: Locati
                 ))}
               </div>
             )}
+          </section>
+
+          {/* Age Categories */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag size={18} className="text-slate-700" />
+              <h2 className="text-slate-700 text-base md:text-xl font-black">Age Categories</h2>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {AGE_CATEGORY_OPTIONS.map(cat => {
+                const active = (formData.age_categories ?? []).includes(cat)
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      const next = active
+                        ? formData.age_categories.filter(c => c !== cat)
+                        : [...(formData.age_categories ?? []), cat]
+                      handleChange('age_categories', next)
+                    }}
+                    onBlur={handleBlurSave}
+                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors border ${
+                      active
+                        ? 'bg-violet-600 text-white border-violet-600'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-600'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                )
+              })}
+            </div>
           </section>
 
           {/* Postpartum Post toggle */}

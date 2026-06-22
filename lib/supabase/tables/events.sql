@@ -19,6 +19,7 @@ CREATE TABLE activities.events (
   url text,
   organization text,
   age_range text,
+  age_categories text[] DEFAULT '{}', -- auto-computed via sync_age_categories trigger; manual overrides preserved
   categories text[] DEFAULT '{}',
   
   -- Date & Time Logic
