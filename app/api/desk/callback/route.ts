@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Strip fields n8n injects that aren't part of the DB schema
-  const sanitize = <T extends Record<string, unknown>>(item: T): T => {
-    const { error: _error, ...clean } = item as any
-    return clean
+  const sanitize = (item: DeskActivity): DeskActivity => {
+    const { error: _error, ...clean } = item as unknown as Record<string, unknown>
+    return clean as unknown as DeskActivity
   }
 
   await saveActivity(first.id, first.type, { ...sanitize(first), list_id: 'review', status: 'processed' })

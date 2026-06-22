@@ -70,6 +70,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
   const [pendingLocationSource, setPendingLocationSource] = useState<'org' | 'location' | null>(null);
   const [locationSaveState, setLocationSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [appliedLocationName, setAppliedLocationName] = useState<string>(() =>
+    locations.find(l => l.address === activity.location)?.name ?? ''
+  );
 
   // Always track latest formData so onBlur handlers don't capture stale closure values
   const latestFormData = useRef(formData)
@@ -179,6 +182,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     }
     setFormData(next)
     onSaveDraft(next)
+    setAppliedLocationName(loc.name)
     setPendingLocation(null)
     setPendingLocationSource(null)
   }
@@ -559,7 +563,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </Field>
               <Field label="Location name">
                 <PlaceCombobox
-                  value={pendingLocation?.name ?? locations.find(l => l.name.toLowerCase() === (formData.organization ?? '').toLowerCase())?.name ?? ''}
+                  value={pendingLocation?.name ?? appliedLocationName ?? locations.find(l => l.name.toLowerCase() === (formData.organization ?? '').toLowerCase())?.name ?? ''}
                   locations={locations}
                   inputStyle={inputStyle}
                   onChange={() => {}}
