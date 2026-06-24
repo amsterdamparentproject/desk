@@ -41,6 +41,7 @@ interface ActivityDrawerProps {
   onRestore?: () => void,
   locations?: Location[],
   onLocationSaved?: (loc: Location) => void,
+  onTogglePostpartumPost?: (v: boolean) => void,
 }
 
 const WEEKDAYS = [
@@ -64,7 +65,7 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   archived:   'bg-red-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved }: ActivityDrawerProps) {
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved, onTogglePostpartumPost }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
@@ -349,7 +350,14 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 label="Postpartum Post"
                 icon={<Mail size={14} className={formData.postpartum_post ? "text-violet-500" : "text-slate-400"} />}
                 checked={!!formData.postpartum_post}
-                onChange={(v) => { handleChange('postpartum_post', v); onSaveDraft({ ...formData, postpartum_post: v }) }}
+                onChange={(v) => {
+                  handleChange('postpartum_post', v)
+                  if (onTogglePostpartumPost) {
+                    onTogglePostpartumPost(v)
+                  } else {
+                    onSaveDraft({ ...latestFormData.current, postpartum_post: v })
+                  }
+                }}
               />
             </div>
 

@@ -182,6 +182,9 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     const delta = newsletterLastDelta(original?.list_id ?? updated.list_id, updated.list_id, updated.newsletter_last)
     const withStatus = {
       ...updated,
+      // Preserve the current activities state value for postpartum_post to prevent a stale
+      // drawer blur-save from overwriting a recent inline Post button toggle.
+      postpartum_post: original?.postpartum_post ?? updated.postpartum_post,
       status: 'edited' as const,
       ...(delta !== undefined ? { newsletter_last: delta } : {}),
     }
@@ -1073,6 +1076,15 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                 : [...prev, loc].sort((a, b) => a.name.localeCompare(b.name))
             })
           }
+          onTogglePostpartumPost={(v) => {
+            const id = selectedActivity.id
+            const type = selectedActivity.type as 'event' | 'resource'
+            setActivities(prev => prev.map(a => a.id === id ? { ...a, postpartum_post: v } : a))
+            saveActivity(id, type, { postpartum_post: v }).catch(err => {
+              console.error('Toggle postpartum_post failed:', err)
+              setActivities(prev => prev.map(a => a.id === id ? { ...a, postpartum_post: !v } : a))
+            })
+          }}
         />
       )}
     </main>

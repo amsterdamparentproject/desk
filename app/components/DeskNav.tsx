@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const NAV_LINKS = [
-  { href: '/',          label: 'Activities' },
-  { href: '/finances',  label: 'Finances'   },
-  { href: '/sources',   label: 'Sources'    },
+  { href: '/',           label: 'Activities' },
+  { href: '/finances',   label: 'Finances'   },
+  { href: '/sources',    label: 'Sources'    },
+  { href: '/customers',  label: 'Customers'  },
 ]
 
 export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
