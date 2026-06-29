@@ -35,7 +35,7 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="bg-white min-h-full flex flex-col">
+      <body className="bg-white h-full flex flex-col">
         <ServiceWorkerRegistration />
         <DeskNav isLoggedIn={isLoggedIn} />
         {children}

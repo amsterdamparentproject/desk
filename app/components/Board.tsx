@@ -961,7 +961,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
           )}
         </div>
       ) : (
-      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
         {currentColumns.map((col) => (
           <div
             key={col.id}
