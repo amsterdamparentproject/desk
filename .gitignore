@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude
 __claude__/
+
+# data
+lib/data/*
