@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { logout } from '@/app/actions/auth'
 
 const NAV_LINKS = [
   { href: '/',           label: 'Activities' },
@@ -54,6 +55,16 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
             </Link>
           )
         })}
+        {isLoggedIn && (
+          <form action={logout}>
+            <button
+              type="submit"
+              className="ml-1 px-3 py-1.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-app-charcoal/10 transition-colors"
+            >
+              Log out
+            </button>
+          </form>
+        )}
       </div>
     </nav>
   )

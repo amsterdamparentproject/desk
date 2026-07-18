@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { verifyDeskToken } from '@/app/utils/auth-gate'
+import { verifyDeskSession } from '@/app/utils/auth-gate'
 import { ShareForm } from './ShareForm'
 
 interface SharePageProps {
@@ -9,7 +9,7 @@ interface SharePageProps {
 
 export default async function SharePage({ searchParams }: SharePageProps) {
   const cookieStore = await cookies()
-  if (!verifyDeskToken(cookieStore)) redirect('/')
+  if (!verifyDeskSession(cookieStore)) redirect('/login')
 
   const { title = '', text = '', url = '', file_url = '', file_id = '' } = await searchParams
 

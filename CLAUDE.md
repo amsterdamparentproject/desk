@@ -31,7 +31,7 @@ Key status lifecycle: `new` → `processing` (AI in-flight) → `processed` → 
 
 ### Page → Board → Column → Card
 
-`app/page.tsx` is a server component that verifies the `app_desk_token` cookie (checked against `DESK_ACCESS_TOKEN` env var), fetches all activities from Supabase using the admin client, and passes them to `<Board>` as `initialActivities`.
+`app/page.tsx` is a server component that verifies the `app_desk_session` cookie (checked against `DESK_PASSWORD` env var, see Auth below), fetches all activities from Supabase using the admin client, and passes them to `<Board>` as `initialActivities`.
 
 `Board.tsx` owns all client state (`activities`, `selectedActivity`) and all mutation handlers. It passes callbacks down to `Column` and renders `ActivityDrawer` as a slide-over when `selectedActivity` is set.
 
@@ -58,7 +58,13 @@ Custom RRULE parser/builder — no external library. Supported frequencies: `dai
 
 ### Auth
 
-Cookie-based, not session-based. `verifyDeskToken` checks `app_desk_token` cookie against `DESK_ACCESS_TOKEN`. No Supabase Auth involved — the admin client bypasses RLS entirely.
+Single shared-password login, not per-user accounts, and no Supabase Auth involved — the admin client bypasses RLS entirely.
+
+- `/login` (`app/login/page.tsx`) renders a password form that posts to the `login` server action (`app/actions/auth.ts`).
+- `login` compares the submitted password to `DESK_PASSWORD` and, on success, sets the `app_desk_session` cookie to that same secret value with `maxAge` = 10 years (`COOKIE_MAX_AGE` in `app/utils/auth-gate.ts`) — sessions are meant to rarely expire.
+- `verifyDeskSession` (`app/utils/auth-gate.ts`) just checks that cookie value against `DESK_PASSWORD`; every protected page/layout (`app/page.tsx`, `app/finances/layout.tsx`, `app/customers/layout.tsx`, `app/sources/page.tsx`, `app/share/page.tsx`) calls it directly and `redirect('/login')`s if it fails — there's no centralized auth middleware.
+- `logout` (`app/actions/auth.ts`) clears the cookie and redirects to `/login`; wired up as a "Log out" button in `DeskNav`.
+- There is no `proxy.ts`/middleware anymore. It used to implement a `?token=` magic-link flow (strip the token from the URL, set the cookie) — that's been replaced entirely by the login page.
 
 ### Database schema source files
 
@@ -74,4 +80,4 @@ Cookie-based, not session-based. `verifyDeskToken` checks `app_desk_token` cooki
 | `N8N_WEBHOOK_SECRET` | Shared secret for `X-N8N-WEBHOOK-SECRET` header |
 | `N8N_DESK_WEBHOOK_URL` | Production n8n webhook |
 | `TEST_N8N_DESK_WEBHOOK_URL` | Dev/test n8n webhook (workflow must be listening) |
-| `DESK_ACCESS_TOKEN` | Token checked against `app_desk_token` cookie |
+| `DESK_PASSWORD` | Shared login password; also the value stored in the `app_desk_session` cookie |

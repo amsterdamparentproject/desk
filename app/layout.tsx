@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 import './globals.css'
 import { DeskNav } from './components/DeskNav'
 import { ServiceWorkerRegistration } from './components/ServiceWorkerRegistration'
-import { verifyDeskToken } from './utils/auth-gate'
+import { verifyDeskSession } from './utils/auth-gate'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -28,7 +28,7 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const cookieStore = await cookies()
-  const isLoggedIn = verifyDeskToken(cookieStore)
+  const isLoggedIn = verifyDeskSession(cookieStore)
 
   return (
     <html

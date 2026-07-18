@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifyDeskToken } from '@/app/utils/auth-gate'
+import { verifyDeskSession } from '@/app/utils/auth-gate'
 import { createAdminClient } from '@/app/utils/supabase/server'
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
-  if (!verifyDeskToken(cookieStore)) {
-    return NextResponse.redirect(new URL('/', request.url), 303)
+  if (!verifyDeskSession(cookieStore)) {
+    return NextResponse.redirect(new URL('/login', request.url), 303)
   }
 
   const formData = await request.formData()
