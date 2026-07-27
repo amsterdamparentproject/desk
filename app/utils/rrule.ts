@@ -155,8 +155,14 @@ export function computeNextDate(
 
     if (targetDays.length === 0) return null
 
-    // Walk forward up to 7 days to find the next matching weekday
+    // Walk forward up to 7 days to find the next matching weekday. Reset
+    // `candidate` from `after` on every iteration — otherwise, once setDate()
+    // overflows into the next month (e.g. June 30 + 1 -> July 1), later
+    // iterations keep adding `after.getDate() + i` onto that already-rolled-
+    // over date instead of `after`'s original month, compounding the drift
+    // by a full month each additional overflow.
     for (let i = 1; i <= 7; i++) {
+      candidate.setTime(after.getTime())
       candidate.setDate(after.getDate() + i)
       if (targetDays.includes(candidate.getDay())) break
     }
@@ -167,7 +173,9 @@ export function computeNextDate(
 
     if (targetDays.length === 0) return null
 
+    // Same reset-per-iteration fix as the weekly loop above.
     for (let i = 8; i <= 14; i++) {
+      candidate.setTime(after.getTime())
       candidate.setDate(after.getDate() + i)
       if (targetDays.includes(candidate.getDay())) break
     }
