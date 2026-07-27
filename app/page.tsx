@@ -8,17 +8,6 @@ import { verifyDeskSession } from './utils/auth-gate'
 import { createAdminClient } from './utils/supabase/server'
 import { getLocations } from './actions/activities'
 
-function isCurrentEvent(event: any, today: string): boolean {
-  const isRecurring = !!event.repeat_frequency
-  if (isRecurring) {
-    if (!event.end_date || event.end_date === event.start_date) return true
-    return event.end_date >= today
-  }
-  if (event.end_date) return event.end_date >= today
-  if (event.start_date) return event.start_date >= today
-  return true
-}
-
 async function BoardWithData() {
   const supabase = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
@@ -56,15 +45,21 @@ async function BoardWithData() {
     )
   }
 
-  // 'gone' items (aged-out or explicitly rejected) must always be fetched
-  // regardless of date — 'gone' is the authoritative "exited the pipeline"
-  // signal now, not just status === 'archived'. Aged-out items keep
-  // status: 'accepted' (never forced to 'archived'), so without this they'd
-  // silently vanish from the Archived tab the moment their date passed,
-  // since isCurrentEvent() would otherwise exclude them.
-  const TRIAGE_LIST_IDS = ['ideas', 'review', 'error', 'refine']
+  // Events are fetched unconditionally, regardless of date — same as
+  // resources below, which have never had date-based gating. status/list_id
+  // fully describe relevance in this pipeline model now; a past-dated,
+  // non-recurring event sitting in 'upcoming_events' (status: 'accepted')
+  // doesn't get moved to 'gone' until sweepStaleUpcoming runs (which only
+  // happens when a newsletter issue is finished), so a date-based fetch gate
+  // here repeatedly caused activities to silently vanish before ever
+  // reaching the client — first for aged-out 'gone' items (fixed by adding a
+  // 'gone' bypass), then again for any 'upcoming_events' item caught between
+  // its date passing and the next sweep. Removing the gate entirely instead
+  // of chasing more bypasses. Staleness/grouping by date is handled
+  // client-side in Board.tsx (pastEvents, sweepStaleUpcoming, the Match
+  // panel's month buckets) — the server fetch doesn't need its own parallel
+  // notion of "current."
   const events = (eventsResult.data ?? [])
-    .filter(e => e.status === 'archived' || e.status === 'published' || e.list_id === 'gone' || TRIAGE_LIST_IDS.includes(e.list_id) || isCurrentEvent(e, today))
     .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
 
   const resources = (resourcesResult.data ?? [])
