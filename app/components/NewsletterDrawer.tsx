@@ -305,7 +305,7 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
           {confirming ? (
             <>
               <p className="text-center text-xs font-black text-slate-600 uppercase tracking-widest">
-                Archive {nextActivities.length} card{nextActivities.length !== 1 ? 's' : ''} and advance to {windowEnd}?
+                Publish {nextActivities.length} card{nextActivities.length !== 1 ? 's' : ''} and advance to {windowEnd}?
               </p>
               <div className="flex gap-2">
                 <button

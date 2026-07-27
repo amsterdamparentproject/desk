@@ -1125,13 +1125,20 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
             setActivities(prev => prev.map(a => {
               if (next.some(n => n.id === a.id)) {
                 const nextServices = a.services.filter(s => s !== 'newsletter')
+                const becameEmpty = nextServices.length === 0
+                // Still tagged postpartum_post after dropping newsletter? Move
+                // back to the Upcoming stage rather than leaving list_id at
+                // 'next_newsletter' — Post's Match/Upcoming panels require
+                // list_id === 'upcoming_events'/'new_resources', so leaving it
+                // put would make the item invisible everywhere despite still
+                // being active. Mirrors finishNewsletterIssue server-side.
                 return {
                   ...a,
                   newsletter_last: publishDate,
                   status: 'published' as const,
                   services: nextServices,
                   postpartum_post: nextServices.includes('postpartum_post'),
-                  ...(nextServices.length === 0 ? { list_id: 'gone' as ListId } : {}),
+                  list_id: (becameEmpty ? 'gone' : (a.type === 'event' ? 'upcoming_events' : 'new_resources')) as ListId,
                 }
               }
               if (staleUpcoming.some(s => s.id === a.id)) {

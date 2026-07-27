@@ -355,10 +355,16 @@ export async function finishNewsletterIssue(
   const supabase = createAdminClient()
   const now = new Date().toISOString()
 
-  // A service's edition running an item drops it from services (like any other
-  // service exit) — status: 'published' always gets stamped since it *did* go
-  // out, but list_id only moves to 'gone' once no services remain (e.g. it's
-  // still tagged postpartum_post, still relevant for Post).
+  // A service's edition running an item drops it from services (like any
+  // other service exit) — status: 'published' always gets stamped since it
+  // *did* go out. If no services remain, list_id moves to 'gone'. If it's
+  // still tagged postpartum_post, list_id moves back to the Upcoming stage
+  // (upcoming_events/new_resources) rather than staying at 'next_newsletter'
+  // — otherwise it's still "relevant for Post" by services/status alone but
+  // invisible everywhere, since Post's Match/Upcoming panels require
+  // list_id === 'upcoming_events'.
+  const upcomingListFor = (table: 'events' | 'resources') =>
+    table === 'events' ? 'upcoming_events' : 'new_resources'
   const applyToTable = async (table: 'events' | 'resources', ids: string[]) => {
     if (!ids.length) return
     const { data: rows } = await supabase.from(table).select('id, services').in('id', ids)
@@ -370,7 +376,7 @@ export async function finishNewsletterIssue(
         status: 'published',
         services: nextServices,
         postpartum_post: nextServices.includes('postpartum_post'),
-        ...(becameEmpty ? { list_id: 'gone' } : {}),
+        list_id: becameEmpty ? 'gone' : upcomingListFor(table),
         updated_at: now,
       }).eq('id', row.id)
     }))

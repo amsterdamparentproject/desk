@@ -343,20 +343,6 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               />
             </Field>
 
-            <Field label="Next issue date">
-              <input
-                type="date"
-                value={formData.newsletter_last ?? ''}
-                onChange={e => {
-                  const val = e.target.value || null
-                  const next = { ...latestFormData.current, newsletter_last: val }
-                  setFormData(next)
-                  onSaveDraft(next)
-                }}
-                className={inputStyle}
-              />
-            </Field>
-
             <div className="flex gap-4">
               <Toggle
                 label="Highlight in newsletter"
@@ -781,6 +767,15 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     {l.label}
                   </button>
                 ))}
+              </div>
+            </Field>
+
+            {/* Read-only — set automatically by Finish issue (or the stale-date
+                cleanup in page.tsx), never hand-edited. Leaves a gap in the
+                record for anything that was never actually sent, which is fine. */}
+            <Field label="Newsletter last">
+              <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
+                {formData.newsletter_last ? new Date(formData.newsletter_last + 'T00:00:00').toLocaleDateString('en-GB') : '—'}
               </div>
             </Field>
 
