@@ -1,7 +1,7 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
-import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw, BookmarkPlus, Mail } from 'lucide-react'
-import { DeskActivity, DEFAULT_DESK_ACTIVITY, Location, RepeatFrequency } from '../types/activity'
+import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw, BookmarkPlus, Mail, Newspaper } from 'lucide-react'
+import { DeskActivity, DEFAULT_DESK_ACTIVITY, Location, RepeatFrequency, Service } from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
 import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
@@ -41,7 +41,7 @@ interface ActivityDrawerProps {
   onRestore?: () => void,
   locations?: Location[],
   onLocationSaved?: (loc: Location) => void,
-  onTogglePostpartumPost?: (v: boolean) => void,
+  onToggleService?: (service: Service, enabled: boolean) => void,
 }
 
 const WEEKDAYS = [
@@ -54,18 +54,18 @@ const WEEKDAYS = [
   { label: 'Sun', abbr: 'SU' },
 ]
 
-const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'edited', 'published', 'archived']
+const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'accepted', 'published', 'archived']
 
 const STATUS_COLORS: Record<TriageStatus, string> = {
   new:        'bg-blue-600 text-white',
   processing: 'bg-amber-500 text-white',
   processed:  'bg-purple-600 text-white',
-  edited:     'bg-green-600 text-white',
+  accepted:   'bg-green-600 text-white',
   published:  'bg-teal-600 text-white',
   archived:   'bg-red-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved, onTogglePostpartumPost }: ActivityDrawerProps) {
+export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved, onToggleService }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
@@ -79,6 +79,24 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const latestFormData = useRef(formData)
   latestFormData.current = formData
   const handleBlurSave = () => onSaveDraft(latestFormData.current)
+
+  const activityServices = formData.services ?? []
+  const handleToggleService = (service: Service, enabled: boolean) => {
+    const nextServices = enabled
+      ? Array.from(new Set([...activityServices, service]))
+      : activityServices.filter(s => s !== service)
+    const next = {
+      ...latestFormData.current,
+      services: nextServices,
+      postpartum_post: nextServices.includes('postpartum_post'),
+    }
+    setFormData(next)
+    if (onToggleService) {
+      onToggleService(service, enabled)
+    } else {
+      onSaveDraft(next)
+    }
+  }
 
   const parsed = parseRrule(activity.repeat_rrule)
   const parsedMonthly = parsed.frequency === 'monthly' && parsed.days[0] ? parsePositionalDay(parsed.days[0]) : null
@@ -255,7 +273,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 const next = {
                   ...latestFormData.current,
                   newsletter_last: null,
-                  status: 'edited' as const,
+                  status: 'accepted' as const,
                   list_id: 'review' as import('../types/list').ListId,
                 }
                 setFormData(next)
@@ -346,19 +364,43 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 checked={!!formData.newsletter_highlight}
                 onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
               />
-              <Toggle
-                label="Postpartum Post"
-                icon={<Mail size={14} className={formData.postpartum_post ? "text-violet-500" : "text-slate-400"} />}
-                checked={!!formData.postpartum_post}
-                onChange={(v) => {
-                  handleChange('postpartum_post', v)
-                  if (onTogglePostpartumPost) {
-                    onTogglePostpartumPost(v)
-                  } else {
-                    onSaveDraft({ ...latestFormData.current, postpartum_post: v })
-                  }
-                }}
-              />
+            </div>
+
+            <div>
+              <div className="flex flex-row items-center gap-2 mb-2">
+                <Newspaper size={18} className="text-green-600" />
+                <h2 className="text-green-600 text-base md:text-xl font-black whitespace-nowrap">Services</h2>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleToggleService('newsletter', !activityServices.includes('newsletter'))}
+                  title={activityServices.includes('newsletter') ? 'In newsletter — click to remove' : 'Not in newsletter — click to add'}
+                  className={`flex items-center justify-center w-14 h-14 rounded-xl transition-colors ${
+                    activityServices.includes('newsletter')
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
+                  }`}
+                >
+                  <Newspaper size={24} />
+                </button>
+                {/* Post never takes resources — the Postpartum Post matcher only
+                    queries events, locations, and playgrounds. */}
+                {formData.type === 'event' && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleService('postpartum_post', !activityServices.includes('postpartum_post'))}
+                    title={activityServices.includes('postpartum_post') ? 'In Post — click to remove' : 'Not in Post — click to add'}
+                    className={`flex items-center justify-center w-14 h-14 rounded-xl transition-colors ${
+                      activityServices.includes('postpartum_post')
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
+                    }`}
+                  >
+                    <Mail size={24} />
+                  </button>
+                )}
+              </div>
             </div>
 
           </section>
@@ -571,10 +613,10 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </Field>
               <Field label="Location name">
                 <PlaceCombobox
-                  value={pendingLocation?.name ?? appliedLocationName ?? locations.find(l => l.name.toLowerCase() === (formData.organization ?? '').toLowerCase())?.name ?? ''}
+                  value={pendingLocation?.name ?? appliedLocationName}
                   locations={locations}
                   inputStyle={inputStyle}
-                  onChange={() => {}}
+                  onChange={setAppliedLocationName}
                   onSelectLocation={(loc) => requestApplyLocation(loc, 'location')}
                   onBlur={handleBlurSave}
                 />

@@ -1,4 +1,4 @@
-import { BaseActivity, CaptureDataProps, DeskActivity } from './activity'
+import { BaseActivity, CaptureDataProps, DeskActivity, Service } from './activity'
 import { ListId } from './list'
 
 type CardAction =
@@ -8,7 +8,7 @@ type CardAction =
   | 'copy'
   | 'archive'
 
-export type TriageStatus = 'new' | 'processing' | 'processed' | 'edited' | 'published' | 'archived';
+export type TriageStatus = 'new' | 'processing' | 'processed' | 'accepted' | 'published' | 'archived';
 
 // Base card component props
 export interface CardProps {
@@ -16,6 +16,8 @@ export interface CardProps {
   onDetails?: (activity: DeskActivity) => void // Only cards that have been processed can access the Edit pane
   onMove?: (id: string, target: ListId) => void
   onArchive?: (id: string) => void
+  // Two-way toggle for the card-front Newsletter/Post service buttons.
+  onToggleService?: (id: string, service: Service, enabled: boolean) => void
   showApproveButton?: boolean
   detailsAction?: React.ReactNode // Replaces the Edit button in the card header
   children?: React.ReactNode // For extending components to add custom footers

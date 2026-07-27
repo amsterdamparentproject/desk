@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { saveActivity, upsertEnrichedActivity } from '@/app/actions/activities'
+import { saveEnrichedCallback, upsertEnrichedActivity } from '@/app/actions/activities'
 import { DeskActivity } from '@/app/types/activity'
 
 export async function POST(request: NextRequest) {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     return clean as unknown as DeskActivity
   }
 
-  await saveActivity(first.id, first.type, { ...sanitize(first), list_id: 'review', status: 'processed' })
+  await saveEnrichedCallback(first.id, first.type, sanitize(first))
 
   for (const item of rest) {
     const newId = crypto.randomUUID()

@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/app/utils/supabase/server'
-import { DeskActivity, EventActivity, Location, ResourceActivity } from '@/app/types/activity'
+import { DeskActivity, EventActivity, Location, ResourceActivity, Service } from '@/app/types/activity'
 import { ListId } from '@/app/types/list'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 import { postDesk } from '@/lib/PostToWebhook'
@@ -73,7 +73,7 @@ export async function captureFromShare(data: {
 export async function createActivity(
   id: string,
   type: 'event' | 'resource',
-  data: { description: string; list_id: ListId; status: string; file_url?: string | null }
+  data: { description: string; list_id: ListId; status: string; file_url?: string | null; services?: Service[]; title?: string }
 ) {
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'
@@ -82,13 +82,21 @@ export async function createActivity(
   const description = data.description || ''
   const insert: Record<string, unknown> = {
     id,
-    title: description || '(New activity)',
+    title: data.title || description || '(New activity)',
     description,
     newsletter_description: description,
     list_id: data.list_id,
     status: data.status,
     source: 'app_desk',
     ...(data.file_url ? { file_url: data.file_url } : {}),
+    // Items seeded directly into Upcoming (bypassing the Refine promotion that
+    // normally sets this) need services set up front, and postpartum_post kept
+    // in sync since the separate Post repo reads that boolean directly. An
+    // empty/omitted array here is a no-op — it must not clobber the DB's
+    // default postpartum_post value for ordinary Capture/Review records.
+    ...(data.services && data.services.length > 0
+      ? { services: data.services, postpartum_post: data.services.includes('postpartum_post') }
+      : {}),
     created_at: now,
     updated_at: now,
   }
@@ -102,7 +110,7 @@ const EVENT_FIELDS = [
   'title', 'description', 'url', 'organization', 'age_range', 'age_categories', 'categories',
   'tagline',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
-  'postpartum_post',
+  'postpartum_post', 'services',
   'location', 'neighborhood', 'area', 'latitude', 'longitude',
   'start_date', 'end_date', 'start_time', 'end_time', 'day_of_week', 'duration_minutes',
   'repeat_rrule', 'repeat_frequency', 'repeat_next_date', 'calendar_skip', 'calendar_sent',
@@ -112,7 +120,7 @@ const RESOURCE_FIELDS = [
   'list_id', 'status', 'source', 'snooze_until', 'last_triaged_at', 'triage_notes', 'file_url',
   'title', 'description', 'url', 'organization', 'age_range', 'age_categories', 'categories',
   'newsletter_description', 'newsletter_last', 'newsletter_highlight',
-  'postpartum_post',
+  'postpartum_post', 'services',
   'location', 'neighborhood', 'area', 'latitude', 'longitude',
 ] as const satisfies readonly (keyof WritableResource)[]
 
@@ -120,15 +128,25 @@ const RESOURCE_FIELDS = [
 // Text NOT NULL columns (title, description, newsletter_description, etc.) must keep ''.
 const NULL_COERCE_FIELDS = new Set<keyof WritableEvent | keyof WritableResource>([
   'snooze_until', 'last_triaged_at', 'newsletter_last',
-  'start_date', 'end_date', 'start_time', 'end_time',
+  'end_date', 'start_time', 'end_time',
   'day_of_week', 'duration_minutes',
   'repeat_frequency', 'repeat_next_date',
+])
+
+// events.start_date is NOT NULL DEFAULT CURRENT_DATE — unlike the other date
+// columns above, it can never be written as '' or null. If a caller sends an
+// empty value (e.g. stale client state, or a cleared date field mid-edit),
+// drop the field entirely rather than coercing it — leaves the existing DB
+// value untouched instead of violating the not-null constraint.
+const REQUIRED_NON_NULL_FIELDS = new Set<keyof WritableEvent | keyof WritableResource>([
+  'start_date',
 ])
 
 function pickFields(data: Partial<DeskActivity>, fields: readonly string[]) {
   return Object.fromEntries(
     fields
       .filter(f => f in data)
+      .filter(f => !(REQUIRED_NON_NULL_FIELDS.has(f as keyof WritableEvent) && !(data as any)[f]))
       .map(f => {
         const v = (data as any)[f]
         return [f, v === '' && NULL_COERCE_FIELDS.has(f as keyof WritableEvent) ? null : v]
@@ -210,7 +228,7 @@ export async function archiveActivity(id: string, type: 'event' | 'resource') {
   const table = type === 'event' ? 'events' : 'resources'
   const { error } = await supabase
     .from(table)
-    .update({ status: 'archived', updated_at: new Date().toISOString() })
+    .update({ status: 'archived', list_id: 'gone', updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw new Error(error.message)
 }
@@ -243,6 +261,20 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
     updated_at: new Date().toISOString(),
   }
 
+  // Keep postpartum_post synced with services — additive, since the separate
+  // Post repo reads the boolean directly. Whichever one the caller wrote wins;
+  // if only the boolean was written, derive services from the current row
+  // rather than clobbering any 'newsletter' tag already sitting on it.
+  if ('services' in update && Array.isArray(update.services)) {
+    update.postpartum_post = update.services.includes('postpartum_post')
+  } else if ('postpartum_post' in update) {
+    const { data: current } = await supabase.from(table).select('services').eq('id', id).single()
+    const currentServices: string[] = current?.services ?? []
+    update.services = update.postpartum_post
+      ? Array.from(new Set([...currentServices, 'postpartum_post']))
+      : currentServices.filter((s: string) => s !== 'postpartum_post')
+  }
+
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 
@@ -268,17 +300,107 @@ export async function saveActivity(id: string, type: 'event' | 'resource', data:
   }
 }
 
+// Stages an item is considered still "fresh" in — a callback landing on one of
+// these is safe to route into review/processed. Anything already promoted past
+// this (upcoming_events, new_resources, next_newsletter, gone) must NOT be
+// silently reset — a stray re-processing callback (e.g. "Send to AI" on an
+// already-triaged card) would otherwise yank it back to Triage.
+const TRIAGE_STAGE_LISTS = new Set<ListId>(['ideas', 'capture', 'review', 'error'])
+
+// Used by the n8n callback route when enrichment finishes for the *first* item
+// in a payload (the seed record the user actually captured/resent). Only forces
+// list_id: 'review', status: 'processed' if the record hasn't already advanced
+// past Triage — otherwise it just updates content fields in place.
+export async function saveEnrichedCallback(
+  id: string,
+  type: 'event' | 'resource',
+  data: Partial<DeskActivity>,
+) {
+  const supabase = createAdminClient()
+  const table = type === 'event' ? 'events' : 'resources'
+  const { data: existing } = await supabase.from(table).select('list_id').eq('id', id).single()
+  const isFreshCapture = !existing || TRIAGE_STAGE_LISTS.has(existing.list_id as ListId)
+
+  await saveActivity(id, type, {
+    ...data,
+    ...(isFreshCapture ? { list_id: 'review' as ListId, status: 'processed' as const } : {}),
+  })
+}
+
+// Drops a single service from an activity's services tag (e.g. "not this
+// newsletter issue", without touching status — it wasn't published or
+// rejected, just no longer a candidate for that service). Only moves to
+// 'gone' once no services remain; postpartum_post stays synced throughout.
+export async function dropService(id: string, type: 'event' | 'resource', service: Service) {
+  const supabase = createAdminClient()
+  const table = type === 'event' ? 'events' : 'resources'
+  const { data: row } = await supabase.from(table).select('services').eq('id', id).single()
+  const nextServices = ((row?.services ?? []) as string[]).filter(s => s !== service)
+  const becameEmpty = nextServices.length === 0
+  const update: Record<string, any> = {
+    services: nextServices,
+    postpartum_post: nextServices.includes('postpartum_post'),
+    updated_at: new Date().toISOString(),
+  }
+  if (becameEmpty) update.list_id = 'gone'
+  const { error } = await supabase.from(table).update(update).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function finishNewsletterIssue(
   eventIds: string[],
   resourceIds: string[],
   publishDate: string,
 ) {
   const supabase = createAdminClient()
-  const update = { newsletter_last: publishDate, status: 'published', updated_at: new Date().toISOString() }
+  const now = new Date().toISOString()
+
+  // A service's edition running an item drops it from services (like any other
+  // service exit) — status: 'published' always gets stamped since it *did* go
+  // out, but list_id only moves to 'gone' once no services remain (e.g. it's
+  // still tagged postpartum_post, still relevant for Post).
+  const applyToTable = async (table: 'events' | 'resources', ids: string[]) => {
+    if (!ids.length) return
+    const { data: rows } = await supabase.from(table).select('id, services').in('id', ids)
+    await Promise.all((rows ?? []).map(row => {
+      const nextServices = ((row.services ?? []) as string[]).filter(s => s !== 'newsletter')
+      const becameEmpty = nextServices.length === 0
+      return supabase.from(table).update({
+        newsletter_last: publishDate,
+        status: 'published',
+        services: nextServices,
+        postpartum_post: nextServices.includes('postpartum_post'),
+        ...(becameEmpty ? { list_id: 'gone' } : {}),
+        updated_at: now,
+      }).eq('id', row.id)
+    }))
+  }
+
   await Promise.all([
-    eventIds.length    ? supabase.from('events').update(update).in('id', eventIds)      : Promise.resolve(),
-    resourceIds.length ? supabase.from('resources').update(update).in('id', resourceIds) : Promise.resolve(),
+    applyToTable('events', eventIds),
+    applyToTable('resources', resourceIds),
   ])
+}
+
+// Non-recurring events left sitting in 'upcoming_events' whose date has already
+// passed by the time an issue is finished — they were never promoted to
+// next_newsletter and the event already happened. Drops 'newsletter' from
+// services (status untouched — they weren't rejected or published, just aged
+// out); only moves to 'gone' if no services remain.
+export async function sweepStaleUpcoming(ids: string[]) {
+  if (!ids.length) return
+  const supabase = createAdminClient()
+  const { data: rows } = await supabase.from('events').select('id, services').in('id', ids)
+  await Promise.all((rows ?? []).map(row => {
+    const nextServices = ((row.services ?? []) as string[]).filter(s => s !== 'newsletter')
+    const becameEmpty = nextServices.length === 0
+    return supabase.from('events').update({
+      services: nextServices,
+      postpartum_post: nextServices.includes('postpartum_post'),
+      ...(becameEmpty ? { list_id: 'gone' } : {}),
+      updated_at: new Date().toISOString(),
+    }).eq('id', row.id)
+  }))
 }
 
 export async function stampNewsletterLast(
@@ -338,9 +460,14 @@ export async function createLocation(data: {
 }): Promise<Location> {
   const supabase = createAdminClient()
   const coords = await geocodeAddress(data.address)
+  // Locations skip the events/resources Capture inbox entirely (no AI processing —
+  // they're typed straight in) and land directly in Review. postpartum_post
+  // defaults true: unlike events/resources, a location has no 'services' array or
+  // expiry — it's a single-service, evergreen record, so "in Post" is the default
+  // assumption until Refine decides otherwise.
   const { data: row, error } = await supabase
     .from('locations')
-    .insert({ ...data, ...(coords ?? {}), list_id: 'ideas', status: 'new' })
+    .insert({ ...data, ...(coords ?? {}), list_id: 'review', status: 'new', postpartum_post: true })
     .select()
     .single()
   if (error) throw new Error(error.message)
@@ -353,6 +480,39 @@ export async function updateLocation(id: string, data: Partial<Omit<Location, 'i
     .from('locations')
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// Locations have their own, simpler lifecycle than events/resources — no
+// 'services' array, no expiry, and no archived state at all: a location is
+// either accepted (settled, one way or the other) or hard-deleted.
+//   Review -> Refine -> Gone (postpartum_post true = "In Post", false = "Not in Post")
+
+// Review -> Refine: confirmed good, still needs data polishing.
+export async function advanceLocation(id: string): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('locations')
+    .update({ list_id: 'refine', updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// Refine -> Gone: the postpartum_post boolean itself is what splits "In Post"
+// from "Not in Post" within Gone — list_id is the same either way.
+export async function decideLocationPost(id: string, inPost: boolean): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('locations')
+    .update({ list_id: 'gone', status: 'accepted', postpartum_post: inPost, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// No archived state for locations — rejecting one means deleting it outright.
+export async function deleteLocation(id: string): Promise<void> {
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('locations').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }
 

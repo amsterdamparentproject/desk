@@ -135,14 +135,14 @@ describe('computeNextDate – biweekly', () => {
 })
 
 describe('computeNextDate – monthly', () => {
-  it('returns the 1st Monday of next month when this month's has passed', () => {
+  it('returns the 1st Monday of next month when this month\'s has passed', () => {
     // today = 2026-06-20 (Sat); 1st Monday of June = 2026-06-01 (already past)
     // 1st Monday of July = 2026-07-06
     const result = computeNextDate('monthly', ['1MO'], '', '2026-01-05')
     expect(result).toBe('2026-07-06')
   })
 
-  it('returns the 1st Monday this month if it hasn't happened yet', () => {
+  it('returns the 1st Monday this month if it hasn\'t happened yet', () => {
     // Pin today to 2026-06-01 (Mon) — the 1st Monday IS today, so next = July 6
     vi.setSystemTime(new Date('2026-06-01T00:00:00'))
     const result = computeNextDate('monthly', ['1MO'], '', '2026-01-05')

@@ -2,6 +2,7 @@ import { ListId } from './list'
 import { TriageStatus } from './card'
 
 export type CaptureSource = 'app_desk' | 'app_website' | 'manual' | 'luma'
+export type Service = 'newsletter' | 'postpartum_post'
 
 export interface Location {
   id: string
@@ -59,6 +60,11 @@ export interface BaseActivity {
 
   // Postpartum Post
   postpartum_post: boolean;
+
+  // Services this activity is a candidate for / confirmed for. Additive
+  // alongside postpartum_post — the boolean stays synced to whether
+  // 'postpartum_post' is in this array (kept for the separate Post repo).
+  services: Service[];
 
   // Location
   location: string | null;
@@ -164,6 +170,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   newsletter_last: '',
   newsletter_highlight: false,
   postpartum_post: true,
+  services: [],
   location: '',
   neighborhood: '',
   area: '',

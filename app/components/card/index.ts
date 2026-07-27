@@ -1,5 +1,5 @@
 export { ActivityCard } from './ActivityCard'
-export { CaptureCardForm } from './CaptureCardForm'
+export { CaptureCardForm, LocationForm } from './CaptureCardForm'
 
 export type {
   CardProps,

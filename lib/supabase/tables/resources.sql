@@ -27,9 +27,15 @@ CREATE TABLE activities.resources (
   newsletter_last date,
   newsletter_highlight boolean DEFAULT false,
 
-  -- Postpartum Post
-  postpartum_post boolean NOT NULL DEFAULT true,
-  
+  -- Postpartum Post — resources are never eligible (013_resources_never_in_post.sql):
+  -- the Postpartum Post repo's matcher only queries events, locations, and playgrounds.
+  postpartum_post boolean NOT NULL DEFAULT false,
+
+  -- Services this activity is a candidate for / confirmed for: 'newsletter',
+  -- 'postpartum_post'. Additive alongside postpartum_post — application code
+  -- keeps that boolean synced to whether 'postpartum_post' is in this array.
+  services text[] NOT NULL DEFAULT '{}',
+
   -- Location Details
   location text,
   neighborhood text,

@@ -47,7 +47,12 @@ CREATE TABLE activities.events (
 
   -- Postpartum Post
   postpartum_post boolean NOT NULL DEFAULT true,
-  
+
+  -- Services this activity is a candidate for / confirmed for: 'newsletter',
+  -- 'postpartum_post'. Additive alongside postpartum_post — application code
+  -- keeps that boolean synced to whether 'postpartum_post' is in this array.
+  services text[] NOT NULL DEFAULT '{}',
+
   -- Location Details
   location text,
   neighborhood text,

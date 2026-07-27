@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit, MapPin, Clock, NotepadText, CalendarCheck, RefreshCw, Globe } from 'lucide-react'
+import { Edit, MapPin, Clock, NotepadText, CalendarCheck, RefreshCw, Globe, Newspaper, Mail } from 'lucide-react'
 import { ALL_LISTS, ListId } from '../../types/list'
 import { CardProps } from '../../types/card'
 
@@ -17,6 +17,7 @@ export function Card({
   onDetails,
   onMove,
   detailsAction,
+  onToggleService,
   children
 }: CardProps) {
   const calIconRef = useRef<HTMLDivElement>(null)
@@ -47,6 +48,39 @@ export function Card({
             <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
               {displayDate}
             </span>
+            {!isNewActivity && onToggleService && (() => {
+              const services = activity.services ?? []
+              const hasNewsletter = services.includes('newsletter')
+              const hasPost = services.includes('postpartum_post')
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onToggleService(activity.id, 'newsletter', !hasNewsletter) }}
+                    title={hasNewsletter ? 'In newsletter — click to remove' : 'Not in newsletter — click to add'}
+                    className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${
+                      hasNewsletter ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
+                    }`}
+                  >
+                    <Newspaper size={11} />
+                  </button>
+                  {/* Post never takes resources — the Postpartum Post matcher only
+                      queries events, locations, and playgrounds. */}
+                  {activity.type === 'event' && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onToggleService(activity.id, 'postpartum_post', !hasPost) }}
+                      title={hasPost ? 'In Post — click to remove' : 'Not in Post — click to add'}
+                      className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${
+                        hasPost ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
+                      }`}
+                    >
+                      <Mail size={11} />
+                    </button>
+                  )}
+                </>
+              )
+            })()}
             {activity.source === 'app_website' && (
               <span title="Submitted via website">
                 <Globe size={12} className="text-green-500 shrink-0" />

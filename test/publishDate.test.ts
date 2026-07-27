@@ -5,7 +5,7 @@ const TODAY = '2026-06-03'
 
 // Shorthand helpers
 const published = (newsletter_last: string) => ({ status: 'published', newsletter_last })
-const staged    = (newsletter_last: string) => ({ status: 'edited',    newsletter_last }) // in next_newsletter, not yet published
+const staged    = (newsletter_last: string) => ({ status: 'accepted', newsletter_last }) // in next_newsletter, not yet published
 
 describe('computePublishDate', () => {
   it('returns today + 7 when no newsletters have ever been sent', () => {
@@ -15,7 +15,7 @@ describe('computePublishDate', () => {
   it('returns today + 7 when all rows lack newsletter_last', () => {
     const rows = [
       { status: 'archived', newsletter_last: null },
-      { status: 'edited',   newsletter_last: null },
+      { status: 'accepted', newsletter_last: null },
     ]
     expect(computePublishDate(rows, TODAY)).toBe('2026-06-10')
   })

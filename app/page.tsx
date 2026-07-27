@@ -56,9 +56,15 @@ async function BoardWithData() {
     )
   }
 
-  const TRIAGE_LIST_IDS = ['ideas', 'review', 'error']
+  // 'gone' items (aged-out or explicitly rejected) must always be fetched
+  // regardless of date — 'gone' is the authoritative "exited the pipeline"
+  // signal now, not just status === 'archived'. Aged-out items keep
+  // status: 'accepted' (never forced to 'archived'), so without this they'd
+  // silently vanish from the Archived tab the moment their date passed,
+  // since isCurrentEvent() would otherwise exclude them.
+  const TRIAGE_LIST_IDS = ['ideas', 'review', 'error', 'refine']
   const events = (eventsResult.data ?? [])
-    .filter(e => e.status === 'archived' || e.status === 'published' || TRIAGE_LIST_IDS.includes(e.list_id) || isCurrentEvent(e, today))
+    .filter(e => e.status === 'archived' || e.status === 'published' || e.list_id === 'gone' || TRIAGE_LIST_IDS.includes(e.list_id) || isCurrentEvent(e, today))
     .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
 
   const resources = (resourcesResult.data ?? [])

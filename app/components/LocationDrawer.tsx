@@ -24,10 +24,11 @@ interface LocationDrawerProps {
   location: Location
   onClose: () => void
   onSaved: (loc: Location) => void
-  onArchive?: (id: string) => void
+  // No archived state for locations — rejecting one means deleting it outright.
+  onDelete?: (id: string) => void
 }
 
-export function LocationDrawer({ location, onClose, onSaved, onArchive }: LocationDrawerProps) {
+export function LocationDrawer({ location, onClose, onSaved, onDelete }: LocationDrawerProps) {
   const [formData, setFormData] = useState<Location>({ ...location })
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [categoryInput, setCategoryInput] = useState('')
@@ -291,9 +292,10 @@ export function LocationDrawer({ location, onClose, onSaved, onArchive }: Locati
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-3">
-          {onArchive && (
+          {onDelete && (
             <button
-              onClick={() => { onArchive(location.id); onClose() }}
+              onClick={() => { onDelete(location.id); onClose() }}
+              title="Delete permanently — locations have no archived state"
               className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
             >
               <Trash2 size={16} />

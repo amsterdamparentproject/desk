@@ -14,7 +14,7 @@ export function CaptureCardForm({ onAdd, onAddLocation, listId, locations = [] }
     <div className="space-y-3">
       <EventForm onAdd={onAdd} listId={listId} />
       <ResourceForm onAdd={onAdd} listId={listId} />
-      <LocationForm onAddLocation={onAddLocation} locations={locations} />
+      {onAddLocation && <LocationForm onAddLocation={onAddLocation} locations={locations} />}
     </div>
   )
 }
@@ -151,7 +151,7 @@ function ResourceForm({ onAdd, listId }: Pick<CaptureCardProps, 'onAdd' | 'listI
   )
 }
 
-function LocationForm({ onAddLocation, locations }: Pick<CaptureCardProps, 'onAddLocation'> & { locations: Location[] }) {
+export function LocationForm({ onAddLocation, locations }: Pick<CaptureCardProps, 'onAddLocation'> & { locations: Location[] }) {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [area, setArea] = useState('')

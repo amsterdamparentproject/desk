@@ -230,7 +230,7 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
   const [confirming, setConfirming]   = useState(false)
   const [finishing, setFinishing]     = useState(false)
 
-  const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived' && a.status !== 'published')
+  const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived' && a.status !== 'published' && a.services.includes('newsletter'))
   const windowEnd      = addDaysStr(publishDate, 14)
   const html           = buildNewsletterHTML(nextActivities, publishDate)
   const text           = buildNewsletterText(nextActivities, publishDate)

@@ -2,22 +2,28 @@
 CREATE SCHEMA IF NOT EXISTS activities;
 
 -- 1. Desk List: The "Location" in your workspace
+-- 'refine' and 'gone' were added in 010_add_gone_list.sql.
 CREATE TYPE activities.desk_list AS ENUM (
-  'ideas', 
-  'capture', 
-  'review', 
-  'error', 
-  'next_newsletter', 
-  'upcoming_events', 
-  'new_resources'
+  'ideas',
+  'capture',
+  'review',
+  'error',
+  'refine',
+  'next_newsletter',
+  'upcoming_events',
+  'new_resources',
+  'gone'
 );
 
 -- 2. Triage Status: The "Health/Phase" of the record
+-- 'edited' was retired in 012_drop_edited_status.sql — 'accepted' is the
+-- status stamped once something is promoted into Upcoming (see
+-- 010_add_gone_list.sql for the original rationale).
 CREATE TYPE activities.triage_status AS ENUM (
   'new',
   'processing',
   'processed',
-  'edited',
+  'accepted',
   'published',
   'archived',
   'snoozed'

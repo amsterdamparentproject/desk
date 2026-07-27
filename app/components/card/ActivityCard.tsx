@@ -3,7 +3,7 @@ import { Card } from './Card'
 import { CardProps } from '../../types/card'
 import { ALL_LISTS } from '../../types/list'
 
-export function ActivityCard({ activity, onDetails, onMove, onArchive }: CardProps) {
+export function ActivityCard({ activity, onDetails, onMove, onArchive, onToggleService }: CardProps) {
   const isProcessing = activity.status === 'processing'
   const list = ALL_LISTS.find(l => l.id === activity.list_id)
   const showApprove = !isProcessing && !!(list?.finishLabel && list?.finishTarget && onMove)
@@ -11,7 +11,7 @@ export function ActivityCard({ activity, onDetails, onMove, onArchive }: CardPro
   const showRemove = !isProcessing && activity.list_id === 'next_newsletter' && !!onMove
 
   return (
-    <Card activity={activity} onDetails={onDetails} onMove={onMove} onArchive={onArchive}>
+    <Card activity={activity} onDetails={onDetails} onMove={onMove} onArchive={onArchive} onToggleService={onToggleService}>
       {(showApprove || showArchive || showRemove) && (
         <div className="flex h-10 px-2 py-1.5 gap-1">
           {showRemove && (
