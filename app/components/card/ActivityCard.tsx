@@ -3,16 +3,17 @@ import { Card } from './Card'
 import { CardProps } from '../../types/card'
 import { ALL_LISTS } from '../../types/list'
 
-export function ActivityCard({ activity, onDetails, onMove, onArchive, onToggleService }: CardProps) {
+export function ActivityCard({ activity, onDetails, onMove, onArchive, onToggleService, showNotInPost }: CardProps) {
   const isProcessing = activity.status === 'processing'
   const list = ALL_LISTS.find(l => l.id === activity.list_id)
   const showApprove = !isProcessing && !!(list?.finishLabel && list?.finishTarget && onMove)
   const showArchive = !isProcessing && !!onArchive
   const showRemove = !isProcessing && activity.list_id === 'next_newsletter' && !!onMove
+  const showNotInPostBtn = !isProcessing && !!showNotInPost && !!onToggleService
 
   return (
     <Card activity={activity} onDetails={onDetails} onMove={onMove} onArchive={onArchive} onToggleService={onToggleService}>
-      {(showApprove || showArchive || showRemove) && (
+      {(showApprove || showArchive || showRemove || showNotInPostBtn) && (
         <div className="flex h-10 px-2 py-1.5 gap-1">
           {showRemove && (
             <button
@@ -28,6 +29,15 @@ export function ActivityCard({ activity, onDetails, onMove, onArchive, onToggleS
               className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
             >
               <Check size={14} strokeWidth={3} /> {list!.finishLabel}
+            </button>
+          )}
+          {showNotInPostBtn && (
+            <button
+              onClick={() => onToggleService!(activity.id, 'postpartum_post', false)}
+              title="Drops postpartum_post — moves to Gone once no services remain. Status is untouched, unlike Archive."
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-600 hover:text-white transition-colors uppercase"
+            >
+              <X size={12} /> Remove
             </button>
           )}
           {showArchive && (

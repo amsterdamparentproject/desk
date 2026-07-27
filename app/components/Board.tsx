@@ -649,32 +649,30 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     a.status !== 'archived' &&
     a.services.includes('postpartum_post')
   )
-  // Upcoming events (single) vs Recurring Events — split on repeat_rrule,
-  // the authoritative "does this event recur" flag.
-  const postSingleEvents = postEvents.filter(a => !a.repeat_rrule).sort(byPostDate)
+  // Every card shows up in exactly one Post column, and stays included
+  // unless explicitly removed: recurring events live only in "Recurring"
+  // (repeat_rrule is the authoritative "does this event recur" flag);
+  // non-recurring events are split between "This match" (due by the end of
+  // this month, including anything overdue that hasn't been swept yet) and
+  // "Future match" (everything after that, with no upper bound) — so a
+  // single event can never silently fall through a gap between columns
+  // regardless of how far out (or overdue) its date is.
   const postRecurringEvents = postEvents.filter(a => !!a.repeat_rrule).sort(byPostDate)
-
-  // "Match" pane: the same pool, split by calendar month — a computed view,
-  // not a new pipeline stage (the Postpartum Post repo's matcher already
-  // picks eligible items by date on its own; this is just a heads-up on
-  // what's coming this month vs next).
-  const matchToday = new Date().toISOString().split('T')[0]
-  const matchMonthEnd = (offset: number) => {
+  const postSingleEvents = postEvents.filter(a => !a.repeat_rrule)
+  const matchThisMonthEnd = (() => {
     const d = new Date()
     d.setDate(1)
-    d.setMonth(d.getMonth() + 1 + offset)
+    d.setMonth(d.getMonth() + 1)
     d.setDate(0)
     return d.toISOString().split('T')[0]
-  }
-  const matchThisMonthEnd = matchMonthEnd(0)
-  const matchNextMonthEnd = matchMonthEnd(1)
-  const matchThisMonth = postEvents.filter(a => {
+  })()
+  const matchThisMonth = postSingleEvents.filter(a => {
     const d = postEffectiveDate(a)
-    return !!d && d >= matchToday && d <= matchThisMonthEnd
+    return !!d && d <= matchThisMonthEnd
   }).sort(byPostDate)
-  const matchNextMonth = postEvents.filter(a => {
+  const matchNextMonth = postSingleEvents.filter(a => {
     const d = postEffectiveDate(a)
-    return !!d && d > matchThisMonthEnd && d <= matchNextMonthEnd
+    return !!d && d > matchThisMonthEnd
   }).sort(byPostDate)
 
   // Locations tab groups
@@ -1019,8 +1017,9 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
         {activeTab === 'post' && (
           <>
             {([
-              { key: 'post-upcoming',  label: 'Upcoming events',  items: postSingleEvents },
-              { key: 'post-recurring', label: 'Recurring Events', items: postRecurringEvents },
+              { key: 'post-this-match',   label: 'This match',   items: matchThisMonth },
+              { key: 'post-future-match', label: 'Future match', items: matchNextMonth },
+              { key: 'post-recurring',    label: 'Recurring',    items: postRecurringEvents },
             ] as const).map(({ key, label, items }) => (
               <div key={key} className="w-full md:flex-1 md:basis-0 min-w-0">
                 <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
@@ -1039,6 +1038,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                           onDetails={openActivity}
                           onArchive={handleArchiveEvent}
                           onToggleService={handleToggleService}
+                          showNotInPost
                         />
                       ))
                     )}
@@ -1046,55 +1046,6 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
                 </section>
               </div>
             ))}
-
-            <div className="w-full md:flex-1 md:basis-0 min-w-0">
-              <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
-                <div className="p-4 bg-violet-600 flex items-center justify-between">
-                  <h2 className="text-[10px] font-black uppercase tracking-widest text-white">Match</h2>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">{matchThisMonth.length + matchNextMonth.length}</span>
-                </div>
-                <div className="p-3 space-y-3 bg-slate-100">
-                  {matchThisMonth.length === 0 && matchNextMonth.length === 0 ? (
-                    <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">Nothing to see here 🌬️</div>
-                  ) : (
-                    ([
-                      { label: 'This month', items: matchThisMonth },
-                      { label: 'Next month', items: matchNextMonth },
-                    ] as const).map(({ label, items }) => {
-                      if (items.length === 0) return null
-                      const key = `match-${label}`
-                      const collapsed = collapsedSections.has(key)
-                      return (
-                        <div key={label}>
-                          <button
-                            type="button"
-                            onClick={() => toggleSection(key)}
-                            className="w-full flex items-center gap-1.5 px-1 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
-                          >
-                            {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
-                            {label}
-                            <span className="ml-auto bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">{items.length}</span>
-                          </button>
-                          {!collapsed && (
-                            <div className="space-y-3">
-                              {items.map(activity => (
-                                <ActivityCard
-                                  key={activity.id}
-                                  activity={activity}
-                                  onDetails={openActivity}
-                                  onArchive={handleArchiveEvent}
-                                  onToggleService={handleToggleService}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </section>
-            </div>
           </>
         )}
       </div>

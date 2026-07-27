@@ -19,6 +19,11 @@ export interface CardProps {
   // Two-way toggle for the card-front Newsletter/Post service buttons.
   onToggleService?: (id: string, service: Service, enabled: boolean) => void
   showApproveButton?: boolean
+  // Post-tab-only footer action: drops 'postpartum_post' from services via
+  // onToggleService (moving to 'gone' if nothing else remains, status
+  // untouched) instead of the generic Archive action, which would also
+  // reject the item from Newsletter — not what "not in Post" means.
+  showNotInPost?: boolean
   detailsAction?: React.ReactNode // Replaces the Edit button in the card header
   children?: React.ReactNode // For extending components to add custom footers
 }
