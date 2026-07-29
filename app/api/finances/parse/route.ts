@@ -1,11 +1,17 @@
 // app/api/finances/parse/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifyDeskSession } from '@/app/utils/auth-gate';
 import { parseCSV } from '@/lib/finance/parser';
 import { calculateSummary } from '@/lib/finance/calculations';
 import { ParsedCSVData } from '@/lib/finance/types';
 
 export async function POST(request: NextRequest) {
+  // Require the desk session, like the sibling API routes (audit D2).
+  if (!verifyDeskSession(await cookies())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { csvText } = await request.json();
 
