@@ -888,7 +888,12 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               </button>
             )}
             {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel && (
-              <button onClick={() => onFinishEditing(formData)} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+              <button
+                onClick={() => onFinishEditing(formData)}
+                disabled={formData.list_id === 'refine' && (formData.services ?? []).length === 0}
+                title={formData.list_id === 'refine' && (formData.services ?? []).length === 0 ? 'Choose Newsletter and/or Post before adding' : undefined}
+                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs disabled:opacity-40 disabled:hover:bg-green-600 disabled:cursor-not-allowed disabled:shadow-none"
+              >
                 <Check size={18} strokeWidth={3} />
                 {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel}
               </button>

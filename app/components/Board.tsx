@@ -433,15 +433,16 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
     const type = captureData.type ?? 'event'
     const preview_url = captureData.file ? URL.createObjectURL(captureData.file) : null
     const listId = captureData.list_id || 'capture'
-    // Items captured directly into Upcoming (e.g. via the inline-add on the
-    // Newsletter/Post tab's Upcoming column) skip the Refine promotion step
-    // that normally seeds 'services' — default both on here so they don't
-    // silently fail to appear in either tab's filtered view. Post never takes
-    // resources (the Postpartum Post matcher only queries events, locations,
-    // and playgrounds), so resources only ever get seeded 'newsletter'.
-    const seedServices: Service[] = (listId === 'upcoming_events' || listId === 'new_resources')
-      ? (type === 'event' ? ['newsletter', 'postpartum_post'] : ['newsletter'])
-      : []
+    // Every new activity defaults to both services (Newsletter + Post) — or
+    // just Newsletter for resources, which are never eligible for Post (the
+    // Postpartum Post matcher only queries events, locations, and
+    // playgrounds). Matches the `services` column's DB default. This used to
+    // only apply to items captured directly into Upcoming; ordinary
+    // Capture/Review items got an explicit empty array here, which meant
+    // every card silently started with no service and needed a human to
+    // remember to turn one on before it could ever show up in
+    // Newsletter/Post — that was the "lost events" bug.
+    const seedServices: Service[] = type === 'event' ? ['newsletter', 'postpartum_post'] : ['newsletter']
 
     // Generate ID upfront so the storage path matches the DB record
     const id = crypto.randomUUID()
@@ -499,6 +500,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
         title: description,
         list_id: 'review',
         status: 'new',
+        services: seedServices,
         file: captureData.file,
         preview_url,
       })
@@ -517,7 +519,7 @@ export default function Board({ initialActivities, initialLocations = [] } : Boa
       }
 
       try {
-        await createActivity(id, type, { description, list_id: 'review', status: 'new', file_url })
+        await createActivity(id, type, { description, list_id: 'review', status: 'new', services: seedServices, file_url })
       } catch (err) {
         console.error('Capture Error:', err)
         await moveToError(id, type, description, false)

@@ -51,7 +51,11 @@ CREATE TABLE activities.events (
   -- Services this activity is a candidate for / confirmed for: 'newsletter',
   -- 'postpartum_post'. Additive alongside postpartum_post — application code
   -- keeps that boolean synced to whether 'postpartum_post' is in this array.
-  services text[] NOT NULL DEFAULT '{}',
+  -- Defaults to both on (014_default_services_on.sql) — an empty default
+  -- meant any insert path that didn't explicitly set services (share
+  -- capture, AI-enrichment callbacks, etc.) silently landed invisible in
+  -- both the Newsletter and Post tabs.
+  services text[] NOT NULL DEFAULT ARRAY['newsletter', 'postpartum_post'],
 
   -- Location Details
   location text,

@@ -7,6 +7,10 @@ export function ActivityCard({ activity, onDetails, onMove, onArchive, onToggleS
   const isProcessing = activity.status === 'processing'
   const list = ALL_LISTS.find(l => l.id === activity.list_id)
   const showApprove = !isProcessing && !!(list?.finishLabel && list?.finishTarget && onMove)
+  // Refine's finish action promotes into Newsletter/Post queues — block it until
+  // at least one service is chosen, since otherwise the card just disappears
+  // (added to a list it isn't actually eligible to appear in for either service).
+  const approveDisabled = activity.list_id === 'refine' && (activity.services ?? []).length === 0
   const showArchive = !isProcessing && !!onArchive
   const showRemove = !isProcessing && activity.list_id === 'next_newsletter' && !!onMove
   const showNotInPostBtn = !isProcessing && !!showNotInPost && !!onToggleService
@@ -26,7 +30,9 @@ export function ActivityCard({ activity, onDetails, onMove, onArchive, onToggleS
           {showApprove && (
             <button
               onClick={() => onMove!(activity.id, list!.finishTarget!(activity.type))}
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
+              disabled={approveDisabled}
+              title={approveDisabled ? 'Choose Newsletter and/or Post before adding' : undefined}
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase disabled:opacity-40 disabled:hover:bg-green-50 disabled:hover:text-green-600 disabled:cursor-not-allowed"
             >
               <Check size={14} strokeWidth={3} /> {list!.finishLabel}
             </button>

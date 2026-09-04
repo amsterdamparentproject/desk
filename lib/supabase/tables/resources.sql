@@ -34,7 +34,9 @@ CREATE TABLE activities.resources (
   -- Services this activity is a candidate for / confirmed for: 'newsletter',
   -- 'postpartum_post'. Additive alongside postpartum_post — application code
   -- keeps that boolean synced to whether 'postpartum_post' is in this array.
-  services text[] NOT NULL DEFAULT '{}',
+  -- Defaults to newsletter only (014_default_services_on.sql) — never
+  -- postpartum_post, per 013_resources_never_in_post.sql.
+  services text[] NOT NULL DEFAULT ARRAY['newsletter'],
 
   -- Location Details
   location text,
