@@ -1,15 +1,19 @@
 // hooks/useAutosizeTextArea.ts
-import { useState, useCallback, useLayoutEffect } from 'react'
+import { useState, useCallback, useLayoutEffect, useRef } from 'react'
 
 export const useAutosizeTextArea = (value: string) => {
-  const [el, setEl] = useState<HTMLTextAreaElement | null>(null)
+  const nodeRef = useRef<HTMLTextAreaElement | null>(null)
+  // Bumped whenever a node attaches, so the effect re-runs for a new element.
+  const [nodeVersion, setNodeVersion] = useState(0)
 
   // Callback ref: called by React with the DOM node immediately on mount
   const ref = useCallback((node: HTMLTextAreaElement | null) => {
-    setEl(node)
+    nodeRef.current = node
+    if (node) setNodeVersion((v) => v + 1)
   }, [])
 
   useLayoutEffect(() => {
+    const el = nodeRef.current
     if (!el) return
 
     const resize = () => {
@@ -23,7 +27,7 @@ export const useAutosizeTextArea = (value: string) => {
     resize()
 
     return () => ro.disconnect()
-  }, [el, value])
+  }, [nodeVersion, value])
 
   return ref
 }

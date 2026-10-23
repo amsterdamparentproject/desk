@@ -19,7 +19,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 text-amber-600 mb-4">
           🔒
         </div>
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Sign in to Desk</h1>
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+          Sign in to Desk
+        </h1>
         <p className="text-sm text-slate-500 mt-2 mb-6 max-w-xs mx-auto">
           Enter the team password to access the workspace.
         </p>
@@ -33,7 +35,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-app-gold"
           />
           {error && (
-            <p className="text-xs text-red-600">Incorrect password. Please try again.</p>
+            <p className="text-xs text-red-600">
+              Incorrect password. Please try again.
+            </p>
           )}
           <button
             type="submit"

@@ -6,10 +6,10 @@ import { usePathname } from 'next/navigation'
 import { logout } from '@/app/actions/auth'
 
 const NAV_LINKS = [
-  { href: '/',           label: 'Activities' },
-  { href: '/finances',   label: 'Finances'   },
-  { href: '/sources',    label: 'Sources'    },
-  { href: '/customers',  label: 'Customers'  },
+  { href: '/', label: 'Activities' },
+  { href: '/finances', label: 'Finances' },
+  { href: '/sources', label: 'Sources' },
+  { href: '/customers', label: 'Customers' },
 ]
 
 export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
@@ -40,7 +40,8 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
       {/* Links */}
       <div className="flex items-center gap-1">
         {NAV_LINKS.map(({ href, label }) => {
-          const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href)
+          const isActive =
+            href === '/' ? pathname === '/' : pathname.startsWith(href)
           return (
             <Link
               key={href}

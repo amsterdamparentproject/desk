@@ -13,31 +13,55 @@ describe('parseRrule', () => {
 
   it('parses a weekly rrule with multiple days', () => {
     const result = parseRrule('RRULE:FREQ=WEEKLY;BYDAY=TU,TH')
-    expect(result).toEqual({ frequency: 'weekly', days: ['TU', 'TH'], untilDate: '' })
+    expect(result).toEqual({
+      frequency: 'weekly',
+      days: ['TU', 'TH'],
+      untilDate: '',
+    })
   })
 
   it('parses biweekly (INTERVAL=2) correctly', () => {
     const result = parseRrule('RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE')
-    expect(result).toEqual({ frequency: 'biweekly', days: ['WE'], untilDate: '' })
+    expect(result).toEqual({
+      frequency: 'biweekly',
+      days: ['WE'],
+      untilDate: '',
+    })
   })
 
   it('parses a monthly positional rrule', () => {
     const result = parseRrule('RRULE:FREQ=MONTHLY;BYDAY=1MO')
-    expect(result).toEqual({ frequency: 'monthly', days: ['1MO'], untilDate: '' })
+    expect(result).toEqual({
+      frequency: 'monthly',
+      days: ['1MO'],
+      untilDate: '',
+    })
   })
 
   it('parses last-weekday-of-month', () => {
     const result = parseRrule('RRULE:FREQ=MONTHLY;BYDAY=-1FR')
-    expect(result).toEqual({ frequency: 'monthly', days: ['-1FR'], untilDate: '' })
+    expect(result).toEqual({
+      frequency: 'monthly',
+      days: ['-1FR'],
+      untilDate: '',
+    })
   })
 
   it('parses UNTIL date', () => {
     const result = parseRrule('RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261231')
-    expect(result).toEqual({ frequency: 'weekly', days: ['MO'], untilDate: '2026-12-31' })
+    expect(result).toEqual({
+      frequency: 'weekly',
+      days: ['MO'],
+      untilDate: '2026-12-31',
+    })
   })
 
   it('returns null frequency for null/empty input', () => {
-    expect(parseRrule(null)).toEqual({ frequency: null, days: [], untilDate: '' })
+    expect(parseRrule(null)).toEqual({
+      frequency: null,
+      days: [],
+      untilDate: '',
+    })
     expect(parseRrule('')).toEqual({ frequency: null, days: [], untilDate: '' })
   })
 })
@@ -48,23 +72,27 @@ describe('parseRrule', () => {
 
 describe('buildRrule', () => {
   it('builds a weekly rrule', () => {
-    expect(buildRrule({ frequency: 'weekly', days: ['MO'], untilDate: '' }))
-      .toBe('RRULE:FREQ=WEEKLY;BYDAY=MO')
+    expect(
+      buildRrule({ frequency: 'weekly', days: ['MO'], untilDate: '' })
+    ).toBe('RRULE:FREQ=WEEKLY;BYDAY=MO')
   })
 
   it('builds a biweekly rrule', () => {
-    expect(buildRrule({ frequency: 'biweekly', days: ['WE'], untilDate: '' }))
-      .toBe('RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE')
+    expect(
+      buildRrule({ frequency: 'biweekly', days: ['WE'], untilDate: '' })
+    ).toBe('RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE')
   })
 
   it('builds a monthly positional rrule', () => {
-    expect(buildRrule({ frequency: 'monthly', days: ['1MO'], untilDate: '' }))
-      .toBe('RRULE:FREQ=MONTHLY;BYDAY=1MO')
+    expect(
+      buildRrule({ frequency: 'monthly', days: ['1MO'], untilDate: '' })
+    ).toBe('RRULE:FREQ=MONTHLY;BYDAY=1MO')
   })
 
   it('includes UNTIL when provided', () => {
-    expect(buildRrule({ frequency: 'weekly', days: ['FR'], untilDate: '2026-12-31' }))
-      .toBe('RRULE:FREQ=WEEKLY;BYDAY=FR;UNTIL=20261231')
+    expect(
+      buildRrule({ frequency: 'weekly', days: ['FR'], untilDate: '2026-12-31' })
+    ).toBe('RRULE:FREQ=WEEKLY;BYDAY=FR;UNTIL=20261231')
   })
 
   it('returns empty string when no frequency', () => {
@@ -74,7 +102,9 @@ describe('buildRrule', () => {
   it('round-trips through parse → build', () => {
     const original = 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH'
     const { frequency, days, untilDate } = parseRrule(original)
-    expect(buildRrule({ frequency: frequency!, days, untilDate })).toBe(original)
+    expect(buildRrule({ frequency: frequency!, days, untilDate })).toBe(
+      original
+    )
   })
 })
 
@@ -135,14 +165,14 @@ describe('computeNextDate – biweekly', () => {
 })
 
 describe('computeNextDate – monthly', () => {
-  it('returns the 1st Monday of next month when this month\'s has passed', () => {
+  it("returns the 1st Monday of next month when this month's has passed", () => {
     // today = 2026-06-20 (Sat); 1st Monday of June = 2026-06-01 (already past)
     // 1st Monday of July = 2026-07-06
     const result = computeNextDate('monthly', ['1MO'], '', '2026-01-05')
     expect(result).toBe('2026-07-06')
   })
 
-  it('returns the 1st Monday this month if it hasn\'t happened yet', () => {
+  it("returns the 1st Monday this month if it hasn't happened yet", () => {
     // Pin today to 2026-06-01 (Mon) — the 1st Monday IS today, so next = July 6
     vi.setSystemTime(new Date('2026-06-01T00:00:00'))
     const result = computeNextDate('monthly', ['1MO'], '', '2026-01-05')

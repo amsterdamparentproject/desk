@@ -15,7 +15,8 @@ import { createClient } from '@supabase/supabase-js'
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') })
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
-const USER_AGENT = 'AmsterdamParentProject/1.0 (amsterdamparentproject@gmail.com)'
+const USER_AGENT =
+  'AmsterdamParentProject/1.0 (amsterdamparentproject@gmail.com)'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,17 +24,22 @@ const supabase = createClient(
   { db: { schema: 'activities' } }
 )
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function geocode(address: string): Promise<{ latitude: number; longitude: number } | null> {
+async function geocode(
+  address: string
+): Promise<{ latitude: number; longitude: number } | null> {
   try {
     const url = `${NOMINATIM_URL}?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=0`
     const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } })
     if (!res.ok) return null
     const data = await res.json()
     if (!Array.isArray(data) || data.length === 0) return null
-    return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) }
-  } catch (err) {
+    return {
+      latitude: parseFloat(data[0].lat),
+      longitude: parseFloat(data[0].lon),
+    }
+  } catch {
     return null
   }
 }
@@ -46,8 +52,14 @@ async function backfillTable(table: 'events' | 'resources') {
     .neq('location', '')
     .is('latitude', null)
 
-  if (error) { console.error(`[${table}] fetch error:`, error.message); return }
-  if (!rows?.length) { console.log(`[${table}] nothing to backfill`); return }
+  if (error) {
+    console.error(`[${table}] fetch error:`, error.message)
+    return
+  }
+  if (!rows?.length) {
+    console.log(`[${table}] nothing to backfill`)
+    return
+  }
 
   console.log(`[${table}] ${rows.length} record(s) to geocode\n`)
 
@@ -59,9 +71,11 @@ async function backfillTable(table: 'events' | 'resources') {
         .from(table)
         .update({ ...coords, updated_at: new Date().toISOString() })
         .eq('id', row.id)
-      console.log(updateError
-        ? `  ✗ ${row.location}\n    ${updateError.message}`
-        : `  ✓ ${row.location}\n    → ${coords.latitude}, ${coords.longitude}`)
+      console.log(
+        updateError
+          ? `  ✗ ${row.location}\n    ${updateError.message}`
+          : `  ✓ ${row.location}\n    → ${coords.latitude}, ${coords.longitude}`
+      )
     } else {
       console.log(`  ? ${row.location}\n    → no result from Nominatim`)
     }
@@ -75,8 +89,14 @@ async function backfillLocations() {
     .select('id, address')
     .is('latitude', null)
 
-  if (error) { console.error('[locations] fetch error:', error.message); return }
-  if (!rows?.length) { console.log('[locations] nothing to backfill'); return }
+  if (error) {
+    console.error('[locations] fetch error:', error.message)
+    return
+  }
+  if (!rows?.length) {
+    console.log('[locations] nothing to backfill')
+    return
+  }
 
   console.log(`[locations] ${rows.length} record(s) to geocode\n`)
 
@@ -87,9 +107,11 @@ async function backfillLocations() {
         .from('locations')
         .update({ ...coords, updated_at: new Date().toISOString() })
         .eq('id', row.id)
-      console.log(updateError
-        ? `  ✗ ${row.address}\n    ${updateError.message}`
-        : `  ✓ ${row.address}\n    → ${coords.latitude}, ${coords.longitude}`)
+      console.log(
+        updateError
+          ? `  ✗ ${row.address}\n    ${updateError.message}`
+          : `  ✓ ${row.address}\n    → ${coords.latitude}, ${coords.longitude}`
+      )
     } else {
       console.log(`  ? ${row.address}\n    → no result from Nominatim`)
     }

@@ -16,7 +16,7 @@ export function createAdminClient() {
 }
 
 const createBaseServerClient = async (
-  schema: "public" | "directory" | "activities" = "public",
+  schema: 'public' | 'directory' | 'activities' = 'public'
 ) => {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,13 +26,13 @@ const createBaseServerClient = async (
       auth: {
         persistSession: false, // Ensures it behaves as a pure stateless admin client
       },
-    },
-  );
-};
+    }
+  )
+}
 
 // 2. Specialized exported clients (Explicitly async to pass through the cookie Promise)
-export const createPublicClient = async () => 
-  await createBaseServerClient("public");
+export const createPublicClient = async () =>
+  await createBaseServerClient('public')
 
-export const createActivitiesClient = async () => 
-  await createBaseServerClient("activities");
+export const createActivitiesClient = async () =>
+  await createBaseServerClient('activities')

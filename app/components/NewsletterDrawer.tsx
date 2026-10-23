@@ -32,7 +32,10 @@ function addDaysStr(dateStr: string, days: number): string {
  * Biweekly uses 14-day stepping from start_date (phase-aware).
  * Weekly/monthly/daily use computeNextDate with a reference one day before windowStart.
  */
-function getEffectiveStart(activity: DeskActivity, windowStart: string): string {
+function getEffectiveStart(
+  activity: DeskActivity,
+  windowStart: string
+): string {
   const { start_date, repeat_frequency, repeat_rrule } = activity
   if (!start_date) return ''
   if (start_date >= windowStart) return start_date
@@ -53,18 +56,46 @@ function getEffectiveStart(activity: DeskActivity, windowStart: string): string 
   }
 
   const dayBefore = addDaysStr(windowStart, -1)
-  return computeNextDate(parsed.frequency, parsed.days, parsed.untilDate, dayBefore) ?? start_date
+  return (
+    computeNextDate(
+      parsed.frequency,
+      parsed.days,
+      parsed.untilDate,
+      dayBefore
+    ) ?? start_date
+  )
 }
 
 // ─── Date display formatting (mirrors n8n workflow logic) ────────────────────
 
-const DAYS  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
 
-function fmtFull(d: Date)  { return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}` }
-function fmtShort(d: Date) { return `${d.getDate()} ${MONTHS[d.getMonth()]}` }
+function fmtFull(d: Date) {
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
+}
+function fmtShort(d: Date) {
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`
+}
 
-function getDateDisplay(activity: DeskActivity, windowStart: string, windowEnd: string): string {
+function getDateDisplay(
+  activity: DeskActivity,
+  windowStart: string,
+  windowEnd: string
+): string {
   const effectiveStart = getEffectiveStart(activity, windowStart)
   if (!effectiveStart) return ''
 
@@ -72,23 +103,29 @@ function getDateDisplay(activity: DeskActivity, windowStart: string, windowEnd: 
 
   // Determine effective end date (shift for repeat occurrences)
   let effectiveEnd: Date | null = null
-  if (activity.end_date && activity.start_date && activity.end_date > activity.start_date) {
+  if (
+    activity.end_date &&
+    activity.start_date &&
+    activity.end_date > activity.start_date
+  ) {
     const origStart = parseLocal(activity.start_date)
-    const origEnd   = parseLocal(activity.end_date)
-    const delta     = origEnd.getTime() - origStart.getTime()
-    effectiveEnd    = new Date(sd.getTime() + delta)
+    const origEnd = parseLocal(activity.end_date)
+    const delta = origEnd.getTime() - origStart.getTime()
+    effectiveEnd = new Date(sd.getTime() + delta)
   }
 
   const pStart = parseLocal(windowStart)
-  const pEnd   = parseLocal(windowEnd)
+  const pEnd = parseLocal(windowEnd)
 
-  const startTime = activity.start_time ? activity.start_time.substring(0, 5) : null
-  const endTime   = activity.end_time   ? activity.end_time.substring(0, 5)   : null
+  const startTime = activity.start_time
+    ? activity.start_time.substring(0, 5)
+    : null
+  const endTime = activity.end_time ? activity.end_time.substring(0, 5) : null
 
   if (!effectiveEnd) {
     let timeDisplay = ''
     if (startTime) timeDisplay = ` @ ${startTime}`
-    if (endTime)   timeDisplay += `-${endTime}`
+    if (endTime) timeDisplay += `-${endTime}`
     return fmtFull(sd) + timeDisplay
   }
 
@@ -98,31 +135,44 @@ function getDateDisplay(activity: DeskActivity, windowStart: string, windowEnd: 
       : `${fmtShort(sd)}-${fmtShort(effectiveEnd)}`
   }
   if (sd >= pStart && effectiveEnd > pEnd) return `Starting ${fmtShort(sd)}`
-  if (sd < pStart  && effectiveEnd <= pEnd) return `Until ${fmtShort(effectiveEnd)}`
+  if (sd < pStart && effectiveEnd <= pEnd)
+    return `Until ${fmtShort(effectiveEnd)}`
   return `${fmtShort(sd)}-${fmtShort(effectiveEnd)}`
 }
 
 function getRepeatLabel(activity: DeskActivity): string {
   switch (activity.repeat_frequency) {
-    case 'daily':    return 'Daily'
-    case 'weekly':   return 'Weekly'
-    case 'biweekly': return 'Every 2 weeks'
-    case 'monthly':  return 'Monthly'
-    default:         return ''
+    case 'daily':
+      return 'Daily'
+    case 'weekly':
+      return 'Weekly'
+    case 'biweekly':
+      return 'Every 2 weeks'
+    case 'monthly':
+      return 'Monthly'
+    default:
+      return ''
   }
 }
 
 function escHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
 // ─── Grouping helper ──────────────────────────────────────────────────────────
 
-const AREA_FIRST      = 'APP & Friends'
+const AREA_FIRST = 'APP & Friends'
 const AREA_PENULTIMATE = 'Everywhere'
-const AREA_LAST       = 'Online'
+const AREA_LAST = 'Online'
 
-function groupAndOrder(activities: DeskActivity[], windowStart: string): [string, DeskActivity[]][] {
+function groupAndOrder(
+  activities: DeskActivity[],
+  windowStart: string
+): [string, DeskActivity[]][] {
   const grouped: Record<string, DeskActivity[]> = { [AREA_FIRST]: [] }
 
   for (const a of activities) {
@@ -137,8 +187,14 @@ function groupAndOrder(activities: DeskActivity[], windowStart: string): [string
 
   for (const area in grouped) {
     grouped[area].sort((a, b) => {
-      const aDate = (a.type === 'event' ? getEffectiveStart(a, windowStart) : null) || a.start_date || ''
-      const bDate = (b.type === 'event' ? getEffectiveStart(b, windowStart) : null) || b.start_date || ''
+      const aDate =
+        (a.type === 'event' ? getEffectiveStart(a, windowStart) : null) ||
+        a.start_date ||
+        ''
+      const bDate =
+        (b.type === 'event' ? getEffectiveStart(b, windowStart) : null) ||
+        b.start_date ||
+        ''
       if (!aDate && !bDate) return 0
       if (!aDate) return 1
       if (!bDate) return -1
@@ -146,30 +202,40 @@ function groupAndOrder(activities: DeskActivity[], windowStart: string): [string
     })
   }
 
-  const middle = Object.keys(grouped).filter(k => k !== AREA_FIRST && k !== AREA_PENULTIMATE && k !== AREA_LAST)
+  const middle = Object.keys(grouped).filter(
+    (k) => k !== AREA_FIRST && k !== AREA_PENULTIMATE && k !== AREA_LAST
+  )
   return [AREA_FIRST, ...middle, AREA_PENULTIMATE, AREA_LAST]
-    .filter(k => k in grouped && grouped[k].length > 0)
-    .map(k => [k, grouped[k]])
+    .filter((k) => k in grouped && grouped[k].length > 0)
+    .map((k) => [k, grouped[k]])
 }
 
 // ─── Builders ─────────────────────────────────────────────────────────────────
 
-function buildNewsletterHTML(activities: DeskActivity[], publishDate: string): string {
+function buildNewsletterHTML(
+  activities: DeskActivity[],
+  publishDate: string
+): string {
   const windowStart = publishDate
-  const windowEnd   = addDaysStr(publishDate, 14)
+  const windowEnd = addDaysStr(publishDate, 14)
   let html = ''
 
   for (const [area, items] of groupAndOrder(activities, windowStart)) {
     html += `<p><b>${escHtml(area)}</b></p>\n<ul style="list-style-type: disc; padding-left: 20px;">\n`
 
     for (const a of items) {
-      const dateDisplay         = a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
-      const repeatLabel         = getRepeatLabel(a)
-      const displayRepeat       = repeatLabel ? ` (${repeatLabel})` : ''
-      const displayNeighborhood = (area !== AREA_LAST && a.neighborhood) ? ` — ${escHtml(a.neighborhood)}` : ''
-      const displayTitle        = (a.age_range && a.age_range !== 'All ages')
-        ? `${escHtml(a.title)} (${escHtml(a.age_range)})`
-        : escHtml(a.title)
+      const dateDisplay =
+        a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
+      const repeatLabel = getRepeatLabel(a)
+      const displayRepeat = repeatLabel ? ` (${repeatLabel})` : ''
+      const displayNeighborhood =
+        area !== AREA_LAST && a.neighborhood
+          ? ` — ${escHtml(a.neighborhood)}`
+          : ''
+      const displayTitle =
+        a.age_range && a.age_range !== 'All ages'
+          ? `${escHtml(a.title)} (${escHtml(a.age_range)})`
+          : escHtml(a.title)
 
       html += `  <li>\n`
       html += `    <p style="margin: 0;"><a href="${escHtml(a.url ?? '#')}" target="_blank">${displayTitle}</a></p>\n`
@@ -186,9 +252,12 @@ function buildNewsletterHTML(activities: DeskActivity[], publishDate: string): s
   return html
 }
 
-function buildNewsletterText(activities: DeskActivity[], publishDate: string): string {
+function buildNewsletterText(
+  activities: DeskActivity[],
+  publishDate: string
+): string {
   const windowStart = publishDate
-  const windowEnd   = addDaysStr(publishDate, 14)
+  const windowEnd = addDaysStr(publishDate, 14)
   const lines: string[] = []
 
   for (const [area, items] of groupAndOrder(activities, windowStart)) {
@@ -196,13 +265,16 @@ function buildNewsletterText(activities: DeskActivity[], publishDate: string): s
     lines.push('')
 
     for (const a of items) {
-      const dateDisplay         = a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
-      const repeatLabel         = getRepeatLabel(a)
-      const displayRepeat       = repeatLabel ? ` (${repeatLabel})` : ''
-      const displayNeighborhood = (area !== AREA_LAST && a.neighborhood) ? ` — ${a.neighborhood}` : ''
-      const displayTitle        = (a.age_range && a.age_range !== 'All ages')
-        ? `${a.title} (${a.age_range})`
-        : a.title
+      const dateDisplay =
+        a.type === 'event' ? getDateDisplay(a, windowStart, windowEnd) : ''
+      const repeatLabel = getRepeatLabel(a)
+      const displayRepeat = repeatLabel ? ` (${repeatLabel})` : ''
+      const displayNeighborhood =
+        area !== AREA_LAST && a.neighborhood ? ` — ${a.neighborhood}` : ''
+      const displayTitle =
+        a.age_range && a.age_range !== 'All ages'
+          ? `${a.title} (${a.age_range})`
+          : a.title
 
       lines.push(`• ${displayTitle}`)
       const meta = `${dateDisplay}${displayRepeat}${displayNeighborhood}`
@@ -225,15 +297,27 @@ interface NewsletterDrawerProps {
   onFinishIssue: () => Promise<void>
 }
 
-export function NewsletterDrawer({ activities, publishDate, onPublishDateChange, onClose, onFinishIssue }: NewsletterDrawerProps) {
-  const [showRaw, setShowRaw]         = useState(false)
-  const [confirming, setConfirming]   = useState(false)
-  const [finishing, setFinishing]     = useState(false)
+export function NewsletterDrawer({
+  activities,
+  publishDate,
+  onPublishDateChange,
+  onClose,
+  onFinishIssue,
+}: NewsletterDrawerProps) {
+  const [showRaw, setShowRaw] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [finishing, setFinishing] = useState(false)
 
-  const nextActivities = activities.filter(a => a.list_id === 'next_newsletter' && a.status !== 'archived' && a.status !== 'published' && a.services.includes('newsletter'))
-  const windowEnd      = addDaysStr(publishDate, 14)
-  const html           = buildNewsletterHTML(nextActivities, publishDate)
-  const text           = buildNewsletterText(nextActivities, publishDate)
+  const nextActivities = activities.filter(
+    (a) =>
+      a.list_id === 'next_newsletter' &&
+      a.status !== 'archived' &&
+      a.status !== 'published' &&
+      a.services.includes('newsletter')
+  )
+  const windowEnd = addDaysStr(publishDate, 14)
+  const html = buildNewsletterHTML(nextActivities, publishDate)
+  const text = buildNewsletterText(nextActivities, publishDate)
 
   const handleFinish = async () => {
     setFinishing(true)
@@ -244,15 +328,21 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
       <div className="relative w-full max-w-2xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-
         {/* Header */}
         <div className="sticky top-0 bg-green-600 border-b border-green-700 p-4 flex items-center justify-between z-20">
           <div className="flex items-center gap-3 ml-3">
             <Newspaper size={18} className="text-white" />
-            <span className="text-lg tracking-wide text-white font-bold">Newsletter preview</span>
-            <span className="text-xs text-green-200 font-mono">{publishDate} – {windowEnd}</span>
+            <span className="text-lg tracking-wide text-white font-bold">
+              Newsletter preview
+            </span>
+            <span className="text-xs text-green-200 font-mono">
+              {publishDate} – {windowEnd}
+            </span>
           </div>
-          <button onClick={onClose} className="p-2 text-white hover:text-green-200 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 text-white hover:text-green-200 rounded-full transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -260,7 +350,9 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
         {/* Body */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="flex items-center gap-2 mb-5">
-            <label className="text-[9px] font-black uppercase tracking-widest text-green-600 shrink-0">Issue date</label>
+            <label className="text-[9px] font-black uppercase tracking-widest text-green-600 shrink-0">
+              Issue date
+            </label>
             <input
               type="date"
               value={publishDate}
@@ -276,10 +368,11 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
             <>
               <div className="flex items-center justify-between mb-5">
                 <span className="text-[9px] font-black uppercase tracking-widest text-green-600">
-                  {nextActivities.length} activit{nextActivities.length === 1 ? 'y' : 'ies'}
+                  {nextActivities.length} activit
+                  {nextActivities.length === 1 ? 'y' : 'ies'}
                 </span>
                 <button
-                  onClick={() => setShowRaw(v => !v)}
+                  onClick={() => setShowRaw((v) => !v)}
                   className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   {showRaw ? 'Show preview' : 'Show text'}
@@ -305,7 +398,9 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
           {confirming ? (
             <>
               <p className="text-center text-xs font-black text-slate-600 uppercase tracking-widest">
-                Publish {nextActivities.length} card{nextActivities.length !== 1 ? 's' : ''} and advance to {windowEnd}?
+                Publish {nextActivities.length} card
+                {nextActivities.length !== 1 ? 's' : ''} and advance to{' '}
+                {windowEnd}?
               </p>
               <div className="flex gap-2">
                 <button
@@ -319,7 +414,8 @@ export function NewsletterDrawer({ activities, publishDate, onPublishDateChange,
                   disabled={finishing}
                   className="flex-1 py-3 rounded-2xl bg-green-600 text-white text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <Archive size={14} strokeWidth={3} /> {finishing ? 'Finishing…' : 'Confirm'}
+                  <Archive size={14} strokeWidth={3} />{' '}
+                  {finishing ? 'Finishing…' : 'Confirm'}
                 </button>
               </div>
             </>

@@ -1,7 +1,16 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Edit, MapPin, Clock, NotepadText, CalendarCheck, RefreshCw, Globe, Newspaper, Mail } from 'lucide-react'
-import { ALL_LISTS, ListId } from '../../types/list'
+import {
+  Edit,
+  MapPin,
+  Clock,
+  NotepadText,
+  CalendarCheck,
+  RefreshCw,
+  Globe,
+  Newspaper,
+  Mail,
+} from 'lucide-react'
 import { CardProps } from '../../types/card'
 
 // Helper function placed outside the component to prevent re-instantiation on every render
@@ -15,13 +24,15 @@ const formatDate = (dateStr: string | null | undefined): string => {
 export function Card({
   activity,
   onDetails,
-  onMove,
   detailsAction,
   onToggleService,
-  children
+  children,
 }: CardProps) {
   const calIconRef = useRef<HTMLDivElement>(null)
-  const [calTooltipPos, setCalTooltipPos] = useState<{ top: number; left: number } | null>(null)
+  const [calTooltipPos, setCalTooltipPos] = useState<{
+    top: number
+    left: number
+  } | null>(null)
 
   // 1. Derivations & Status Flag Checks
   const isNewActivity = activity.status === 'processing'
@@ -39,48 +50,77 @@ export function Card({
     : ''
 
   return (
-    <div className={`relative bg-white rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}>
+    <div
+      className={`relative bg-white rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}
+    >
       <div className="p-3 space-y-2">
-        
         {/* Header: Date Badge & Action Buttons */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
               {displayDate}
             </span>
-            {!isNewActivity && onToggleService && (() => {
-              const services = activity.services ?? []
-              const hasNewsletter = services.includes('newsletter')
-              const hasPost = services.includes('postpartum_post')
-              return (
-                <>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onToggleService(activity.id, 'newsletter', !hasNewsletter) }}
-                    title={hasNewsletter ? 'In newsletter — click to remove' : 'Not in newsletter — click to add'}
-                    className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${
-                      hasNewsletter ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
-                    }`}
-                  >
-                    <Newspaper size={11} />
-                  </button>
-                  {/* Post never takes resources — the Postpartum Post matcher only
-                      queries events, locations, and playgrounds. */}
-                  {activity.type === 'event' && (
+            {!isNewActivity &&
+              onToggleService &&
+              (() => {
+                const services = activity.services ?? []
+                const hasNewsletter = services.includes('newsletter')
+                const hasPost = services.includes('postpartum_post')
+                return (
+                  <>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); onToggleService(activity.id, 'postpartum_post', !hasPost) }}
-                      title={hasPost ? 'In Post — click to remove' : 'Not in Post — click to add'}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleService(
+                          activity.id,
+                          'newsletter',
+                          !hasNewsletter
+                        )
+                      }}
+                      title={
+                        hasNewsletter
+                          ? 'In newsletter — click to remove'
+                          : 'Not in newsletter — click to add'
+                      }
                       className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${
-                        hasPost ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
+                        hasNewsletter
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
                       }`}
                     >
-                      <Mail size={11} />
+                      <Newspaper size={11} />
                     </button>
-                  )}
-                </>
-              )
-            })()}
+                    {/* Post never takes resources — the Postpartum Post matcher only
+                      queries events, locations, and playgrounds. */}
+                    {activity.type === 'event' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onToggleService(
+                            activity.id,
+                            'postpartum_post',
+                            !hasPost
+                          )
+                        }}
+                        title={
+                          hasPost
+                            ? 'In Post — click to remove'
+                            : 'Not in Post — click to add'
+                        }
+                        className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${
+                          hasPost
+                            ? 'bg-violet-600 text-white'
+                            : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
+                        }`}
+                      >
+                        <Mail size={11} />
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
             {activity.source === 'app_website' && (
               <span title="Submitted via website">
                 <Globe size={12} className="text-green-500 shrink-0" />
@@ -90,41 +130,53 @@ export function Card({
               ref={calIconRef}
               onMouseEnter={() => {
                 const rect = calIconRef.current?.getBoundingClientRect()
-                if (rect) setCalTooltipPos({ top: rect.top - 6, left: rect.left + rect.width / 2 })
+                if (rect)
+                  setCalTooltipPos({
+                    top: rect.top - 6,
+                    left: rect.left + rect.width / 2,
+                  })
               }}
               onMouseLeave={() => setCalTooltipPos(null)}
             >
               <CalendarCheck
                 size={12}
-                className={activity.calendar_sent ? 'text-green-500' : 'text-slate-300'}
+                className={
+                  activity.calendar_sent ? 'text-green-500' : 'text-slate-300'
+                }
               />
             </div>
-            {calTooltipPos && createPortal(
-              <div
-                className="fixed -translate-x-1/2 -translate-y-full -mt-1.5 whitespace-nowrap bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none z-[200]"
-                style={{ top: calTooltipPos.top, left: calTooltipPos.left }}
-              >
-                {activity.calendar_sent ? 'Added to calendar' : 'Not yet added to calendar'}
-              </div>,
-              document.body
-            )}
+            {calTooltipPos &&
+              createPortal(
+                <div
+                  className="fixed -translate-x-1/2 -translate-y-full -mt-1.5 whitespace-nowrap bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none z-[200]"
+                  style={{ top: calTooltipPos.top, left: calTooltipPos.left }}
+                >
+                  {activity.calendar_sent
+                    ? 'Added to calendar'
+                    : 'Not yet added to calendar'}
+                </div>,
+                document.body
+              )}
           </div>
 
           <div className="flex flex-row gap-3">
-            {detailsAction ?? (onDetails && !isNewActivity && (
-              <button
-                onClick={() => onDetails(activity)}
-                className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
-              >
-                <Edit size={12} /> Edit
-              </button>
-            ))}
+            {detailsAction ??
+              (onDetails && !isNewActivity && (
+                <button
+                  onClick={() => onDetails(activity)}
+                  className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+                >
+                  <Edit size={12} /> Edit
+                </button>
+              ))}
           </div>
         </div>
 
         {/* Card Main Title */}
         <h3
-          onClick={onDetails && !isNewActivity ? () => onDetails(activity) : undefined}
+          onClick={
+            onDetails && !isNewActivity ? () => onDetails(activity) : undefined
+          }
           className={`font-black text-slate-900 text-sm leading-tight uppercase tracking-tight ${onDetails && !isNewActivity ? 'cursor-pointer hover:text-blue-600 transition-colors' : ''}`}
         >
           {activity.title}
@@ -146,7 +198,8 @@ export function Card({
               <MapPin size={10} className="mt-0.5" />
               <div className="flex flex-col leading-tight overflow-hidden">
                 <span className="text-[10px] font-bold text-slate-700 uppercase">
-                  {activity.neighborhood || 'Unknown Neighborhood'} ({activity.area || 'No Area'})
+                  {activity.neighborhood || 'Unknown Neighborhood'} (
+                  {activity.area || 'No Area'})
                 </span>
                 <span className="text-[10px] truncate italic text-slate-400">
                   {activity.location}
@@ -156,12 +209,16 @@ export function Card({
           )}
 
           {/* Next occurrence for recurring events */}
-          {!isNewActivity && activity.repeat_next_date && activity.repeat_next_date.length >= 10 && (
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <RefreshCw size={10} />
-              <span className="text-[10px] font-bold">Next: {formatDate(activity.repeat_next_date.slice(0, 10))}</span>
-            </div>
-          )}
+          {!isNewActivity &&
+            activity.repeat_next_date &&
+            activity.repeat_next_date.length >= 10 && (
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <RefreshCw size={10} />
+                <span className="text-[10px] font-bold">
+                  Next: {formatDate(activity.repeat_next_date.slice(0, 10))}
+                </span>
+              </div>
+            )}
 
           {/* AI Production Summary Field */}
           {!isNewActivity && activity.newsletter_description && (
@@ -179,7 +236,9 @@ export function Card({
       {isNewActivity && (
         <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-10">
           <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Processing
+          </span>
         </div>
       )}
     </div>

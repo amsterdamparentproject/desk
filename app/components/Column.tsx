@@ -1,7 +1,20 @@
 // components/Column.tsx
-import { ChevronDown, ChevronRight, MapPin, Check, ArrowRight, Edit, NotepadText } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  MapPin,
+  Check,
+  ArrowRight,
+  Edit,
+  NotepadText,
+} from 'lucide-react'
 import { ActivityCard, CaptureCardForm } from './card'
-import { CaptureDataProps, DeskActivity, Location, Service } from '../types/activity'
+import {
+  CaptureDataProps,
+  DeskActivity,
+  Location,
+  Service,
+} from '../types/activity'
 import { ListProps, ListId } from '../types/list'
 import { useEffect, useState } from 'react'
 
@@ -13,7 +26,11 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-function isInNewsletterWindow(activity: DeskActivity, windowStart: string, windowEnd: string): boolean {
+function isInNewsletterWindow(
+  activity: DeskActivity,
+  windowStart: string,
+  windowEnd: string
+): boolean {
   const inWindow = (date: string | null | undefined) =>
     !!date && date >= windowStart && (!windowEnd || date <= windowEnd)
   return inWindow(activity.start_date) || inWindow(activity.repeat_next_date)
@@ -37,9 +54,12 @@ interface ColumnProps {
   color?: 'orange' | 'blue' | 'violet'
 }
 
-const COLUMN_HEADER_CLASSES: Record<'orange' | 'blue' | 'violet', { bg: string; badgeBg: string }> = {
+const COLUMN_HEADER_CLASSES: Record<
+  'orange' | 'blue' | 'violet',
+  { bg: string; badgeBg: string }
+> = {
   orange: { bg: 'bg-orange-500', badgeBg: 'bg-orange-600' },
-  blue:   { bg: 'bg-blue-600',   badgeBg: 'bg-blue-700' },
+  blue: { bg: 'bg-blue-600', badgeBg: 'bg-blue-700' },
   violet: { bg: 'bg-violet-600', badgeBg: 'bg-violet-700' },
 }
 
@@ -58,25 +78,29 @@ export function Column({
   publishDate,
   color = 'orange',
 }: ColumnProps) {
-  const [isMobile, setIsMobile] = useState(false);
-  const [pastEventsOpen, setPastEventsOpen] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [isMobile, setIsMobile] = useState(false)
+  const [pastEventsOpen, setPastEventsOpen] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const toggleGroup = (key: string) =>
-    setCollapsedGroups(prev => {
+    setCollapsedGroups((prev) => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
-  const extraGroupsTotal = extraGroups.reduce((sum, g) => sum + g.activities.length, 0)
+  const extraGroupsTotal = extraGroups.reduce(
+    (sum, g) => sum + g.activities.length,
+    0
+  )
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
 
     // Listen for resize so it stays reactive
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   return (
     <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
@@ -163,7 +187,7 @@ export function Column({
                 onMove={onMove}
                 onArchive={onArchive}
                 onToggleService={onToggleService}
-                />
+              />
             ))
           )}
 
@@ -171,24 +195,34 @@ export function Column({
             <div className="mt-2">
               <button
                 type="button"
-                onClick={() => pastEvents.length > 0 && setPastEventsOpen(v => !v)}
+                onClick={() =>
+                  pastEvents.length > 0 && setPastEventsOpen((v) => !v)
+                }
                 className={`w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest transition-colors ${
                   pastEvents.length > 0
                     ? 'text-amber-500 hover:text-amber-600 cursor-pointer'
                     : 'text-slate-300 cursor-default'
                 }`}
               >
-                {pastEventsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {pastEventsOpen ? (
+                  <ChevronDown size={12} />
+                ) : (
+                  <ChevronRight size={12} />
+                )}
                 Past events
-                <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  pastEvents.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-300'
-                }`}>
+                <span
+                  className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    pastEvents.length > 0
+                      ? 'bg-amber-100 text-amber-600'
+                      : 'bg-slate-100 text-slate-300'
+                  }`}
+                >
                   {pastEvents.length}
                 </span>
               </button>
               {pastEventsOpen && pastEvents.length > 0 && (
                 <div className="space-y-3 mt-1">
-                  {pastEvents.map(activity => (
+                  {pastEvents.map((activity) => (
                     <ActivityCard
                       key={activity.id}
                       activity={activity}
@@ -205,30 +239,40 @@ export function Column({
 
           {extraGroups.length > 0 && (
             <div className="mt-2 space-y-2">
-              {extraGroups.map(group => {
+              {extraGroups.map((group) => {
                 const collapsed = collapsedGroups.has(group.key)
                 return (
                   <div key={group.key}>
                     <button
                       type="button"
-                      onClick={() => group.activities.length > 0 && toggleGroup(group.key)}
+                      onClick={() =>
+                        group.activities.length > 0 && toggleGroup(group.key)
+                      }
                       className={`w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest transition-colors ${
                         group.activities.length > 0
                           ? 'text-amber-500 hover:text-amber-600 cursor-pointer'
                           : 'text-slate-300 cursor-default'
                       }`}
                     >
-                      {collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+                      {collapsed ? (
+                        <ChevronRight size={12} />
+                      ) : (
+                        <ChevronDown size={12} />
+                      )}
                       {group.label}
-                      <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        group.activities.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-300'
-                      }`}>
+                      <span
+                        className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          group.activities.length > 0
+                            ? 'bg-amber-100 text-amber-600'
+                            : 'bg-slate-100 text-slate-300'
+                        }`}
+                      >
                         {group.activities.length}
                       </span>
                     </button>
                     {!collapsed && group.activities.length > 0 && (
                       <div className="space-y-3 mt-1">
-                        {group.activities.map(activity => (
+                        {group.activities.map((activity) => (
                           <ActivityCard
                             key={activity.id}
                             activity={activity}
@@ -260,14 +304,25 @@ interface UpcomingEventsContentProps {
   publishDate: string
 }
 
-function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onToggleService, publishDate }: UpcomingEventsContentProps) {
+function UpcomingEventsContent({
+  activities,
+  onDetails,
+  onMove,
+  onArchive,
+  onToggleService,
+  publishDate,
+}: UpcomingEventsContentProps) {
   const [showFuture, setShowFuture] = useState(false)
 
   const windowStart = new Date().toISOString().split('T')[0]
   const windowEnd = addDays(publishDate, 15) // Account for events happening on the last day of the period
 
-  const windowActivities = activities.filter(a => isInNewsletterWindow(a, windowStart, windowEnd))
-  const futureActivities = activities.filter(a => !isInNewsletterWindow(a, windowStart, windowEnd))
+  const windowActivities = activities.filter((a) =>
+    isInNewsletterWindow(a, windowStart, windowEnd)
+  )
+  const futureActivities = activities.filter(
+    (a) => !isInNewsletterWindow(a, windowStart, windowEnd)
+  )
 
   return (
     <>
@@ -276,7 +331,7 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onTog
           Nothing in this newsletter window 🌬️
         </div>
       ) : (
-        windowActivities.map(activity => (
+        windowActivities.map((activity) => (
           <ActivityCard
             key={activity.id}
             activity={activity}
@@ -292,10 +347,14 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onTog
         <div className="mt-2">
           <button
             type="button"
-            onClick={() => setShowFuture(prev => !prev)}
+            onClick={() => setShowFuture((prev) => !prev)}
             className="w-full flex items-center gap-2 py-2 px-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
           >
-            {showFuture ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {showFuture ? (
+              <ChevronDown size={12} />
+            ) : (
+              <ChevronRight size={12} />
+            )}
             Future events
             <span className="ml-auto bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded-full text-[10px] font-bold">
               {futureActivities.length}
@@ -304,7 +363,7 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onTog
 
           {showFuture && (
             <div className="space-y-3 mt-1">
-              {futureActivities.map(activity => (
+              {futureActivities.map((activity) => (
                 <ActivityCard
                   key={activity.id}
                   activity={activity}
@@ -312,7 +371,7 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onTog
                   onMove={onMove}
                   onArchive={onArchive}
                   onToggleService={onToggleService}
-                    />
+                />
               ))}
             </div>
           )}
@@ -322,7 +381,12 @@ function UpcomingEventsContent({ activities, onDetails, onMove, onArchive, onTog
   )
 }
 
-export function LocationCard({ location, onDetails, onAdvance, onDecide }: {
+export function LocationCard({
+  location,
+  onDetails,
+  onAdvance,
+  onDecide,
+}: {
   location: Location
   onDetails?: (loc: Location) => void
   onAdvance?: (id: string) => void // Review -> Refine
@@ -361,16 +425,25 @@ export function LocationCard({ location, onDetails, onAdvance, onDecide }: {
               <MapPin size={10} className="mt-0.5 shrink-0" />
               <div className="flex flex-col leading-tight overflow-hidden">
                 <span className="text-[10px] font-bold text-slate-700 uppercase">
-                  {location.neighborhood || ''}{location.neighborhood && location.area ? ` (${location.area})` : location.area ?? ''}
+                  {location.neighborhood || ''}
+                  {location.neighborhood && location.area
+                    ? ` (${location.area})`
+                    : (location.area ?? '')}
                 </span>
-                {location.address && <span className="text-[10px] truncate italic text-slate-400">{location.address}</span>}
+                {location.address && (
+                  <span className="text-[10px] truncate italic text-slate-400">
+                    {location.address}
+                  </span>
+                )}
               </div>
             </div>
           )}
           {location.description && (
             <div className="flex items-start gap-1.5 text-slate-500">
               <NotepadText size={12} className="mt-0.5 shrink-0" />
-              <span className="text-xs text-slate-500 line-clamp-3">{location.description}</span>
+              <span className="text-xs text-slate-500 line-clamp-3">
+                {location.description}
+              </span>
             </div>
           )}
         </div>
@@ -378,7 +451,10 @@ export function LocationCard({ location, onDetails, onAdvance, onDecide }: {
 
       {/* Footer buttons */}
       {(onAdvance || onDecide) && (
-        <div className="flex h-10 px-2 py-1.5 gap-1" onClick={e => e.stopPropagation()}>
+        <div
+          className="flex h-10 px-2 py-1.5 gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
           {onAdvance && (
             <button
               type="button"
@@ -412,23 +488,34 @@ export function LocationCard({ location, onDetails, onAdvance, onDecide }: {
   )
 }
 
-function InlineCaptureAdd({ onAddEvent, listId }: { onAddEvent: (data: CaptureDataProps) => void, listId: ListId }) {
+function InlineCaptureAdd({
+  onAddEvent,
+  listId,
+}: {
+  onAddEvent: (data: CaptureDataProps) => void
+  listId: ListId
+}) {
   const [open, setOpen] = useState(false)
 
   return (
     <div className="sticky top-0 z-10 mb-2 md:backdrop-blur-sm">
       <button
         type="button"
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 py-2 text-slate-400 hover:text-slate-600 transition-colors group"
       >
         <div className="flex-1 h-px bg-slate-300 group-hover:bg-slate-400 transition-colors" />
-        <span className="text-sm font-black leading-none select-none">{open ? '×' : '+'}</span>
+        <span className="text-sm font-black leading-none select-none">
+          {open ? '×' : '+'}
+        </span>
         <div className="flex-1 h-px bg-slate-300 group-hover:bg-slate-400 transition-colors" />
       </button>
       {open && (
         <CaptureCardForm
-          onAdd={(data) => { onAddEvent(data); setOpen(false) }}
+          onAdd={(data) => {
+            onAddEvent(data)
+            setOpen(false)
+          }}
           listId={listId}
         />
       )}

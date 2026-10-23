@@ -1,13 +1,26 @@
-import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Board from '../app/components/Board'
-import { createActivity, saveActivity, deleteActivity, archiveActivity, uploadActivityFile } from '../app/actions/activities'
+import {
+  createActivity,
+  saveActivity,
+  deleteActivity,
+  archiveActivity,
+  uploadActivityFile,
+} from '../app/actions/activities'
 import type { DeskActivity } from '../app/types/activity'
 
+let mockSearch = ''
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mockSearch),
 }))
 
 vi.mock('../app/actions/activities', () => ({
@@ -39,10 +52,20 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
     url: null,
     organization: null,
     age_range: null,
+    age_categories: [],
     categories: [],
+    postpartum_post: false,
+    services: [],
+    latitude: null,
+    longitude: null,
+    snooze_until: null,
     last_triaged_at: null,
     triage_notes: null,
     file_url: null,
+    repeat_frequency: null,
+    repeat_next_date: null,
+    calendar_skip: false,
+    calendar_sent: false,
     location: null,
     neighborhood: null,
     area: null,
@@ -56,14 +79,11 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
   }
 }
 
-function webhookData(overrides: Partial<DeskActivity> = {}): DeskActivity {
-  return activity({ title: 'AI Title', newsletter_description: 'AI blurb', file_url: null, ...overrides })
-}
-
 const DEFAULT_PUBLISH_DATE = '2026-05-18'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockSearch = ''
   vi.mocked(createActivity).mockResolvedValue(undefined)
   vi.mocked(saveActivity).mockResolvedValue(undefined)
   vi.mocked(deleteActivity).mockResolvedValue(undefined)
@@ -83,11 +103,12 @@ describe('capture via AI', () => {
       const user = userEvent.setup()
       render(<Board initialActivities={[]} />)
 
-
       const sectionLabel = type === 'resource' ? 'Resource' : 'Event'
       const heading = await screen.findByText(sectionLabel, { selector: 'p' })
       const form = heading.closest('form')!
-      const textarea = within(form).getByPlaceholderText('Paste links, type titles, or add notes...')
+      const textarea = within(form).getByPlaceholderText(
+        'Paste links, type titles, or add notes...'
+      )
       await user.type(textarea, 'Test description')
 
       fireEvent.submit(form)
@@ -96,13 +117,18 @@ describe('capture via AI', () => {
       expect(createActivity).toHaveBeenCalledWith(
         expect.any(String),
         type,
-        expect.objectContaining({ list_id: 'ideas', status: 'processing' }),
+        expect.objectContaining({ list_id: 'ideas', status: 'processing' })
       )
-      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-        '/api/desk/send',
-        expect.objectContaining({ method: 'POST', body: expect.stringContaining('"action":"add"') }),
-      ))
-    },
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/desk/send',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"action":"add"'),
+          })
+        )
+      )
+    }
   )
 
   it.each([['event'], ['resource']] as const)(
@@ -111,28 +137,36 @@ describe('capture via AI', () => {
       const user = userEvent.setup()
       render(<Board initialActivities={[]} />)
 
-
       const sectionLabel = type === 'resource' ? 'Resource' : 'Event'
       const heading = await screen.findByText(sectionLabel, { selector: 'p' })
       const form = heading.closest('form')!
-      const textarea = within(form).getByPlaceholderText('Paste links, type titles, or add notes...')
+      const textarea = within(form).getByPlaceholderText(
+        'Paste links, type titles, or add notes...'
+      )
       await user.type(textarea, 'Description with file')
 
-      const fileInput = form.querySelector('input[type="file"]')! as HTMLInputElement
+      const fileInput = form.querySelector(
+        'input[type="file"]'
+      )! as HTMLInputElement
       const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' })
       await user.upload(fileInput, file)
 
       fireEvent.submit(form)
 
-      await waitFor(() => expect(uploadActivityFile).toHaveBeenCalledWith(expect.any(String), file))
+      await waitFor(() =>
+        expect(uploadActivityFile).toHaveBeenCalledWith(
+          expect.any(String),
+          file
+        )
+      )
       await waitFor(() =>
         expect(createActivity).toHaveBeenCalledWith(
           expect.any(String),
           type,
-          expect.objectContaining({ file_url: FILE_URL }),
-        ),
+          expect.objectContaining({ file_url: FILE_URL })
+        )
       )
-    },
+    }
   )
 
   it('fires webhook and creates seed record (multi-item split handled by callback route)', async () => {
@@ -141,7 +175,9 @@ describe('capture via AI', () => {
 
     const heading = await screen.findByText('Event', { selector: 'p' })
     const form = heading.closest('form')!
-    const textarea = within(form).getByPlaceholderText('Paste links, type titles, or add notes...')
+    const textarea = within(form).getByPlaceholderText(
+      'Paste links, type titles, or add notes...'
+    )
     await user.type(textarea, 'Multi-event description')
     fireEvent.submit(form)
 
@@ -150,12 +186,17 @@ describe('capture via AI', () => {
     expect(createActivity).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ list_id: 'ideas', status: 'processing' }),
+      expect.objectContaining({ list_id: 'ideas', status: 'processing' })
     )
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/desk/send',
-      expect.objectContaining({ method: 'POST', body: expect.stringContaining('"action":"add"') }),
-    ))
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/desk/send',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"action":"add"'),
+        })
+      )
+    )
   })
 })
 
@@ -170,9 +211,10 @@ describe('card actions', () => {
     // matching the 'archived (0)' tab label)
     await user.click(await screen.findByRole('button', { name: 'Archive' }))
 
-    await waitFor(() => expect(archiveActivity).toHaveBeenCalledWith('act-1', 'event'))
+    await waitFor(() =>
+      expect(archiveActivity).toHaveBeenCalledWith('act-1', 'event')
+    )
   })
-
 })
 
 // ─── ActivityDrawer ───────────────────────────────────────────────────────────
@@ -195,8 +237,10 @@ describe('ActivityDrawer', () => {
       expect(saveActivity).toHaveBeenCalledWith(
         'act-1',
         'event',
-        expect.objectContaining({ newsletter_description: 'Updated newsletter blurb' }),
-      ),
+        expect.objectContaining({
+          newsletter_description: 'Updated newsletter blurb',
+        })
+      )
     )
   })
 
@@ -206,9 +250,49 @@ describe('ActivityDrawer', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
 
-    await user.click(await screen.findByRole('button', { name: /delete record permanently/i }))
-    await user.click(await screen.findByRole('button', { name: /yes, delete/i }))
+    await user.click(
+      await screen.findByRole('button', { name: /delete record permanently/i })
+    )
+    await user.click(
+      await screen.findByRole('button', { name: /yes, delete/i })
+    )
 
-    await waitFor(() => expect(deleteActivity).toHaveBeenCalledWith('act-1', 'event'))
+    await waitFor(() =>
+      expect(deleteActivity).toHaveBeenCalledWith('act-1', 'event')
+    )
+  })
+
+  it('syncs the recurrence rule when repeat controls change', async () => {
+    const user = userEvent.setup()
+    render(<Board initialActivities={[activity()]} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const frequency = (await screen.findAllByRole('combobox')).find((el) =>
+      within(el).queryByRole('option', { name: 'Weekly' })
+    )!
+    await user.selectOptions(frequency, 'weekly')
+    await user.click(await screen.findByRole('button', { name: 'Mon' }))
+    fireEvent.blur(frequency)
+
+    await waitFor(() =>
+      expect(saveActivity).toHaveBeenCalledWith(
+        'act-1',
+        'event',
+        expect.objectContaining({
+          repeat_frequency: 'weekly',
+          repeat_rrule: expect.stringMatching(/FREQ=WEEKLY.*BYDAY=MO/),
+        })
+      )
+    )
+  })
+
+  it('opens the drawer for the activity named in the URL', async () => {
+    mockSearch = 'type=event&id=act-1'
+    render(<Board initialActivities={[activity()]} />)
+
+    expect(
+      await screen.findByPlaceholderText(/newsletter snippet/i)
+    ).toBeInTheDocument()
   })
 })

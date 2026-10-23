@@ -2,7 +2,11 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyDeskSession } from '@/app/utils/auth-gate'
 
-export default async function FinancesLayout({ children }: { children: React.ReactNode }) {
+export default async function FinancesLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const cookieStore = await cookies()
   const isAuthorized = verifyDeskSession(cookieStore)
 

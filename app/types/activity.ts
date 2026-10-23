@@ -23,94 +23,100 @@ export interface Location {
   created_at: string
   updated_at: string
 }
-export type DayName = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
-export type RepeatFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+export type DayName =
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday'
+  | 'Saturday'
+  | 'Sunday'
+export type RepeatFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly'
 
 /**
  * 1. THE SHARED BASELINE
  */
 export interface BaseActivity {
   // Metadata
-  id: string;
-  created_at: string;
-  updated_at: string;
+  id: string
+  created_at: string
+  updated_at: string
 
   // Workflow & state (APP Desk)
-  list_id: ListId;
-  status: TriageStatus;
-  source: CaptureSource;
-  snooze_until: string | null;
-  last_triaged_at: string | null;
-  triage_notes: string | null;
-  file_url: string | null;
+  list_id: ListId
+  status: TriageStatus
+  source: CaptureSource
+  snooze_until: string | null
+  last_triaged_at: string | null
+  triage_notes: string | null
+  file_url: string | null
 
   // Core content
-  title: string;
-  description: string;
-  url: string | null;
-  organization: string | null;
-  age_range: string | null;
-  age_categories: string[];
-  categories: string[];
+  title: string
+  description: string
+  url: string | null
+  organization: string | null
+  age_range: string | null
+  age_categories: string[]
+  categories: string[]
 
   // Newsletter
-  newsletter_description: string;
-  newsletter_last: string | null;
-  newsletter_highlight: boolean;
+  newsletter_description: string
+  newsletter_last: string | null
+  newsletter_highlight: boolean
 
   // Postpartum Post
-  postpartum_post: boolean;
+  postpartum_post: boolean
 
   // Services this activity is a candidate for / confirmed for. Additive
   // alongside postpartum_post — the boolean stays synced to whether
   // 'postpartum_post' is in this array (kept for the separate Post repo).
-  services: Service[];
+  services: Service[]
 
   // Location
-  location: string | null;
-  neighborhood: string | null;
-  area: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  location: string | null
+  neighborhood: string | null
+  area: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 /**
  * 2. PRODUCTION STRUCTURES (Strict definitions for fully triaged records)
  */
 export interface EventActivity extends BaseActivity {
-  start_date: string; 
-  end_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  day_of_week: DayName | null;
-  duration_minutes: number | null;
+  start_date: string
+  end_date: string | null
+  start_time: string | null
+  end_time: string | null
+  day_of_week: DayName | null
+  duration_minutes: number | null
 
   // APP Website
-  tagline: string | null;
+  tagline: string | null
 
   // Repeat
-  repeat_rrule: string | null;
-  repeat_frequency: RepeatFrequency | null;
-  repeat_next_date: string | null;
+  repeat_rrule: string | null
+  repeat_frequency: RepeatFrequency | null
+  repeat_next_date: string | null
 
   // Event-specific calendar tracking
-  calendar_skip: boolean;
-  calendar_sent: boolean;
+  calendar_skip: boolean
+  calendar_sent: boolean
 }
 
-export interface ResourceActivity extends BaseActivity {
-  // Purely uses BaseActivity fields right now (e.g., title, description, url, organization)
-}
+// Purely uses BaseActivity fields right now (e.g., title, description, url, organization)
+export type ResourceActivity = BaseActivity
 
 /**
  * 3. CAPTURE & FORM INPUT PROPS
  */
 export type CaptureDataProps = {
-  list_id: ListId;
-  type: 'event' | 'resource';
-  description: string;
-  file: File | null;
-  use_ai: boolean;
+  list_id: ListId
+  type: 'event' | 'resource'
+  description: string
+  file: File | null
+  use_ai: boolean
 }
 
 /**
@@ -120,25 +126,25 @@ export type CaptureDataProps = {
  */
 export type DeskActivity = BaseActivity & {
   // Discriminator: which DB table this record lives in
-  type: 'event' | 'resource';
+  type: 'event' | 'resource'
 
   // Temporary browser state
-  file: File | null;
-  preview_url: string | null;
+  file: File | null
+  preview_url: string | null
 
   // Event specific properties made optional for staging
-  tagline?: string | null;
-  start_date?: string;
-  end_date?: string | null;
-  start_time?: string | null;
-  end_time?: string | null;
-  day_of_week?: DayName | null;
-  duration_minutes?: number | null;
-  repeat_rrule?: string | null;
-  repeat_frequency?: RepeatFrequency | null;
-  repeat_next_date?: string | null;
-  calendar_skip?: boolean;
-  calendar_sent?: boolean;
+  tagline?: string | null
+  start_date?: string
+  end_date?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  day_of_week?: DayName | null
+  duration_minutes?: number | null
+  repeat_rrule?: string | null
+  repeat_frequency?: RepeatFrequency | null
+  repeat_next_date?: string | null
+  calendar_skip?: boolean
+  calendar_sent?: boolean
 }
 
 /**
@@ -176,7 +182,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   area: '',
   latitude: null,
   longitude: null,
-  
+
   // Event specific properties defaulted to safe non-null primitives
   tagline: null,
   start_date: '',
@@ -190,13 +196,13 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   repeat_next_date: '',
   calendar_skip: false,
   calendar_sent: false,
-};
+}
 
 export const createNewActivity = (
   description: string,
   overrides?: Partial<DeskActivity>
 ): DeskActivity => {
-  const now = new Date().toISOString();
+  const now = new Date().toISOString()
 
   return {
     ...DEFAULT_DESK_ACTIVITY,
@@ -205,5 +211,5 @@ export const createNewActivity = (
     updated_at: now,
     description,
     ...overrides,
-  };
-};
+  }
+}

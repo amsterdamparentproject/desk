@@ -1,14 +1,8 @@
-import { BaseActivity, CaptureDataProps, DeskActivity, Service } from './activity'
+import { CaptureDataProps, DeskActivity, Service } from './activity'
 import { ListId } from './list'
 
-type CardAction =
-  | 'approve'
-  | 'move'
-  | 'edit'
-  | 'copy'
-  | 'archive'
-
-export type TriageStatus = 'new' | 'processing' | 'processed' | 'accepted' | 'published' | 'archived';
+export type TriageStatus =
+  'new' | 'processing' | 'processed' | 'accepted' | 'published' | 'archived'
 
 // Base card component props
 export interface CardProps {
@@ -31,7 +25,12 @@ export interface CardProps {
 // Capture card component props: Just new events
 export interface CaptureCardProps {
   onAdd: (data: CaptureDataProps) => void
-  onAddLocation?: (data: { name: string; address: string; area?: string | null; neighborhood?: string | null }) => void
+  onAddLocation?: (data: {
+    name: string
+    address: string
+    area?: string | null
+    neighborhood?: string | null
+  }) => void
   listId: ListId
   locations?: import('./activity').Location[]
 }

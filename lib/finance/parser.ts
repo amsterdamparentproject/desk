@@ -1,19 +1,19 @@
 // lib/finance/parser.ts
 
-import { ParsedTransaction, CategoryMapping } from './types';
+import { ParsedTransaction, CategoryMapping } from './types'
 
 const DEFAULT_CATEGORIES: CategoryMapping[] = [
   // Income - Events
   { keyword: 'eventbrite', category: 'Events', isIncome: true },
   { keyword: 'luma', category: 'Events', isIncome: true },
-  
+
   // Income - Programs
   { keyword: 'stripe', category: 'Programs', isIncome: true },
   { keyword: 'amsterdam parent', category: 'Programs', isIncome: true },
 
   // Expenses - Program Operations
   { keyword: 'amsterdam nld', category: 'Program Operations', isIncome: false },
-  
+
   // Expenses - Technology
   { keyword: 'anthropic', category: 'Technology', isIncome: false },
   { keyword: 'claude pro', category: 'Technology', isIncome: false },
@@ -22,61 +22,77 @@ const DEFAULT_CATEGORIES: CategoryMapping[] = [
   { keyword: 'github', category: 'Technology', isIncome: false },
   { keyword: 'supabase', category: 'Technology', isIncome: false },
   { keyword: 'canva', category: 'Technology', isIncome: false },
-  
+
   // Expenses - Business Admin
   { keyword: 'ing', category: 'Business Admin', isIncome: false },
   { keyword: 'bank', category: 'Business Admin', isIncome: false },
-  { keyword: 'moneybird', category: 'Business Admin', isIncome: false},
-  { keyword: 'xl administratie', category: 'Business Admin', isIncome: false},
+  { keyword: 'moneybird', category: 'Business Admin', isIncome: false },
+  { keyword: 'xl administratie', category: 'Business Admin', isIncome: false },
 
   // Donations & seed funding
-  { keyword: 'siega', category: 'Personal Contribution', isIncome: false},
-];
+  { keyword: 'siega', category: 'Personal Contribution', isIncome: false },
+]
 
 export function parseCSV(csvText: string): ParsedTransaction[] {
-  const lines = csvText.trim().split('\n');
-  const transactions: ParsedTransaction[] = [];
+  const lines = csvText.trim().split('\n')
+  const transactions: ParsedTransaction[] = []
 
   // Skip header row
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line.trim()) continue;
+    const line = lines[i]
+    if (!line.trim()) continue
 
     try {
-      const transaction = parseCSVLine(line);
+      const transaction = parseCSVLine(line)
       if (transaction) {
-        transactions.push(transaction);
+        transactions.push(transaction)
       }
     } catch (error) {
-      console.error(`Error parsing line ${i}:`, error);
-      continue;
+      console.error(`Error parsing line ${i}:`, error)
+      continue
     }
   }
 
-  return transactions;
+  return transactions
 }
 
 function parseCSVLine(line: string): ParsedTransaction | null {
   // Handle semicolon-delimited CSV with quoted fields
-  const fields = parseQuotedCSV(line);
-  
+  const fields = parseQuotedCSV(line)
+
   if (fields.length < 11) {
-    return null;
+    return null
   }
 
-  const [date, description, account, counterparty, code, debitCredit, amountStr, transactionType, notifications, balanceStr] = fields;
+  // The column after transactionType is notifications, which we don't use.
+  const [
+    date,
+    description,
+    account,
+    counterparty,
+    code,
+    debitCredit,
+    amountStr,
+    transactionType,
+    ,
+    balanceStr,
+  ] = fields
 
   // ING uses European number format: period = thousands separator, comma = decimal
-  const amount = parseFloat(amountStr.replace(/\./g, '').replace(',', '.'));
-  const balance = parseFloat(balanceStr.replace(/\./g, '').replace(',', '.'));
+  const amount = parseFloat(amountStr.replace(/\./g, '').replace(',', '.'))
+  const balance = parseFloat(balanceStr.replace(/\./g, '').replace(',', '.'))
 
   if (isNaN(amount)) {
-    return null;
+    return null
   }
 
   // ING uses Dutch: "Bij" = credit (income), "Af" = debit (expense)
-  const isIncome = ['c', 'bij', 'credit'].includes(debitCredit.toLowerCase());
-  const { category, vatAmount } = categorizeTransaction(description, isIncome, Math.abs(amount));
+  const isIncome = ['c', 'bij', 'credit'].includes(debitCredit.toLowerCase())
+  const { category, vatAmount } = categorizeTransaction(
+    description,
+    isIncome,
+    Math.abs(amount)
+  )
 
   return {
     date,
@@ -91,54 +107,58 @@ function parseCSVLine(line: string): ParsedTransaction | null {
     category,
     isIncome,
     vatAmount,
-  };
+  }
 }
 
 function parseQuotedCSV(line: string): string[] {
-  const fields: string[] = [];
-  let current = '';
-  let inQuotes = false;
+  const fields: string[] = []
+  let current = ''
+  let inQuotes = false
 
   for (let i = 0; i < line.length; i++) {
-    const char = line[i];
+    const char = line[i]
 
     if (char === '"') {
-      inQuotes = !inQuotes;
+      inQuotes = !inQuotes
     } else if (char === ';' && !inQuotes) {
-      fields.push(current.trim().replace(/^"|"$/g, ''));
-      current = '';
+      fields.push(current.trim().replace(/^"|"$/g, ''))
+      current = ''
     } else {
-      current += char;
+      current += char
     }
   }
 
-  fields.push(current.trim().replace(/^"|"$/g, ''));
-  return fields;
+  fields.push(current.trim().replace(/^"|"$/g, ''))
+  return fields
 }
 
-function categorizeTransaction(description: string, isIncome: boolean, amount: number): { category: ParsedTransaction['category']; vatAmount: number } {
-  const lowerDesc = description.toLowerCase();
+function categorizeTransaction(
+  description: string,
+  isIncome: boolean,
+  amount: number
+): { category: ParsedTransaction['category']; vatAmount: number } {
+  const lowerDesc = description.toLowerCase()
 
   // Find matching category
-  let category: ParsedTransaction['category'] = 'Other';
+  let category: ParsedTransaction['category'] = 'Other'
   for (const mapping of DEFAULT_CATEGORIES) {
     if (lowerDesc.includes(mapping.keyword)) {
-      category = mapping.category;
-      break;
+      category = mapping.category
+      break
     }
   }
-  
+
   // For 2025: Categorize direct transfers above a certain amount or refunds as 'Programs'; otherwise 'Other'
   if (category === 'Other' && (amount >= 40 || amount < 0)) {
     category = 'Programs'
   }
 
-  const vatRate = 0.21;
-  const vatAmount = amount * (vatRate / (1 + vatRate)); // Extract VAT from gross amount
+  const vatRate = 0.21
+  const vatAmount = amount * (vatRate / (1 + vatRate)) // Extract VAT from gross amount
 
-  return { category, vatAmount };
+  return { category, vatAmount }
 }
 
 export function getDefaultCategories(): CategoryMapping[] {
-  return DEFAULT_CATEGORIES;
+  return DEFAULT_CATEGORIES
 }

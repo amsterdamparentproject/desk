@@ -12,8 +12,13 @@ export async function POST(request: NextRequest) {
   }
 
   const contentType = request.headers.get('content-type') ?? ''
-  let title = '', description = '', url = '', type: 'event' | 'resource' = 'event'
-  let use_ai = true, preloadedId: string | null = null, preloadedFileUrl: string | null = null
+  let title = '',
+    description = '',
+    url = '',
+    type: 'event' | 'resource' = 'event'
+  let use_ai = true,
+    preloadedId: string | null = null,
+    preloadedFileUrl: string | null = null
   let pendingFile: File | null = null
 
   if (contentType.startsWith('multipart/form-data')) {
@@ -21,12 +26,14 @@ export async function POST(request: NextRequest) {
     title = (formData.get('title') as string) ?? ''
     description = (formData.get('description') as string) ?? ''
     url = (formData.get('url') as string) ?? ''
-    type = ((formData.get('type') as string) === 'resource' ? 'resource' : 'event')
+    type =
+      (formData.get('type') as string) === 'resource' ? 'resource' : 'event'
     use_ai = (formData.get('use_ai') as string) !== 'false'
     preloadedId = (formData.get('id') as string) || null
     preloadedFileUrl = (formData.get('file_url') as string) || null
     const fileEntry = formData.get('file')
-    pendingFile = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null
+    pendingFile =
+      fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null
   } else {
     const body = await request.json()
     title = body.title ?? ''
@@ -49,13 +56,18 @@ export async function POST(request: NextRequest) {
   let file_url = preloadedFileUrl
 
   if (pendingFile) {
-    const safeName = pendingFile.name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload'
+    const safeName =
+      pendingFile.name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload'
     const path = `${id}/${safeName}`
     const { error: uploadError } = await supabase.storage
       .from('activities')
-      .upload(path, pendingFile, { contentType: pendingFile.type, upsert: true })
+      .upload(path, pendingFile, {
+        contentType: pendingFile.type,
+        upsert: true,
+      })
     if (!uploadError) {
-      file_url = supabase.storage.from('activities').getPublicUrl(path).data.publicUrl
+      file_url = supabase.storage.from('activities').getPublicUrl(path)
+        .data.publicUrl
     }
   }
 
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
       type,
       id,
       action: 'add',
-    }).catch(err => console.error('Share webhook failed:', err))
+    }).catch((err) => console.error('Share webhook failed:', err))
   }
 
   return NextResponse.json({ id })

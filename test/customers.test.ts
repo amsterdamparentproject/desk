@@ -6,7 +6,7 @@ import type Stripe from 'stripe'
 // ── Shared fixture helpers ────────────────────────────────────────────────────
 
 function makeSession(
-  overrides: Partial<Stripe.Checkout.Session>,
+  overrides: Partial<Stripe.Checkout.Session>
 ): Stripe.Checkout.Session {
   return {
     id: 'cs_test_abc123',
@@ -134,7 +134,10 @@ describe('mapSessionToRow — subscription', () => {
     const row = mapSessionToRow({
       session: makeSession({ mode: 'subscription', payment_intent: null }),
       lineItemDescription: null,
-      subscription: { ...activeSubscription, status: 'trialing' } as unknown as Stripe.Subscription,
+      subscription: {
+        ...activeSubscription,
+        status: 'trialing',
+      } as unknown as Stripe.Subscription,
     })
     expect(row.isActive).toBe(true)
   })

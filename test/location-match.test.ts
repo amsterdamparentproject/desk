@@ -3,8 +3,14 @@ import { Location } from '../app/types/activity'
 
 // This mirrors the matchedLoc logic in ActivityDrawer:
 //   locations.find(l => l.name.toLowerCase() === (org ?? '').toLowerCase())
-function findMatchedLocation(locations: Pick<Location, 'id' | 'name'>[], org: string | null | undefined) {
-  return locations.find(l => l.name.toLowerCase() === (org ?? '').toLowerCase()) ?? null
+function findMatchedLocation(
+  locations: Pick<Location, 'id' | 'name'>[],
+  org: string | null | undefined
+) {
+  return (
+    locations.find((l) => l.name.toLowerCase() === (org ?? '').toLowerCase()) ??
+    null
+  )
 }
 
 const LOCATIONS: Pick<Location, 'id' | 'name'>[] = [

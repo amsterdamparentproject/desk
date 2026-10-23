@@ -5,8 +5,8 @@ export type RruleFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly'
 
 export interface ParsedRrule {
   frequency: RruleFrequency | null
-  days: string[]       // RRULE day abbreviations, possibly positional: "MO", "1MO", "-1FR"
-  untilDate: string    // YYYY-MM-DD or ''
+  days: string[] // RRULE day abbreviations, possibly positional: "MO", "1MO", "-1FR"
+  untilDate: string // YYYY-MM-DD or ''
 }
 
 // Parse 'YYYY-MM-DD' as local midnight (avoids UTC-offset date shifting)
@@ -22,15 +22,25 @@ function toLocalDateStr(d: Date): string {
 
 // Maps JS getDay() (0=Sun) to RRULE abbreviations
 const ABBR_TO_JS_DAY: Record<string, number> = {
-  SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6,
+  SU: 0,
+  MO: 1,
+  TU: 2,
+  WE: 3,
+  TH: 4,
+  FR: 5,
+  SA: 6,
 }
 const FREQ_MAP: Record<string, RruleFrequency> = {
-  DAILY: 'daily', WEEKLY: 'weekly', MONTHLY: 'monthly',
+  DAILY: 'daily',
+  WEEKLY: 'weekly',
+  MONTHLY: 'monthly',
 }
 
 // Parses a positional BYDAY token like "1MO" or "-1FR" into { pos, abbr }.
 // Returns null for plain day abbreviations like "MO".
-export function parsePositionalDay(day: string): { pos: number; abbr: string } | null {
+export function parsePositionalDay(
+  day: string
+): { pos: number; abbr: string } | null {
   const match = day.match(/^(-?\d+)([A-Z]{2})$/)
   if (!match) return null
   return { pos: parseInt(match[1], 10), abbr: match[2] }
@@ -42,14 +52,18 @@ export function parseRrule(rrule: string | null | undefined): ParsedRrule {
 
   const body = rrule.replace(/^RRULE:/i, '')
   const parts = Object.fromEntries(
-    body.split(';').map(p => p.split('=') as [string, string])
+    body.split(';').map((p) => p.split('=') as [string, string])
   )
 
   const interval = parts['INTERVAL'] ? parseInt(parts['INTERVAL'], 10) : 1
   const frequency: RruleFrequency | null = parts['FREQ']
-    ? (parts['FREQ'] === 'WEEKLY' && interval === 2 ? 'biweekly' : (FREQ_MAP[parts['FREQ']] ?? null))
+    ? parts['FREQ'] === 'WEEKLY' && interval === 2
+      ? 'biweekly'
+      : (FREQ_MAP[parts['FREQ']] ?? null)
     : null
-  const days = parts['BYDAY'] ? parts['BYDAY'].split(',').map(d => d.trim()) : []
+  const days = parts['BYDAY']
+    ? parts['BYDAY'].split(',').map((d) => d.trim())
+    : []
   const untilDate = parts['UNTIL']
     ? `${parts['UNTIL'].slice(0, 4)}-${parts['UNTIL'].slice(4, 6)}-${parts['UNTIL'].slice(6, 8)}`
     : ''
@@ -76,7 +90,12 @@ export function buildRrule({
     parts.push(`FREQ=${frequency.toUpperCase()}`)
   }
 
-  if ((frequency === 'weekly' || frequency === 'biweekly' || frequency === 'monthly') && days.length > 0) {
+  if (
+    (frequency === 'weekly' ||
+      frequency === 'biweekly' ||
+      frequency === 'monthly') &&
+    days.length > 0
+  ) {
     parts.push(`BYDAY=${days.join(',')}`)
   }
 
@@ -89,7 +108,12 @@ export function buildRrule({
 
 // Returns the nth (pos > 0) or nth-from-last (pos < 0) occurrence of weekday `dow`
 // in the given month. Returns null if the occurrence falls outside the month (e.g. 5th Monday).
-function nthWeekdayOfMonth(year: number, month: number, pos: number, dow: number): Date | null {
+function nthWeekdayOfMonth(
+  year: number,
+  month: number,
+  pos: number,
+  dow: number
+): Date | null {
   let day: number
   if (pos > 0) {
     const firstOfMonth = new Date(year, month, 1)
@@ -105,7 +129,11 @@ function nthWeekdayOfMonth(year: number, month: number, pos: number, dow: number
 }
 
 // Returns the next occurrence of the nth weekday pattern strictly after `after`.
-function findNthWeekdayAfter(after: Date, pos: number, dow: number): Date | null {
+function findNthWeekdayAfter(
+  after: Date,
+  pos: number,
+  dow: number
+): Date | null {
   const year = after.getFullYear()
   const month = after.getMonth()
   const thisMonth = nthWeekdayOfMonth(year, month, pos, dow)
@@ -126,7 +154,7 @@ export function computeNextDate(
   frequency: string | null | undefined,
   days: string[],
   untilDate: string,
-  startDate: string | null | undefined,
+  startDate: string | null | undefined
 ): string | null {
   if (!frequency) return null
 
@@ -149,9 +177,10 @@ export function computeNextDate(
   if (frequency === 'daily') {
     candidate.setDate(candidate.getDate() + 1)
   } else if (frequency === 'weekly') {
-    const targetDays = days.length > 0
-      ? days.map(d => ABBR_TO_JS_DAY[d]).filter(n => n !== undefined)
-      : [after.getDay()]
+    const targetDays =
+      days.length > 0
+        ? days.map((d) => ABBR_TO_JS_DAY[d]).filter((n) => n !== undefined)
+        : [after.getDay()]
 
     if (targetDays.length === 0) return null
 
@@ -167,9 +196,10 @@ export function computeNextDate(
       if (targetDays.includes(candidate.getDay())) break
     }
   } else if (frequency === 'biweekly') {
-    const targetDays = days.length > 0
-      ? days.map(d => ABBR_TO_JS_DAY[d]).filter(n => n !== undefined)
-      : [after.getDay()]
+    const targetDays =
+      days.length > 0
+        ? days.map((d) => ABBR_TO_JS_DAY[d]).filter((n) => n !== undefined)
+        : [after.getDay()]
 
     if (targetDays.length === 0) return null
 
@@ -186,7 +216,11 @@ export function computeNextDate(
       if (dow === undefined) return null
       const found = findNthWeekdayAfter(after, positional.pos, dow)
       if (!found) return null
-      candidate.setFullYear(found.getFullYear(), found.getMonth(), found.getDate())
+      candidate.setFullYear(
+        found.getFullYear(),
+        found.getMonth(),
+        found.getDate()
+      )
     } else {
       const dayOfMonth = after.getDate()
       candidate.setDate(dayOfMonth)

@@ -26,14 +26,24 @@ async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
 
   let updated = 0
   let skipped = 0
-  const changes: { title: string; old_date: string | null; new_date: string | null }[] = []
+  const changes: {
+    title: string
+    old_date: string | null
+    new_date: string | null
+  }[] = []
 
   for (const event of events ?? []) {
     const { frequency, days, untilDate } = parseRrule(event.repeat_rrule)
-    if (!frequency) { skipped++; continue }
+    if (!frequency) {
+      skipped++
+      continue
+    }
 
     // Use the later of start_date and yesterday so the result is always today-or-later
-    const refDate = event.start_date && event.start_date > yesterday ? event.start_date : yesterday
+    const refDate =
+      event.start_date && event.start_date > yesterday
+        ? event.start_date
+        : yesterday
     const nextDate = computeNextDate(frequency, days, untilDate, refDate)
 
     const { error: updateError } = await supabase
