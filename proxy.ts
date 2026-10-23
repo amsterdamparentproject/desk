@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Desk's session cookie name (see app/utils/auth-gate.ts COOKIE_NAME). Inlined
-// rather than imported so this edge middleware doesn't pull auth-gate's
+// rather than imported so this proxy doesn't pull auth-gate's
 // type-only Next internals.
 const COOKIE_NAME = 'app_desk_session'
 
@@ -16,7 +16,7 @@ const COOKIE_NAME = 'app_desk_session'
  * their own auth — verifyDeskSession or the n8n webhook secret — and are left
  * untouched here.
  */
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   if (req.method !== 'POST' || !req.headers.has('next-action')) {
     return NextResponse.next()
   }
