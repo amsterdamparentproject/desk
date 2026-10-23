@@ -4,7 +4,7 @@ import { CaptureDataProps } from '@/app/types/activity'
 
 const isLocal = process.env.NODE_ENV === 'development'
 
-const postToWebhook = async (webhookURL: string | undefined, data: any) => {
+const postToWebhook = async (webhookURL: string | undefined, data: unknown) => {
   const authSecret = process.env.N8N_WEBHOOK_SECRET
 
   try {
@@ -63,9 +63,15 @@ const postToWebhook = async (webhookURL: string | undefined, data: any) => {
     }
 
     return { success: isOk, status: statusCode, data: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('postToWebhook error:', error)
-    return { success: false, error: error.message || 'Unknown error' }
+    return {
+      success: false,
+      error:
+        error instanceof Error && error.message
+          ? error.message
+          : 'Unknown error',
+    }
   }
 }
 

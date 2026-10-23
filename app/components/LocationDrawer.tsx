@@ -64,7 +64,7 @@ export function LocationDrawer({
   latestFormData.current = formData
   const descriptionRef = useAutosizeTextArea(formData.description ?? '')
 
-  const handleChange = (field: keyof Location, value: any) => {
+  const handleChange = (field: keyof Location, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 

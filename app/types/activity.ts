@@ -105,9 +105,8 @@ export interface EventActivity extends BaseActivity {
   calendar_sent: boolean
 }
 
-export interface ResourceActivity extends BaseActivity {
-  // Purely uses BaseActivity fields right now (e.g., title, description, url, organization)
-}
+// Purely uses BaseActivity fields right now (e.g., title, description, url, organization)
+export type ResourceActivity = BaseActivity
 
 /**
  * 3. CAPTURE & FORM INPUT PROPS

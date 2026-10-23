@@ -57,7 +57,7 @@ const selectStyle = `${baseInputStyle} pl-3 pr-8 cursor-pointer`
 
 export function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
   const cleanIncomingFields = Object.entries(activity).reduce<
-    Record<string, any>
+    Record<string, unknown>
   >((acc, [key, value]) => {
     if (value !== null) acc[key] = value
     return acc
@@ -252,7 +252,7 @@ export function ActivityDrawer({
   const rawDescRef = useAutosizeTextArea(formData.description)
   const notesRef = useAutosizeTextArea(formData.triage_notes || '')
 
-  const handleChange = (field: keyof DeskActivity, value: any) => {
+  const handleChange = (field: keyof DeskActivity, value: unknown) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value }
       if (field === 'organization' && value === 'Amsterdam Parent Project') {
@@ -262,9 +262,9 @@ export function ActivityDrawer({
     })
   }
 
-  const handleDateChange = (field: keyof DeskActivity, value: any) => {
+  const handleDateChange = (field: keyof DeskActivity, value: unknown) => {
     setFormData((prev) => {
-      let updated = { ...prev, [field]: value }
+      const updated = { ...prev, [field]: value }
 
       if (field === 'start_time' || field === 'end_time') {
         if (updated.start_time && updated.end_time) {
@@ -280,7 +280,7 @@ export function ActivityDrawer({
       }
 
       if (field === 'duration_minutes') {
-        const mins = parseInt(value) || 0
+        const mins = parseInt(String(value)) || 0
         updated.duration_minutes = mins
         if (updated.start_time && mins > 0) {
           const start = new Date(`${updated.start_date}T${updated.start_time}`)

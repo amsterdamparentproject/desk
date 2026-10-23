@@ -10,13 +10,11 @@ vi.mock('@/app/utils/supabase/server', () => ({
 function makeSupabaseMock({
   updateError = null,
   selectData = null,
-}: { updateError?: any; selectData?: any } = {}) {
+}: { updateError?: unknown; selectData?: unknown } = {}) {
   const mockEqUpdate = vi.fn().mockResolvedValue({ error: updateError })
-  const mockEqSelect = vi
-    .fn()
-    .mockReturnValue({
-      single: vi.fn().mockResolvedValue({ data: selectData, error: null }),
-    })
+  const mockEqSelect = vi.fn().mockReturnValue({
+    single: vi.fn().mockResolvedValue({ data: selectData, error: null }),
+  })
   const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUpdate })
   const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSelect })
   const mockFrom = vi
@@ -32,7 +30,9 @@ beforeEach(() => {
 describe('saveActivity – date & time', () => {
   it('passes single-day and multi-day date ranges to Supabase', async () => {
     const { client, mockUpdate } = makeSupabaseMock()
-    vi.mocked(createAdminClient).mockReturnValue(client as any)
+    vi.mocked(createAdminClient).mockReturnValue(
+      client as unknown as ReturnType<typeof createAdminClient>
+    )
 
     // Single-day: no end_date
     await saveActivity('id-1', 'event', {
@@ -64,7 +64,9 @@ describe('saveActivity – repeat fields', () => {
     // saveActivity no longer recomputes repeat_next_date — whatever is in the
     // payload is saved verbatim. Recalculation is done on demand in the UI.
     const { client, mockUpdate } = makeSupabaseMock()
-    vi.mocked(createAdminClient).mockReturnValue(client as any)
+    vi.mocked(createAdminClient).mockReturnValue(
+      client as unknown as ReturnType<typeof createAdminClient>
+    )
 
     await saveActivity('id-1', 'event', {
       repeat_rrule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
@@ -79,7 +81,9 @@ describe('saveActivity – repeat fields', () => {
 
   it('saves null repeat_next_date when explicitly cleared', async () => {
     const { client, mockUpdate } = makeSupabaseMock()
-    vi.mocked(createAdminClient).mockReturnValue(client as any)
+    vi.mocked(createAdminClient).mockReturnValue(
+      client as unknown as ReturnType<typeof createAdminClient>
+    )
 
     await saveActivity('id-1', 'event', {
       repeat_rrule: null,

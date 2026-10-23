@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { verifyDeskSession } from '@/app/utils/auth-gate'
 import { ShareForm } from './ShareForm'
 
@@ -42,12 +43,12 @@ export default async function SharePage({ searchParams }: SharePageProps) {
           initialFileUrl={file_url || null}
           initialFileId={file_id || null}
         />
-        <a
+        <Link
           href="/"
           className="block text-center text-xs text-slate-400 hover:text-slate-600 transition-colors pt-1"
         >
           Cancel
-        </a>
+        </Link>
       </div>
     </div>
   )

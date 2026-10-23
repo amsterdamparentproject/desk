@@ -228,11 +228,11 @@ function pickFields(data: Partial<DeskActivity>, fields: readonly string[]) {
         (f) =>
           !(
             REQUIRED_NON_NULL_FIELDS.has(f as keyof WritableEvent) &&
-            !(data as any)[f]
+            !(data as Record<string, unknown>)[f]
           )
       )
       .map((f) => {
-        const v = (data as any)[f]
+        const v = (data as Record<string, unknown>)[f]
         return [
           f,
           v === '' && NULL_COERCE_FIELDS.has(f as keyof WritableEvent)
@@ -287,12 +287,10 @@ export async function upsertEnrichedActivity(
       : null
   }
 
-  const { error } = await supabase
-    .from(table)
-    .upsert(insert, {
-      onConflict: 'title,start_date,start_time,url',
-      ignoreDuplicates: true,
-    })
+  const { error } = await supabase.from(table).upsert(insert, {
+    onConflict: 'title,start_date,start_time,url',
+    ignoreDuplicates: true,
+  })
 
   if (error) throw new Error(error.message)
 
@@ -354,7 +352,7 @@ export async function moveActivity(
 ) {
   const supabase = createAdminClient()
   const table = type === 'event' ? 'events' : 'resources'
-  const update: Record<string, any> = {
+  const update: Record<string, unknown> = {
     list_id,
     updated_at: new Date().toISOString(),
   }
@@ -379,7 +377,7 @@ export async function saveActivity(
           data.repeat_frequency.toLowerCase() as DeskActivity['repeat_frequency'],
       }
     : data
-  const update: Record<string, any> = {
+  const update: Record<string, unknown> = {
     ...pickFields(normalized, fields),
     updated_at: new Date().toISOString(),
   }
@@ -491,7 +489,7 @@ export async function dropService(
     (s) => s !== service
   )
   const becameEmpty = nextServices.length === 0
-  const update: Record<string, any> = {
+  const update: Record<string, unknown> = {
     services: nextServices,
     postpartum_post: nextServices.includes('postpartum_post'),
     updated_at: new Date().toISOString(),
@@ -619,10 +617,10 @@ export async function pollForUpdates(
     await Promise.all([
       eventIds.length
         ? supabase.from('events').select('*').in('id', eventIds)
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
       resourceIds.length
         ? supabase.from('resources').select('*').in('id', resourceIds)
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as Record<string, unknown>[] }),
       supabase
         .from('events')
         .select('*')
