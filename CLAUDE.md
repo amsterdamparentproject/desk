@@ -63,9 +63,9 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 
 - `/login` (`app/login/page.tsx`) renders a password form that posts to the `login` server action (`app/actions/auth.ts`).
 - `login` compares the submitted password to `DESK_PASSWORD` and, on success, sets the `app_desk_session` cookie to that same secret value with `maxAge` = 10 years (`COOKIE_MAX_AGE` in `app/utils/auth-gate.ts`) — sessions are meant to rarely expire.
-- `verifyDeskSession` (`app/utils/auth-gate.ts`) just checks that cookie value against `DESK_PASSWORD`; every protected page/layout (`app/page.tsx`, `app/finances/layout.tsx`, `app/customers/layout.tsx`, `app/sources/page.tsx`, `app/share/page.tsx`) calls it directly and `redirect('/login')`s if it fails — there's no centralized auth middleware.
+- `verifyDeskSession` (`app/utils/auth-gate.ts`) just checks that cookie value against `DESK_PASSWORD`; every protected page/layout (`app/page.tsx`, `app/finances/layout.tsx`, `app/customers/layout.tsx`, `app/sources/page.tsx`, `app/share/page.tsx`) calls it directly and `redirect('/login')`s if it fails. Page loads have no centralized gate; Server Actions do (see `proxy.ts` below).
 - `logout` (`app/actions/auth.ts`) clears the cookie and redirects to `/login`; wired up as a "Log out" button in `DeskNav`.
-- There is no `proxy.ts`/middleware anymore. It used to implement a `?token=` magic-link flow (strip the token from the URL, set the cookie) — that's been replaced entirely by the login page.
+- `proxy.ts` (Next 16's replacement for `middleware.ts`) gates Server Actions: any POST carrying a `next-action` header gets a 401 unless the `app_desk_session` cookie matches `DESK_PASSWORD`. Without it, only page loads would be protected, since Server Actions are independently invocable POST endpoints. API routes (no `next-action` header) do their own auth (`verifyDeskSession` or the n8n webhook secret). The old `?token=` magic-link flow is gone, replaced by the login page.
 
 ### Database schema source files
 

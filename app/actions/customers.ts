@@ -26,8 +26,7 @@ export async function getCustomerRoster(): Promise<CustomerRow[]> {
       // Prefer already-expanded line_items; fall back to a per-session fetch
       let lineItemDescription: string | null = null
       const lineItems = session.line_items as
-        | Stripe.ApiList<Stripe.LineItem>
-        | undefined
+        Stripe.ApiList<Stripe.LineItem> | undefined
       if (lineItems?.data?.length) {
         lineItemDescription = lineItems.data[0].description ?? null
       } else {
