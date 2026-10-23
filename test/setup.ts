@@ -9,7 +9,7 @@ global.ResizeObserver = class ResizeObserver {
 
 // jsdom's localStorage is not available in this environment; stub it
 const store: Record<string, string> = {}
-global.localStorage = {
+const storage = {
   getItem: (key: string) => store[key] ?? null,
   setItem: (key: string, value: string) => {
     store[key] = value
@@ -25,3 +25,8 @@ global.localStorage = {
     return Object.keys(store).length
   },
 } as Storage
+Object.defineProperty(globalThis, 'localStorage', {
+  value: storage,
+  configurable: true,
+  writable: true,
+})
