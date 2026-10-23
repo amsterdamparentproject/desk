@@ -44,6 +44,7 @@ All DB writes go through server actions using `createAdminClient()` (service rol
 `postDesk()` is a server action that POSTs to an n8n webhook. In `NODE_ENV === 'development'` it uses `TEST_N8N_DESK_WEBHOOK_URL` (requires the workflow to be open and listening in n8n); in production it uses `N8N_DESK_WEBHOOK_URL`. Auth is via `X-N8N-WEBHOOK-SECRET` header.
 
 The AI capture flow in `Board.handleAddEvent`:
+
 1. Create optimistic card (status: `processing`) + 2-min timeout fallback to `error`
 2. Upload file to Supabase storage if present
 3. Seed DB record via `createActivity`
@@ -72,12 +73,12 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 
 ## Environment variables
 
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Admin key (server only) |
-| `N8N_WEBHOOK_SECRET` | Shared secret for `X-N8N-WEBHOOK-SECRET` header |
-| `N8N_DESK_WEBHOOK_URL` | Production n8n webhook |
-| `TEST_N8N_DESK_WEBHOOK_URL` | Dev/test n8n webhook (workflow must be listening) |
-| `DESK_PASSWORD` | Shared login password; also the value stored in the `app_desk_session` cookie |
+| Variable                        | Purpose                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                                          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key                                                               |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Admin key (server only)                                                       |
+| `N8N_WEBHOOK_SECRET`            | Shared secret for `X-N8N-WEBHOOK-SECRET` header                               |
+| `N8N_DESK_WEBHOOK_URL`          | Production n8n webhook                                                        |
+| `TEST_N8N_DESK_WEBHOOK_URL`     | Dev/test n8n webhook (workflow must be listening)                             |
+| `DESK_PASSWORD`                 | Shared login password; also the value stored in the `app_desk_session` cookie |

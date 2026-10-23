@@ -7,12 +7,21 @@ vi.mock('@/app/utils/supabase/server', () => ({
 }))
 
 // Builds a chainable Supabase mock: from().update().eq() or from().select().eq().single()
-function makeSupabaseMock({ updateError = null, selectData = null }: { updateError?: any; selectData?: any } = {}) {
+function makeSupabaseMock({
+  updateError = null,
+  selectData = null,
+}: { updateError?: any; selectData?: any } = {}) {
   const mockEqUpdate = vi.fn().mockResolvedValue({ error: updateError })
-  const mockEqSelect = vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: selectData, error: null }) })
+  const mockEqSelect = vi
+    .fn()
+    .mockReturnValue({
+      single: vi.fn().mockResolvedValue({ data: selectData, error: null }),
+    })
   const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqUpdate })
   const mockSelect = vi.fn().mockReturnValue({ eq: mockEqSelect })
-  const mockFrom = vi.fn().mockReturnValue({ update: mockUpdate, select: mockSelect })
+  const mockFrom = vi
+    .fn()
+    .mockReturnValue({ update: mockUpdate, select: mockSelect })
   return { client: { from: mockFrom }, mockFrom, mockUpdate, mockEqUpdate }
 }
 
@@ -33,7 +42,7 @@ describe('saveActivity – date & time', () => {
       end_time: null,
     })
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ start_date: '2026-06-01', end_date: null }),
+      expect.objectContaining({ start_date: '2026-06-01', end_date: null })
     )
 
     // Multi-day: end_date set
@@ -42,7 +51,10 @@ describe('saveActivity – date & time', () => {
       end_date: '2026-06-03',
     })
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ start_date: '2026-06-01', end_date: '2026-06-03' }),
+      expect.objectContaining({
+        start_date: '2026-06-01',
+        end_date: '2026-06-03',
+      })
     )
   })
 })

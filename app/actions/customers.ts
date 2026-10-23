@@ -25,12 +25,17 @@ export async function getCustomerRoster(): Promise<CustomerRow[]> {
     sessions.map(async (session) => {
       // Prefer already-expanded line_items; fall back to a per-session fetch
       let lineItemDescription: string | null = null
-      const lineItems = session.line_items as Stripe.ApiList<Stripe.LineItem> | undefined
+      const lineItems = session.line_items as
+        | Stripe.ApiList<Stripe.LineItem>
+        | undefined
       if (lineItems?.data?.length) {
         lineItemDescription = lineItems.data[0].description ?? null
       } else {
         try {
-          const fetched = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 })
+          const fetched = await stripe.checkout.sessions.listLineItems(
+            session.id,
+            { limit: 1 }
+          )
           lineItemDescription = fetched.data[0]?.description ?? null
         } catch {
           // best-effort
@@ -43,7 +48,7 @@ export async function getCustomerRoster(): Promise<CustomerRow[]> {
           : null
 
       return mapSessionToRow({ session, lineItemDescription, subscription })
-    }),
+    })
   )
 
   return rows

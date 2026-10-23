@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import type { CustomerRow } from '@/lib/stripe/types'
 
-
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat('nl-NL', {
     style: 'currency',
@@ -34,16 +33,21 @@ function StatCard({
 }) {
   return (
     <div className={`rounded-xl border p-5 ${accent}`}>
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+        {label}
+      </p>
       <p className="text-2xl font-bold text-slate-900">{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
     </div>
   )
 }
 
-
 // ── CustomersClient ───────────────────────────────────────────────────────────
-export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] }) {
+export function CustomersClient({
+  initialRows,
+}: {
+  initialRows: CustomerRow[]
+}) {
   const [search, setSearch] = useState('')
   const [productFilter, setProductFilter] = useState('all')
   const [activeOnly, setActiveOnly] = useState(false)
@@ -53,7 +57,7 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
   // Collect unique products
   const products = useMemo(
     () => Array.from(new Set(initialRows.map((r) => r.product))).sort(),
-    [initialRows],
+    [initialRows]
   )
 
   // Collect unique custom-field labels for dynamic filter UI
@@ -90,18 +94,22 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
     if (testFilter === 'live') rows = rows.filter((r) => !r.isTest)
     else if (testFilter === 'test') rows = rows.filter((r) => r.isTest)
 
-    if (productFilter !== 'all') rows = rows.filter((r) => r.product === productFilter)
+    if (productFilter !== 'all')
+      rows = rows.filter((r) => r.product === productFilter)
     if (activeOnly) rows = rows.filter((r) => r.isActive)
 
     for (const [label, val] of Object.entries(cfFilters)) {
       if (!val || val === 'all') continue
-      rows = rows.filter((r) => r.customFields.find((f) => f.label === label && f.value === val))
+      rows = rows.filter((r) =>
+        r.customFields.find((f) => f.label === label && f.value === val)
+      )
     }
 
     if (search.trim()) {
       const q = search.toLowerCase()
       rows = rows.filter(
-        (r) => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
+        (r) =>
+          r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)
       )
     }
 
@@ -115,7 +123,15 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
     }
 
     return rows
-  }, [initialRows, testFilter, productFilter, activeOnly, cfFilters, search, groupByCustomer])
+  }, [
+    initialRows,
+    testFilter,
+    productFilter,
+    activeOnly,
+    cfFilters,
+    search,
+    groupByCustomer,
+  ])
 
   // Stats over filtered rows
   const stats = useMemo(() => {
@@ -126,7 +142,8 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
     }
 
     const isNewbornSupport = (p: string) =>
-      p.toLowerCase().includes('fourth trimester') || p.toLowerCase().includes('deposit')
+      p.toLowerCase().includes('fourth trimester') ||
+      p.toLowerCase().includes('deposit')
 
     const unlabelled: [string, number][] = []
     const newbornSupport: [string, number][] = []
@@ -141,10 +158,22 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
 
   // CSV export
   const handleExport = () => {
-    const headers = ['Name', 'Email', 'Product', 'Mode', 'Status', 'Active', 'Amount', 'Currency', 'Date', ...customFieldLabels, 'Dashboard']
+    const headers = [
+      'Name',
+      'Email',
+      'Product',
+      'Mode',
+      'Status',
+      'Active',
+      'Amount',
+      'Currency',
+      'Date',
+      ...customFieldLabels,
+      'Dashboard',
+    ]
     const csvRows = filtered.map((r) => {
       const cfValues = customFieldLabels.map(
-        (label) => r.customFields.find((f) => f.label === label)?.value ?? '',
+        (label) => r.customFields.find((f) => f.label === label)?.value ?? ''
       )
       return [
         r.name,
@@ -178,8 +207,12 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
       <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Customer Roster</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Live from Stripe · {stats.total} total enrollments</p>
+            <h1 className="text-2xl font-bold text-slate-900">
+              Customer Roster
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Live from Stripe · {stats.total} total enrollments
+            </p>
           </div>
           <button
             onClick={handleExport}
@@ -191,14 +224,18 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-
         {/* Stats */}
         <div className="space-y-3">
           {/* Unlabelled section */}
           {stats.unlabelled.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {stats.unlabelled.map(([product, count]) => (
-                <StatCard key={product} label={product} value={count} accent="bg-slate-50 border-slate-200" />
+                <StatCard
+                  key={product}
+                  label={product}
+                  value={count}
+                  accent="bg-slate-50 border-slate-200"
+                />
               ))}
             </div>
           )}
@@ -206,10 +243,17 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
           {/* Newborn support section */}
           {stats.newbornSupport.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2 px-1">Newborn support</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2 px-1">
+                Newborn support
+              </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {stats.newbornSupport.map(([product, count]) => (
-                  <StatCard key={product} label={product} value={count} accent="bg-blue-50 border-blue-200" />
+                  <StatCard
+                    key={product}
+                    label={product}
+                    value={count}
+                    accent="bg-blue-50 border-blue-200"
+                  />
                 ))}
               </div>
             </div>
@@ -235,7 +279,9 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
           >
             <option value="all">All products</option>
             {products.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>
+                {p}
+              </option>
             ))}
           </select>
 
@@ -251,7 +297,9 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
             >
               <option value="all">All {label}</option>
               {cfOptions[label]?.map((v) => (
-                <option key={v} value={v}>{v}</option>
+                <option key={v} value={v}>
+                  {v}
+                </option>
               ))}
             </select>
           ))}
@@ -259,7 +307,9 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
           {/* Live / test toggle */}
           <select
             value={testFilter}
-            onChange={(e) => setTestFilter(e.target.value as 'live' | 'test' | 'all')}
+            onChange={(e) =>
+              setTestFilter(e.target.value as 'live' | 'test' | 'all')
+            }
             className="border border-slate-400 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
           >
             <option value="live">Live only</option>
@@ -296,34 +346,59 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Name</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Email</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Product</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Name
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Email
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Product
+                  </th>
                   {customFieldLabels.map((label) => (
-                    <th key={label} className="text-left py-3 px-4 font-medium text-slate-600">
+                    <th
+                      key={label}
+                      className="text-left py-3 px-4 font-medium text-slate-600"
+                    >
                       {label}
                     </th>
                   ))}
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Status</th>
-                  <th className="text-right py-3 px-4 font-medium text-slate-600">Amount</th>
-                  <th className="text-left py-3 px-4 font-medium text-slate-600">Date</th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Status
+                  </th>
+                  <th className="text-right py-3 px-4 font-medium text-slate-600">
+                    Amount
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-slate-600">
+                    Date
+                  </th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={6 + customFieldLabels.length} className="py-12 text-center text-slate-400">
+                    <td
+                      colSpan={6 + customFieldLabels.length}
+                      className="py-12 text-center text-slate-400"
+                    >
                       No customers match the current filters.
                     </td>
                   </tr>
                 )}
                 {filtered.map((row) => (
-                  <tr key={row.sessionId} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={row.sessionId}
+                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                  >
                     <td className="py-3 px-4 font-medium text-slate-900">
-                      {row.name || <span className="text-slate-400 italic">—</span>}
+                      {row.name || (
+                        <span className="text-slate-400 italic">—</span>
+                      )}
                       {row.isTest && (
-                        <span className="ml-1.5 text-xs font-mono bg-yellow-100 text-yellow-700 px-1 rounded">TEST</span>
+                        <span className="ml-1.5 text-xs font-mono bg-yellow-100 text-yellow-700 px-1 rounded">
+                          TEST
+                        </span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-slate-600">{row.email}</td>
@@ -332,7 +407,8 @@ export function CustomersClient({ initialRows }: { initialRows: CustomerRow[] })
                     </td>
                     {customFieldLabels.map((label) => (
                       <td key={label} className="py-3 px-4 text-slate-600">
-                        {row.customFields.find((f) => f.label === label)?.value ?? '—'}
+                        {row.customFields.find((f) => f.label === label)
+                          ?.value ?? '—'}
                       </td>
                     ))}
                     <td className="py-3 px-4">

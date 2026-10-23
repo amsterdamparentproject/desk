@@ -17,26 +17,47 @@ async function BoardWithData() {
   // Run cleanup in parallel with data fetch — previously these were sequential,
   // adding a full Supabase round-trip before the selects could start.
   const cleanupPromise = Promise.all([
-    supabase.from('events').update({ list_id: 'error', status: 'new', updated_at: now })
-      .eq('status', 'processing').lt('updated_at', staleThreshold),
-    supabase.from('resources').update({ list_id: 'error', status: 'new', updated_at: now })
-      .eq('status', 'processing').lt('updated_at', staleThreshold),
-    supabase.from('events').update({ status: 'published', updated_at: now })
-      .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
-    supabase.from('resources').update({ status: 'published', updated_at: now })
-      .eq('list_id', 'next_newsletter').not('newsletter_last', 'is', null).lt('newsletter_last', today),
+    supabase
+      .from('events')
+      .update({ list_id: 'error', status: 'new', updated_at: now })
+      .eq('status', 'processing')
+      .lt('updated_at', staleThreshold),
+    supabase
+      .from('resources')
+      .update({ list_id: 'error', status: 'new', updated_at: now })
+      .eq('status', 'processing')
+      .lt('updated_at', staleThreshold),
+    supabase
+      .from('events')
+      .update({ status: 'published', updated_at: now })
+      .eq('list_id', 'next_newsletter')
+      .not('newsletter_last', 'is', null)
+      .lt('newsletter_last', today),
+    supabase
+      .from('resources')
+      .update({ status: 'published', updated_at: now })
+      .eq('list_id', 'next_newsletter')
+      .not('newsletter_last', 'is', null)
+      .lt('newsletter_last', today),
   ])
 
   const [eventsResult, resourcesResult, locations] = await Promise.all([
-    supabase.from('events').select('*').order('created_at', { ascending: false }),
-    supabase.from('resources').select('*').order('created_at', { ascending: false }),
+    supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('resources')
+      .select('*')
+      .order('created_at', { ascending: false }),
     getLocations().catch(() => []),
   ])
 
   await cleanupPromise
 
   if (eventsResult.error || resourcesResult.error) {
-    const message = eventsResult.error?.message ?? resourcesResult.error?.message
+    const message =
+      eventsResult.error?.message ?? resourcesResult.error?.message
     console.error('Database Fetch Error:', message)
     return (
       <div className="p-6 text-sm bg-red-50 text-red-700 border border-red-200 rounded-xl">
@@ -59,17 +80,30 @@ async function BoardWithData() {
   // client-side in Board.tsx (pastEvents, sweepStaleUpcoming, the Match
   // panel's month buckets) — the server fetch doesn't need its own parallel
   // notion of "current."
-  const events = (eventsResult.data ?? [])
-    .map(e => ({ ...e, type: 'event' as const, file: null, preview_url: null }))
+  const events = (eventsResult.data ?? []).map((e) => ({
+    ...e,
+    type: 'event' as const,
+    file: null,
+    preview_url: null,
+  }))
 
-  const resources = (resourcesResult.data ?? [])
-    .map(r => ({ ...r, type: 'resource' as const, file: null, preview_url: null }))
+  const resources = (resourcesResult.data ?? []).map((r) => ({
+    ...r,
+    type: 'resource' as const,
+    file: null,
+    preview_url: null,
+  }))
 
-  const activities = [...events, ...resources]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  const activities = [...events, ...resources].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
 
   return (
-    <Board initialActivities={activities as DeskActivity[]} initialLocations={locations} />
+    <Board
+      initialActivities={activities as DeskActivity[]}
+      initialLocations={locations}
+    />
   )
 }
 

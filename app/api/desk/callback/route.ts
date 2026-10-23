@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { saveEnrichedCallback, upsertEnrichedActivity } from '@/app/actions/activities'
+import {
+  saveEnrichedCallback,
+  upsertEnrichedActivity,
+} from '@/app/actions/activities'
 import { DeskActivity } from '@/app/types/activity'
 
 export async function POST(request: NextRequest) {
@@ -15,7 +18,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const items: DeskActivity[] = Array.isArray(body) ? body : [body as DeskActivity]
+  const items: DeskActivity[] = Array.isArray(body)
+    ? body
+    : [body as DeskActivity]
   const [first, ...rest] = items
 
   if (!first?.id || !first?.type) {
@@ -24,7 +29,10 @@ export async function POST(request: NextRequest) {
 
   // Strip fields n8n injects that aren't part of the DB schema
   const sanitize = (item: DeskActivity): DeskActivity => {
-    const { error: _error, ...clean } = item as unknown as Record<string, unknown>
+    const { error: _error, ...clean } = item as unknown as Record<
+      string,
+      unknown
+    >
     return clean as unknown as DeskActivity
   }
 

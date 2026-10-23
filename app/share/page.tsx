@@ -4,14 +4,26 @@ import { verifyDeskSession } from '@/app/utils/auth-gate'
 import { ShareForm } from './ShareForm'
 
 interface SharePageProps {
-  searchParams: Promise<{ title?: string; text?: string; url?: string; file_url?: string; file_id?: string }>
+  searchParams: Promise<{
+    title?: string
+    text?: string
+    url?: string
+    file_url?: string
+    file_id?: string
+  }>
 }
 
 export default async function SharePage({ searchParams }: SharePageProps) {
   const cookieStore = await cookies()
   if (!verifyDeskSession(cookieStore)) redirect('/login')
 
-  const { title = '', text = '', url = '', file_url = '', file_id = '' } = await searchParams
+  const {
+    title = '',
+    text = '',
+    url = '',
+    file_url = '',
+    file_id = '',
+  } = await searchParams
 
   const initialDescription = [title, url, text].filter(Boolean).join('\n')
 
@@ -19,7 +31,9 @@ export default async function SharePage({ searchParams }: SharePageProps) {
     <div className="min-h-screen bg-slate-50 flex items-start justify-center pt-16 px-4">
       <div className="w-full max-w-md space-y-3">
         <div className="px-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capture to Ideas</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Capture to Ideas
+          </p>
         </div>
         <ShareForm
           initialDescription={initialDescription}

@@ -47,7 +47,16 @@ const supabase = createClient(
 // issue, or published). Not every list_id applies to both tables (e.g.
 // resources never use 'upcoming_events'), which is harmless here — the
 // filter just won't match rows that can't exist with that combination.
-const NON_GONE_LISTS = ['ideas', 'capture', 'review', 'error', 'refine', 'upcoming_events', 'new_resources', 'next_newsletter']
+const NON_GONE_LISTS = [
+  'ideas',
+  'capture',
+  'review',
+  'error',
+  'refine',
+  'upcoming_events',
+  'new_resources',
+  'next_newsletter',
+]
 
 async function backfillEvents(today: string) {
   console.log(`--- events (start_date >= ${today}) ---`)
@@ -60,25 +69,46 @@ async function backfillEvents(today: string) {
     .gte('start_date', today)
     .order('start_date', { ascending: true })
 
-  if (error) { console.error('Fetch error:', error.message); return }
-  if (!rows?.length) { console.log('Nothing to backfill.\n'); return }
+  if (error) {
+    console.error('Fetch error:', error.message)
+    return
+  }
+  if (!rows?.length) {
+    console.log('Nothing to backfill.\n')
+    return
+  }
 
   console.log(`${rows.length} event(s) matched:\n`)
   for (const row of rows) {
-    console.log(`  ${row.start_date}  [${row.list_id}/${row.status}]  ${row.title}  (${row.id})`)
+    console.log(
+      `  ${row.start_date}  [${row.list_id}/${row.status}]  ${row.title}  (${row.id})`
+    )
   }
 
-  if (!APPLY) { console.log('\nDry run only — no changes written.\n'); return }
+  if (!APPLY) {
+    console.log('\nDry run only — no changes written.\n')
+    return
+  }
 
   console.log('\nApplying...\n')
-  let ok = 0, failed = 0
+  let ok = 0,
+    failed = 0
   for (const row of rows) {
     const { error: updateError } = await supabase
       .from('events')
-      .update({ services: ['newsletter', 'postpartum_post'], postpartum_post: true, updated_at: new Date().toISOString() })
+      .update({
+        services: ['newsletter', 'postpartum_post'],
+        postpartum_post: true,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', row.id)
-    if (updateError) { failed++; console.log(`  ✗ ${row.title}\n    ${updateError.message}`) }
-    else { ok++; console.log(`  ✓ ${row.title}`) }
+    if (updateError) {
+      failed++
+      console.log(`  ✗ ${row.title}\n    ${updateError.message}`)
+    } else {
+      ok++
+      console.log(`  ✓ ${row.title}`)
+    }
   }
   console.log(`\nevents: ${ok} updated, ${failed} failed\n`)
 }
@@ -93,25 +123,44 @@ async function backfillResources() {
     .in('list_id', NON_GONE_LISTS)
     .order('title', { ascending: true })
 
-  if (error) { console.error('Fetch error:', error.message); return }
-  if (!rows?.length) { console.log('Nothing to backfill.\n'); return }
+  if (error) {
+    console.error('Fetch error:', error.message)
+    return
+  }
+  if (!rows?.length) {
+    console.log('Nothing to backfill.\n')
+    return
+  }
 
   console.log(`${rows.length} resource(s) matched:\n`)
   for (const row of rows) {
     console.log(`  [${row.list_id}/${row.status}]  ${row.title}  (${row.id})`)
   }
 
-  if (!APPLY) { console.log('\nDry run only — no changes written.\n'); return }
+  if (!APPLY) {
+    console.log('\nDry run only — no changes written.\n')
+    return
+  }
 
   console.log('\nApplying...\n')
-  let ok = 0, failed = 0
+  let ok = 0,
+    failed = 0
   for (const row of rows) {
     const { error: updateError } = await supabase
       .from('resources')
-      .update({ services: ['newsletter'], postpartum_post: false, updated_at: new Date().toISOString() })
+      .update({
+        services: ['newsletter'],
+        postpartum_post: false,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', row.id)
-    if (updateError) { failed++; console.log(`  ✗ ${row.title}\n    ${updateError.message}`) }
-    else { ok++; console.log(`  ✓ ${row.title}`) }
+    if (updateError) {
+      failed++
+      console.log(`  ✗ ${row.title}\n    ${updateError.message}`)
+    } else {
+      ok++
+      console.log(`  ✓ ${row.title}`)
+    }
   }
   console.log(`\nresources: ${ok} updated, ${failed} failed\n`)
 }
@@ -119,7 +168,11 @@ async function backfillResources() {
 async function main() {
   const today = new Date().toISOString().split('T')[0]
   console.log('=== Backfill missing services ===')
-  console.log(APPLY ? 'Mode: APPLY (writing changes)\n' : 'Mode: DRY RUN (pass --apply to write)\n')
+  console.log(
+    APPLY
+      ? 'Mode: APPLY (writing changes)\n'
+      : 'Mode: DRY RUN (pass --apply to write)\n'
+  )
 
   await backfillEvents(today)
   await backfillResources()

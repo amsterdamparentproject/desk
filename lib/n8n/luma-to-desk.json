@@ -117,19 +117,13 @@
   ],
   "connections": {
     "Daily Schedule": {
-      "main": [
-        [{ "node": "Fetch Luma iCal", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Fetch Luma iCal", "type": "main", "index": 0 }]]
     },
     "Fetch Luma iCal": {
-      "main": [
-        [{ "node": "Parse iCal", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Parse iCal", "type": "main", "index": 0 }]]
     },
     "Parse iCal": {
-      "main": [
-        [{ "node": "Scrape Luma page", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Scrape Luma page", "type": "main", "index": 0 }]]
     },
     "Scrape Luma page": {
       "main": [
@@ -138,14 +132,10 @@
       ]
     },
     "Enrich description": {
-      "main": [
-        [{ "node": "Insert to Supabase", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Insert to Supabase", "type": "main", "index": 0 }]]
     },
     "Scrape error fallback": {
-      "main": [
-        [{ "node": "Insert to Supabase", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Insert to Supabase", "type": "main", "index": 0 }]]
     }
   },
   "active": false,

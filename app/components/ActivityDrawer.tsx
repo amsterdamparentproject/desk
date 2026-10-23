@@ -1,47 +1,96 @@
 // components/ActivityDrawer.tsx
 import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
-import { X, MapPin, ExternalLink, Clock, Star, NotebookPen, Edit, Check, ImageIcon, SkipForward, RefreshCw, Calendar, Settings, Sparkles, Trash2, Archive, RotateCcw, BookmarkPlus, Mail, Newspaper } from 'lucide-react'
-import { DeskActivity, DEFAULT_DESK_ACTIVITY, Location, RepeatFrequency, Service } from '../types/activity'
+import {
+  X,
+  MapPin,
+  ExternalLink,
+  Clock,
+  Star,
+  NotebookPen,
+  Edit,
+  Check,
+  ImageIcon,
+  SkipForward,
+  RefreshCw,
+  Calendar,
+  Settings,
+  Sparkles,
+  Trash2,
+  Archive,
+  RotateCcw,
+  BookmarkPlus,
+  Mail,
+  Newspaper,
+} from 'lucide-react'
+import {
+  DeskActivity,
+  DEFAULT_DESK_ACTIVITY,
+  Location,
+  RepeatFrequency,
+  Service,
+} from '../types/activity'
 import { ALL_LISTS, ListId, getListTab } from '../types/list'
 import { TriageStatus } from '../types/card'
-import { useAutosizeTextArea } from "../hooks/useAutosizeTextArea";
-import { parseRrule, buildRrule, computeNextDate, parsePositionalDay } from '../utils/rrule';
-import { upsertLocation } from '../actions/activities';
+import { useAutosizeTextArea } from '../hooks/useAutosizeTextArea'
+import {
+  parseRrule,
+  buildRrule,
+  computeNextDate,
+  parsePositionalDay,
+} from '../utils/rrule'
+import { upsertLocation } from '../actions/activities'
 
-const AREAS = ['West', 'East', 'North', 'Center', 'South', 'Everywhere', 'Online']
+const AREAS = [
+  'West',
+  'East',
+  'North',
+  'Center',
+  'South',
+  'Everywhere',
+  'Online',
+]
 
-const baseInputStyle = "w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-white"
+const baseInputStyle =
+  'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-white'
 const inputStyle = `${baseInputStyle} px-3`
 const selectStyle = `${baseInputStyle} pl-3 pr-8 cursor-pointer`
 
 export function sanitizeActivityInputs(activity: DeskActivity): DeskActivity {
-  const cleanIncomingFields = Object.entries(activity).reduce<Record<string, any>>((acc, [key, value]) => {
-    if (value !== null) acc[key] = value;
-    return acc;
-  }, {});
-  const result = { ...DEFAULT_DESK_ACTIVITY, ...cleanIncomingFields } as DeskActivity;
+  const cleanIncomingFields = Object.entries(activity).reduce<
+    Record<string, any>
+  >((acc, [key, value]) => {
+    if (value !== null) acc[key] = value
+    return acc
+  }, {})
+  const result = {
+    ...DEFAULT_DESK_ACTIVITY,
+    ...cleanIncomingFields,
+  } as DeskActivity
   // Strip seconds from time fields — DB returns HH:MM:SS, inputs expect HH:MM
   if (result.start_time) result.start_time = result.start_time.substring(0, 5)
   if (result.end_time) result.end_time = result.end_time.substring(0, 5)
   // Default highlight to true for APP's own events, but only if not explicitly set in the DB
-  if (result.organization === 'Amsterdam Parent Project' && activity.newsletter_highlight === null) {
-    result.newsletter_highlight = true;
+  if (
+    result.organization === 'Amsterdam Parent Project' &&
+    activity.newsletter_highlight === null
+  ) {
+    result.newsletter_highlight = true
   }
-  return result;
+  return result
 }
 
 interface ActivityDrawerProps {
-  activity: DeskActivity,
-  onSaveDraft: (data: DeskActivity) => void,
-  onFinishEditing: (data: DeskActivity) => void,
-  onClose: () => void,
-  onSendToAI?: (data: DeskActivity) => void,
-  onDelete?: (id: string, type: 'event' | 'resource') => void,
-  readOnly?: boolean,
-  onRestore?: () => void,
-  locations?: Location[],
-  onLocationSaved?: (loc: Location) => void,
-  onToggleService?: (service: Service, enabled: boolean) => void,
+  activity: DeskActivity
+  onSaveDraft: (data: DeskActivity) => void
+  onFinishEditing: (data: DeskActivity) => void
+  onClose: () => void
+  onSendToAI?: (data: DeskActivity) => void
+  onDelete?: (id: string, type: 'event' | 'resource') => void
+  readOnly?: boolean
+  onRestore?: () => void
+  locations?: Location[]
+  onLocationSaved?: (loc: Location) => void
+  onToggleService?: (service: Service, enabled: boolean) => void
 }
 
 const WEEKDAYS = [
@@ -54,26 +103,51 @@ const WEEKDAYS = [
   { label: 'Sun', abbr: 'SU' },
 ]
 
-const TRIAGE_STATUSES: TriageStatus[] = ['new', 'processing', 'processed', 'accepted', 'published', 'archived']
+const TRIAGE_STATUSES: TriageStatus[] = [
+  'new',
+  'processing',
+  'processed',
+  'accepted',
+  'published',
+  'archived',
+]
 
 const STATUS_COLORS: Record<TriageStatus, string> = {
-  new:        'bg-blue-600 text-white',
+  new: 'bg-blue-600 text-white',
   processing: 'bg-amber-500 text-white',
-  processed:  'bg-purple-600 text-white',
-  accepted:   'bg-green-600 text-white',
-  published:  'bg-teal-600 text-white',
-  archived:   'bg-red-500 text-white',
+  processed: 'bg-purple-600 text-white',
+  accepted: 'bg-green-600 text-white',
+  published: 'bg-teal-600 text-white',
+  archived: 'bg-red-500 text-white',
 }
 
-export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose, onSendToAI, onDelete, readOnly, onRestore, locations = [], onLocationSaved, onToggleService }: ActivityDrawerProps) {
-  const [formData, setFormData] = useState<DeskActivity>(() => sanitizeActivityInputs(activity));
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<Location | null>(null);
-  const [pendingLocationSource, setPendingLocationSource] = useState<'org' | 'location' | null>(null);
-  const [locationSaveState, setLocationSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [appliedLocationName, setAppliedLocationName] = useState<string>(() =>
-    locations.find(l => l.address === activity.location)?.name ?? ''
-  );
+export function ActivityDrawer({
+  activity,
+  onSaveDraft,
+  onFinishEditing,
+  onClose,
+  onSendToAI,
+  onDelete,
+  readOnly,
+  onRestore,
+  locations = [],
+  onLocationSaved,
+  onToggleService,
+}: ActivityDrawerProps) {
+  const [formData, setFormData] = useState<DeskActivity>(() =>
+    sanitizeActivityInputs(activity)
+  )
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [pendingLocation, setPendingLocation] = useState<Location | null>(null)
+  const [pendingLocationSource, setPendingLocationSource] = useState<
+    'org' | 'location' | null
+  >(null)
+  const [locationSaveState, setLocationSaveState] = useState<
+    'idle' | 'saving' | 'saved'
+  >('idle')
+  const [appliedLocationName, setAppliedLocationName] = useState<string>(
+    () => locations.find((l) => l.address === activity.location)?.name ?? ''
+  )
 
   // Always track latest formData so onBlur handlers don't capture stale closure values
   const latestFormData = useRef(formData)
@@ -84,7 +158,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   const handleToggleService = (service: Service, enabled: boolean) => {
     const nextServices = enabled
       ? Array.from(new Set([...activityServices, service]))
-      : activityServices.filter(s => s !== service)
+      : activityServices.filter((s) => s !== service)
     const next = {
       ...latestFormData.current,
       services: nextServices,
@@ -99,46 +173,72 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
   }
 
   const parsed = parseRrule(activity.repeat_rrule)
-  const parsedMonthly = parsed.frequency === 'monthly' && parsed.days[0] ? parsePositionalDay(parsed.days[0]) : null
-  const [repeatFrequency, setRepeatFrequency] = useState<string>(parsed.frequency ?? '')
+  const parsedMonthly =
+    parsed.frequency === 'monthly' && parsed.days[0]
+      ? parsePositionalDay(parsed.days[0])
+      : null
+  const [repeatFrequency, setRepeatFrequency] = useState<string>(
+    parsed.frequency ?? ''
+  )
   const [repeatDays, setRepeatDays] = useState<string[]>(
-    (parsed.frequency === 'weekly' || parsed.frequency === 'biweekly') ? parsed.days : []
+    parsed.frequency === 'weekly' || parsed.frequency === 'biweekly'
+      ? parsed.days
+      : []
   )
   const [repeatUntil, setRepeatUntil] = useState<string>(() => {
     // Only pre-fill until if it's meaningfully after the start_date (not just the event's own end date)
     if (!parsed.untilDate || !activity.start_date) return parsed.untilDate
     return parsed.untilDate > activity.start_date ? parsed.untilDate : ''
   })
-  const [repeatMonthlyPos, setRepeatMonthlyPos] = useState<string>(parsedMonthly ? String(parsedMonthly.pos) : '')
-  const [repeatMonthlyDay, setRepeatMonthlyDay] = useState<string>(parsedMonthly ? parsedMonthly.abbr : '')
+  const [repeatMonthlyPos, setRepeatMonthlyPos] = useState<string>(
+    parsedMonthly ? String(parsedMonthly.pos) : ''
+  )
+  const [repeatMonthlyDay, setRepeatMonthlyDay] = useState<string>(
+    parsedMonthly ? parsedMonthly.abbr : ''
+  )
   const DOW_TO_ABBR = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
 
   const effectiveDays =
     repeatFrequency === 'monthly' && repeatMonthlyPos && repeatMonthlyDay
       ? [`${repeatMonthlyPos}${repeatMonthlyDay}`]
-      : (repeatFrequency === 'weekly' || repeatFrequency === 'biweekly')
+      : repeatFrequency === 'weekly' || repeatFrequency === 'biweekly'
         ? repeatDays
         : []
 
   useEffect(() => {
-    const rrule = buildRrule({ frequency: repeatFrequency, days: effectiveDays, untilDate: repeatUntil })
-    setFormData(prev => ({
+    const rrule = buildRrule({
+      frequency: repeatFrequency,
+      days: effectiveDays,
+      untilDate: repeatUntil,
+    })
+    setFormData((prev) => ({
       ...prev,
       repeat_rrule: rrule || null,
       repeat_frequency: (repeatFrequency as RepeatFrequency) || null,
     }))
-  }, [repeatFrequency, repeatDays, repeatUntil, repeatMonthlyPos, repeatMonthlyDay])
+  }, [
+    repeatFrequency,
+    repeatDays,
+    repeatUntil,
+    repeatMonthlyPos,
+    repeatMonthlyDay,
+  ])
 
   const toggleRepeatDay = (abbr: string) => {
-    setRepeatDays(prev =>
-      prev.includes(abbr) ? prev.filter(d => d !== abbr) : [...prev, abbr]
+    setRepeatDays((prev) =>
+      prev.includes(abbr) ? prev.filter((d) => d !== abbr) : [...prev, abbr]
     )
   }
 
-  const rrulePreview = buildRrule({ frequency: repeatFrequency, days: effectiveDays, untilDate: repeatUntil })
+  const rrulePreview = buildRrule({
+    frequency: repeatFrequency,
+    days: effectiveDays,
+    untilDate: repeatUntil,
+  })
 
   const [isMultiDay, setIsMultiDay] = useState(() => {
-    const s = activity.start_date, e = activity.end_date
+    const s = activity.start_date,
+      e = activity.end_date
     return !!(s && e && e > s)
   })
 
@@ -148,50 +248,57 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     else if (!formData.end_date) handleChange('end_date', formData.start_date)
   }
 
-  const blurbRef = useAutosizeTextArea(formData.newsletter_description);
-  const rawDescRef = useAutosizeTextArea(formData.description);
-  const notesRef = useAutosizeTextArea(formData.triage_notes || "");
+  const blurbRef = useAutosizeTextArea(formData.newsletter_description)
+  const rawDescRef = useAutosizeTextArea(formData.description)
+  const notesRef = useAutosizeTextArea(formData.triage_notes || '')
 
   const handleChange = (field: keyof DeskActivity, value: any) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value };
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value }
       if (field === 'organization' && value === 'Amsterdam Parent Project') {
-        next.newsletter_highlight = true;
+        next.newsletter_highlight = true
       }
-      return next;
-    });
-  };
+      return next
+    })
+  }
 
   const handleDateChange = (field: keyof DeskActivity, value: any) => {
-    setFormData(prev => {
-      let updated = { ...prev, [field]: value };
+    setFormData((prev) => {
+      let updated = { ...prev, [field]: value }
 
       if (field === 'start_time' || field === 'end_time') {
         if (updated.start_time && updated.end_time) {
-          const endDate = updated.end_date || updated.start_date;
-          const start = new Date(`${updated.start_date}T${updated.start_time}`);
-          const end = new Date(`${endDate}T${updated.end_time}`);
-          if (end < start) updated.duration_minutes = 0;
-          else updated.duration_minutes = Math.round((end.getTime() - start.getTime()) / 60000);
+          const endDate = updated.end_date || updated.start_date
+          const start = new Date(`${updated.start_date}T${updated.start_time}`)
+          const end = new Date(`${endDate}T${updated.end_time}`)
+          if (end < start) updated.duration_minutes = 0
+          else
+            updated.duration_minutes = Math.round(
+              (end.getTime() - start.getTime()) / 60000
+            )
         }
       }
 
       if (field === 'duration_minutes') {
-        const mins = parseInt(value) || 0;
-        updated.duration_minutes = mins;
+        const mins = parseInt(value) || 0
+        updated.duration_minutes = mins
         if (updated.start_time && mins > 0) {
-          const start = new Date(`${updated.start_date}T${updated.start_time}`);
-          const end = new Date(start.getTime() + mins * 60000);
-          updated.end_date = end.toISOString().split('T')[0];
-          updated.end_time = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+          const start = new Date(`${updated.start_date}T${updated.start_time}`)
+          const end = new Date(start.getTime() + mins * 60000)
+          updated.end_date = end.toISOString().split('T')[0]
+          updated.end_time = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
         }
       }
-      return updated;
-    });
-  };
+      return updated
+    })
+  }
 
   // Saved location helpers
-  const hasExistingLocation = !!(formData.location || formData.neighborhood || formData.area)
+  const hasExistingLocation = !!(
+    formData.location ||
+    formData.neighborhood ||
+    formData.area
+  )
   const applyLocation = (loc: Location) => {
     const next = {
       ...latestFormData.current,
@@ -234,29 +341,46 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
     }
   }
 
-  const displayImageUrl = formData.preview_url || formData.file_url;
-  const descriptionStyle = "w-full text-sm leading-relaxed text-black border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none overflow-hidden bg-blue-50/60 rounded-lg transition-colors";
+  const displayImageUrl = formData.preview_url || formData.file_url
+  const descriptionStyle =
+    'w-full text-sm leading-relaxed text-black border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none overflow-hidden bg-blue-50/60 rounded-lg transition-colors'
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end" onClick={onClose}>
-      <div className="relative w-full max-w-4xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
-
+    <div
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-4xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
         {activity.status === 'processing' && (
           <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-30">
             <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Processing
+            </span>
           </div>
         )}
 
         {/* Header */}
-        <div className={`sticky top-0 p-4 flex items-center justify-between z-20 ${readOnly ? 'bg-slate-500' : 'bg-blue-600'}`}>
+        <div
+          className={`sticky top-0 p-4 flex items-center justify-between z-20 ${readOnly ? 'bg-slate-500' : 'bg-blue-600'}`}
+        >
           <div className="flex items-center gap-2">
-            {readOnly ? <Archive size={18} className="text-white ml-3" /> : <Edit size={18} className="text-white ml-3" />}
+            {readOnly ? (
+              <Archive size={18} className="text-white ml-3" />
+            ) : (
+              <Edit size={18} className="text-white ml-3" />
+            )}
             <span className="text-lg tracking-wide text-white font-bold pl-2 py-1 rounded">
               {readOnly ? `Archived ${activity.type}` : `Edit ${activity.type}`}
             </span>
           </div>
-          <button onClick={onClose} className="p-2 text-white hover:text-slate-200 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 text-white hover:text-slate-200 rounded-full transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
@@ -265,7 +389,15 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <div className="bg-green-800 px-5 py-3 flex items-center gap-2.5">
             <Check size={14} className="text-white shrink-0" />
             <span className="text-sm font-black text-white tracking-wide flex-1">
-              Published in {new Date(activity.newsletter_last + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} issue
+              Published in{' '}
+              {new Date(
+                activity.newsletter_last + 'T00:00:00'
+              ).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}{' '}
+              issue
             </span>
             <button
               type="button"
@@ -286,8 +418,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           </div>
         )}
 
-        <div className={`p-4 md:p-8 space-y-6 md:space-y-8 pb-16 ${readOnly ? 'pointer-events-none select-none opacity-60' : ''}`}>
-
+        <div
+          className={`p-4 md:p-8 space-y-6 md:space-y-8 pb-16 ${readOnly ? 'pointer-events-none select-none opacity-60' : ''}`}
+        >
           {/* Primary content */}
           <section className="space-y-4">
             <Field label="Title">
@@ -306,7 +439,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                   onChange={(e) => handleChange('url', e.target.value)}
                   onBlur={handleBlurSave}
                   placeholder="https://example.com/activity-details"
-                  className={inputStyle + " font-mono text-blue-600"}
+                  className={inputStyle + ' font-mono text-blue-600'}
                 />
                 {formData.url && (
                   <a
@@ -336,7 +469,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               <textarea
                 ref={blurbRef}
                 value={formData.newsletter_description}
-                onChange={(e) => handleChange('newsletter_description', e.target.value)}
+                onChange={(e) =>
+                  handleChange('newsletter_description', e.target.value)
+                }
                 onBlur={handleBlurSave}
                 className={descriptionStyle}
                 placeholder="Create a succinct newsletter snippet description..."
@@ -346,22 +481,45 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <div className="flex gap-4">
               <Toggle
                 label="Highlight in newsletter"
-                icon={<Star size={14} className={formData.newsletter_highlight ? "fill-current text-amber-500" : "text-slate-400"} />}
+                icon={
+                  <Star
+                    size={14}
+                    className={
+                      formData.newsletter_highlight
+                        ? 'fill-current text-amber-500'
+                        : 'text-slate-400'
+                    }
+                  />
+                }
                 checked={!!formData.newsletter_highlight}
-                onChange={(v) => { handleChange('newsletter_highlight', v); onSaveDraft({ ...formData, newsletter_highlight: v }) }}
+                onChange={(v) => {
+                  handleChange('newsletter_highlight', v)
+                  onSaveDraft({ ...formData, newsletter_highlight: v })
+                }}
               />
             </div>
 
             <div>
               <div className="flex flex-row items-center gap-2 mb-2">
                 <Newspaper size={18} className="text-green-600" />
-                <h2 className="text-green-600 text-base md:text-xl font-black whitespace-nowrap">Services</h2>
+                <h2 className="text-green-600 text-base md:text-xl font-black whitespace-nowrap">
+                  Services
+                </h2>
               </div>
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => handleToggleService('newsletter', !activityServices.includes('newsletter'))}
-                  title={activityServices.includes('newsletter') ? 'In newsletter — click to remove' : 'Not in newsletter — click to add'}
+                  onClick={() =>
+                    handleToggleService(
+                      'newsletter',
+                      !activityServices.includes('newsletter')
+                    )
+                  }
+                  title={
+                    activityServices.includes('newsletter')
+                      ? 'In newsletter — click to remove'
+                      : 'Not in newsletter — click to add'
+                  }
                   className={`flex items-center justify-center w-14 h-14 rounded-xl transition-colors ${
                     activityServices.includes('newsletter')
                       ? 'bg-blue-600 text-white'
@@ -375,8 +533,17 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 {formData.type === 'event' && (
                   <button
                     type="button"
-                    onClick={() => handleToggleService('postpartum_post', !activityServices.includes('postpartum_post'))}
-                    title={activityServices.includes('postpartum_post') ? 'In Post — click to remove' : 'Not in Post — click to add'}
+                    onClick={() =>
+                      handleToggleService(
+                        'postpartum_post',
+                        !activityServices.includes('postpartum_post')
+                      )
+                    }
+                    title={
+                      activityServices.includes('postpartum_post')
+                        ? 'In Post — click to remove'
+                        : 'Not in Post — click to add'
+                    }
                     className={`flex items-center justify-center w-14 h-14 rounded-xl transition-colors ${
                       activityServices.includes('postpartum_post')
                         ? 'bg-violet-600 text-white'
@@ -388,51 +555,90 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 )}
               </div>
             </div>
-
           </section>
 
           {/* Date & time — events only */}
           {formData.type === 'event' && (
-          <section className="space-y-4 py-2">
-            <div className="flex flex-row items-center gap-2 mb-2">
-              <Clock size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Date & time</h2>
-              <div className="ml-auto">
-                <Toggle
-                  label="Multi-day"
-                  checked={isMultiDay}
-                  onChange={handleMultiDayToggle}
-                />
+            <section className="space-y-4 py-2">
+              <div className="flex flex-row items-center gap-2 mb-2">
+                <Clock size={18} className="text-slate-700" />
+                <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
+                  Date & time
+                </h2>
+                <div className="ml-auto">
+                  <Toggle
+                    label="Multi-day"
+                    checked={isMultiDay}
+                    onChange={handleMultiDayToggle}
+                  />
+                </div>
               </div>
-            </div>
-            <div className={`grid gap-4 ${isMultiDay ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              <Field label="Start Date">
-                <DateInput value={formData.start_date ?? ''} onChange={(v) => handleDateChange('start_date', v)} onBlur={handleBlurSave} />
-              </Field>
-              {isMultiDay && (
-                <Field label="End Date">
-                  <DateInput value={formData.end_date ?? ''} onChange={(v) => handleDateChange('end_date', v)} onBlur={handleBlurSave} />
+              <div
+                className={`grid gap-4 ${isMultiDay ? 'grid-cols-2' : 'grid-cols-1'}`}
+              >
+                <Field label="Start Date">
+                  <DateInput
+                    value={formData.start_date ?? ''}
+                    onChange={(v) => handleDateChange('start_date', v)}
+                    onBlur={handleBlurSave}
+                  />
                 </Field>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
-              <Field label="Start Time">
-                <TimeInput value={formData.start_time ?? ''} onChange={(v) => handleDateChange('start_time', v)} onBlur={handleBlurSave} />
-              </Field>
-              <Field label="End Time">
-                <TimeInput value={formData.end_time ?? ''} onChange={(v) => handleDateChange('end_time', v)} onBlur={handleBlurSave} />
-              </Field>
-              <Field label="Duration (min)">
-                <input type="number" value={formData.duration_minutes ?? 0} onChange={(e) => handleDateChange('duration_minutes', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
-              </Field>
-            </div>
-            <Toggle
-              label="Skip calendar"
-              icon={<SkipForward size={14} className={formData.calendar_skip ? "text-orange-500" : "text-slate-400"} />}
-              checked={!!formData.calendar_skip}
-              onChange={(v) => { handleChange('calendar_skip', v); onSaveDraft({ ...formData, calendar_skip: v }) }}
-            />
-          </section>
+                {isMultiDay && (
+                  <Field label="End Date">
+                    <DateInput
+                      value={formData.end_date ?? ''}
+                      onChange={(v) => handleDateChange('end_date', v)}
+                      onBlur={handleBlurSave}
+                    />
+                  </Field>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2 md:gap-4">
+                <Field label="Start Time">
+                  <TimeInput
+                    value={formData.start_time ?? ''}
+                    onChange={(v) => handleDateChange('start_time', v)}
+                    onBlur={handleBlurSave}
+                  />
+                </Field>
+                <Field label="End Time">
+                  <TimeInput
+                    value={formData.end_time ?? ''}
+                    onChange={(v) => handleDateChange('end_time', v)}
+                    onBlur={handleBlurSave}
+                  />
+                </Field>
+                <Field label="Duration (min)">
+                  <input
+                    type="number"
+                    value={formData.duration_minutes ?? 0}
+                    onChange={(e) =>
+                      handleDateChange('duration_minutes', e.target.value)
+                    }
+                    onBlur={handleBlurSave}
+                    className={inputStyle}
+                  />
+                </Field>
+              </div>
+              <Toggle
+                label="Skip calendar"
+                icon={
+                  <SkipForward
+                    size={14}
+                    className={
+                      formData.calendar_skip
+                        ? 'text-orange-500'
+                        : 'text-slate-400'
+                    }
+                  />
+                }
+                checked={!!formData.calendar_skip}
+                onChange={(v) => {
+                  handleChange('calendar_skip', v)
+                  onSaveDraft({ ...formData, calendar_skip: v })
+                }}
+              />
+            </section>
           )}
 
           {/* Repeat */}
@@ -440,7 +646,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             <section className="space-y-4 py-2">
               <div className="flex flex-row items-center gap-2 mb-2">
                 <RefreshCw size={18} className="text-slate-700" />
-                <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Repeat</h2>
+                <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
+                  Repeat
+                </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
                 <Field label="Frequency">
@@ -452,19 +660,32 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                       if (next !== 'weekly' && next !== 'biweekly') {
                         setRepeatDays([])
                       } else if (formData.start_date) {
-                        const [wy, wm, wd] = formData.start_date.split('-').map(Number)
-                        setRepeatDays([DOW_TO_ABBR[new Date(wy, wm - 1, wd).getDay()]])
+                        const [wy, wm, wd] = formData.start_date
+                          .split('-')
+                          .map(Number)
+                        setRepeatDays([
+                          DOW_TO_ABBR[new Date(wy, wm - 1, wd).getDay()],
+                        ])
                       }
                       if (next !== 'monthly') {
-                        setRepeatMonthlyPos(''); setRepeatMonthlyDay('')
+                        setRepeatMonthlyPos('')
+                        setRepeatMonthlyDay('')
                       } else if (formData.start_date) {
-                        const [sy, sm, sd] = formData.start_date.split('-').map(Number)
+                        const [sy, sm, sd] = formData.start_date
+                          .split('-')
+                          .map(Number)
                         const d = new Date(sy, sm - 1, sd)
                         const abbr = DOW_TO_ABBR[d.getDay()]
                         const dom = d.getDate()
-                        const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
-                        const pos = dom + 7 > daysInMonth ? -1 : Math.ceil(dom / 7)
-                        setRepeatMonthlyPos(String(pos)); setRepeatMonthlyDay(abbr)
+                        const daysInMonth = new Date(
+                          d.getFullYear(),
+                          d.getMonth() + 1,
+                          0
+                        ).getDate()
+                        const pos =
+                          dom + 7 > daysInMonth ? -1 : Math.ceil(dom / 7)
+                        setRepeatMonthlyPos(String(pos))
+                        setRepeatMonthlyDay(abbr)
                       }
                     }}
                     onBlur={handleBlurSave}
@@ -503,7 +724,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                       >
                         <option value="">Weekday</option>
                         {WEEKDAYS.map(({ label, abbr }) => (
-                          <option key={abbr} value={abbr}>{label}</option>
+                          <option key={abbr} value={abbr}>
+                            {label}
+                          </option>
                         ))}
                       </select>
                     )}
@@ -511,7 +734,8 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 </Field>
               )}
 
-              {(repeatFrequency === 'weekly' || repeatFrequency === 'biweekly') && (
+              {(repeatFrequency === 'weekly' ||
+                repeatFrequency === 'biweekly') && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 items-end">
                   <Field label="Days of week">
                     <div className="flex gap-1.5 flex-wrap">
@@ -532,21 +756,35 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                     </div>
                   </Field>
                   <Field label="Repeat ends (until date)">
-                    <DateInput value={repeatUntil} onChange={setRepeatUntil} onBlur={handleBlurSave} />
+                    <DateInput
+                      value={repeatUntil}
+                      onChange={setRepeatUntil}
+                      onBlur={handleBlurSave}
+                    />
                   </Field>
                 </div>
               )}
 
-              {repeatFrequency && repeatFrequency !== 'weekly' && repeatFrequency !== 'biweekly' && (
-                <Field label="Repeat ends (until date)">
-                  <DateInput value={repeatUntil} onChange={setRepeatUntil} onBlur={handleBlurSave} />
-                </Field>
-              )}
+              {repeatFrequency &&
+                repeatFrequency !== 'weekly' &&
+                repeatFrequency !== 'biweekly' && (
+                  <Field label="Repeat ends (until date)">
+                    <DateInput
+                      value={repeatUntil}
+                      onChange={setRepeatUntil}
+                      onBlur={handleBlurSave}
+                    />
+                  </Field>
+                )}
 
               {rrulePreview && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-[9px] text-green-600 font-black uppercase tracking-widest">RRULE</span>
-                  <code className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg font-mono break-all">{rrulePreview}</code>
+                  <span className="text-[9px] text-green-600 font-black uppercase tracking-widest">
+                    RRULE
+                  </span>
+                  <code className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg font-mono break-all">
+                    {rrulePreview}
+                  </code>
                 </div>
               )}
 
@@ -555,14 +793,24 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                   <div className="flex gap-2">
                     <DateInput
                       value={(formData.repeat_next_date ?? '').slice(0, 10)}
-                      onChange={v => handleChange('repeat_next_date', v || null)}
+                      onChange={(v) =>
+                        handleChange('repeat_next_date', v || null)
+                      }
                       onBlur={handleBlurSave}
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        const next = computeNextDate(repeatFrequency, effectiveDays, repeatUntil, formData.start_date)
-                        const updated = { ...latestFormData.current, repeat_next_date: next }
+                        const next = computeNextDate(
+                          repeatFrequency,
+                          effectiveDays,
+                          repeatUntil,
+                          formData.start_date
+                        )
+                        const updated = {
+                          ...latestFormData.current,
+                          repeat_next_date: next,
+                        }
                         setFormData(updated)
                         onSaveDraft(updated)
                       }}
@@ -580,7 +828,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <MapPin size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Place</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
+                Place
+              </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-2 md:gap-4">
@@ -603,7 +853,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                   locations={locations}
                   inputStyle={inputStyle}
                   onChange={setAppliedLocationName}
-                  onSelectLocation={(loc) => requestApplyLocation(loc, 'location')}
+                  onSelectLocation={(loc) =>
+                    requestApplyLocation(loc, 'location')
+                  }
                   onBlur={handleBlurSave}
                 />
               </Field>
@@ -613,24 +865,48 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
               <OverwriteConfirm
                 loc={pendingLocation}
                 onConfirm={() => applyLocation(pendingLocation)}
-                onCancel={() => { setPendingLocation(null); setPendingLocationSource(null) }}
+                onCancel={() => {
+                  setPendingLocation(null)
+                  setPendingLocationSource(null)
+                }}
               />
             )}
 
             <div className="grid grid-cols-2 gap-2 md:gap-4">
               <Field label="Area">
-                <select value={formData.area ?? ''} onChange={(e) => handleChange('area', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
-                  <option value="" disabled>Select area</option>
-                  {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                <select
+                  value={formData.area ?? ''}
+                  onChange={(e) => handleChange('area', e.target.value)}
+                  onBlur={handleBlurSave}
+                  className={selectStyle}
+                >
+                  <option value="" disabled>
+                    Select area
+                  </option>
+                  {AREAS.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
                 </select>
               </Field>
               <Field label="Neighborhood">
-                <input value={formData.neighborhood ?? ''} onChange={(e) => handleChange('neighborhood', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
+                <input
+                  value={formData.neighborhood ?? ''}
+                  onChange={(e) => handleChange('neighborhood', e.target.value)}
+                  onBlur={handleBlurSave}
+                  className={inputStyle}
+                />
               </Field>
             </div>
             <div className="grid gap-4">
               <Field label="Address">
-                <input value={formData.location ?? ''} onChange={(e) => handleChange('location', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
+                <input
+                  value={formData.location ?? ''}
+                  onChange={(e) => handleChange('location', e.target.value)}
+                  onBlur={handleBlurSave}
+                  className={inputStyle}
+                />
               </Field>
             </div>
 
@@ -642,10 +918,15 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-black uppercase tracking-wide rounded-lg transition-colors disabled:opacity-50
                   bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
               >
-                {locationSaveState === 'saved'
-                  ? <><Check size={12} /> Saved</>
-                  : <><BookmarkPlus size={12} /> Save to locations</>
-                }
+                {locationSaveState === 'saved' ? (
+                  <>
+                    <Check size={12} /> Saved
+                  </>
+                ) : (
+                  <>
+                    <BookmarkPlus size={12} /> Save to locations
+                  </>
+                )}
               </button>
             )}
           </section>
@@ -654,15 +935,24 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <NotebookPen size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Details</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
+                Details
+              </h2>
             </div>
             <Field label="Target Age Range">
-              <input value={formData.age_range ?? ''} onChange={(e) => handleChange('age_range', e.target.value)} onBlur={handleBlurSave} className={inputStyle} />
+              <input
+                value={formData.age_range ?? ''}
+                onChange={(e) => handleChange('age_range', e.target.value)}
+                onBlur={handleBlurSave}
+                className={inputStyle}
+              />
             </Field>
             <Field label="Age Categories">
               <AgeCategorySelector
                 selected={formData.age_categories ?? []}
-                onChange={(cats) => { handleChange('age_categories', cats); }}
+                onChange={(cats) => {
+                  handleChange('age_categories', cats)
+                }}
                 onBlur={handleBlurSave}
               />
             </Field>
@@ -682,8 +972,12 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-3">
             <div className="flex flex-row items-center gap-2 mb-2">
               <ImageIcon size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Image</h2>
-              <p className="text-sm text-slate-400 italic">Used on the website for APP events</p>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
+                Image
+              </h2>
+              <p className="text-sm text-slate-400 italic">
+                Used on the website for APP events
+              </p>
             </div>
             <Field label="Image URL">
               <input
@@ -691,7 +985,7 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 onChange={(e) => handleChange('file_url', e.target.value)}
                 onBlur={handleBlurSave}
                 placeholder="https://..."
-                className={inputStyle + " font-mono text-xs"}
+                className={inputStyle + ' font-mono text-xs'}
               />
             </Field>
             {displayImageUrl && (
@@ -714,13 +1008,15 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <section className="space-y-4">
             <div className="flex flex-row items-center gap-2 mb-2">
               <Settings size={18} className="text-slate-700" />
-              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">Triage</h2>
+              <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
+                Triage
+              </h2>
             </div>
 
             <Field label="Status">
               <select
                 value={formData.status}
-                onChange={e => {
+                onChange={(e) => {
                   const s = e.target.value as TriageStatus
                   const next = { ...latestFormData.current, status: s }
                   setFormData(next)
@@ -728,20 +1024,31 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 }}
                 className={`w-full rounded-lg py-2 px-3 text-sm font-black uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors border-0 ${STATUS_COLORS[formData.status as TriageStatus] ?? 'bg-slate-100 text-slate-500'}`}
               >
-                {TRIAGE_STATUSES.map(s => (
-                  <option key={s} value={s}>{s}</option>
+                {TRIAGE_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
               </select>
             </Field>
 
-<div className="flex flex-row items-center gap-2 mb-2">
+            <div className="flex flex-row items-center gap-2 mb-2">
               <Field label="Record id">
-                <div className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}>{formData.id ?? 'No id'}</div>
+                <div
+                  className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}
+                >
+                  {formData.id ?? 'No id'}
+                </div>
               </Field>
             </div>
 
             <Field label="Source">
-              <select value={formData.source} onChange={(e) => handleChange('source', e.target.value)} onBlur={handleBlurSave} className={selectStyle}>
+              <select
+                value={formData.source}
+                onChange={(e) => handleChange('source', e.target.value)}
+                onBlur={handleBlurSave}
+                className={selectStyle}
+              >
                 <option value="app_desk">APP Desk</option>
                 <option value="app_website">APP Website</option>
                 <option value="manual">Manual</option>
@@ -751,17 +1058,22 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
 
             <Field label="In list">
               <div className="flex flex-wrap gap-1.5">
-                {ALL_LISTS.map(l => (
+                {ALL_LISTS.map((l) => (
                   <button
                     key={l.id}
                     type="button"
                     onClick={() => {
-                      const next = { ...latestFormData.current, list_id: l.id as ListId }
+                      const next = {
+                        ...latestFormData.current,
+                        list_id: l.id as ListId,
+                      }
                       setFormData(next)
                       onSaveDraft(next)
                     }}
                     className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
-                      formData.list_id === l.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      formData.list_id === l.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                     }`}
                   >
                     {l.label}
@@ -774,20 +1086,34 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 cleanup in page.tsx), never hand-edited. Leaves a gap in the
                 record for anything that was never actually sent, which is fine. */}
             <Field label="Newsletter last">
-              <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
-                {formData.newsletter_last ? new Date(formData.newsletter_last + 'T00:00:00').toLocaleDateString('en-GB') : '—'}
+              <div
+                className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}
+              >
+                {formData.newsletter_last
+                  ? new Date(
+                      formData.newsletter_last + 'T00:00:00'
+                    ).toLocaleDateString('en-GB')
+                  : '—'}
               </div>
             </Field>
 
             <div className="grid grid-cols-2 gap-2 md:gap-4">
               <Field label="Created">
-                <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
-                  {formData.created_at ? new Date(formData.created_at).toLocaleString('en-GB') : '—'}
+                <div
+                  className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}
+                >
+                  {formData.created_at
+                    ? new Date(formData.created_at).toLocaleString('en-GB')
+                    : '—'}
                 </div>
               </Field>
               <Field label="Last edited">
-                <div className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}>
-                  {formData.updated_at ? new Date(formData.updated_at).toLocaleString('en-GB') : '—'}
+                <div
+                  className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}
+                >
+                  {formData.updated_at
+                    ? new Date(formData.updated_at).toLocaleString('en-GB')
+                    : '—'}
                 </div>
               </Field>
             </div>
@@ -795,7 +1121,9 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
             {formData.type === 'event' && (
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-slate-500">Added to calendar</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.calendar_sent ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.calendar_sent ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}
+                >
                   {formData.calendar_sent ? 'Yes' : 'No'}
                 </span>
               </div>
@@ -803,20 +1131,25 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
 
             <textarea
               ref={notesRef}
-              value={formData.triage_notes || ""}
+              value={formData.triage_notes || ''}
               onChange={(e) => handleChange('triage_notes', e.target.value)}
               onBlur={handleBlurSave}
               className="w-full text-sm leading-relaxed text-black border border-amber-200 p-3 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none overflow-hidden bg-amber-50/80 rounded-lg transition-colors"
               placeholder="Add administrative context notes here..."
             />
 
-            {onDelete && (
-              confirmDelete ? (
+            {onDelete &&
+              (confirmDelete ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-red-600">Are you sure?</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-red-600">
+                    Are you sure?
+                  </span>
                   <button
                     type="button"
-                    onClick={() => { onDelete(formData.id, formData.type); onClose(); }}
+                    onClick={() => {
+                      onDelete(formData.id, formData.type)
+                      onClose()
+                    }}
                     className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
                   >
                     <Trash2 size={13} /> Yes, delete
@@ -837,10 +1170,8 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 >
                   <Trash2 size={13} /> Delete record permanently
                 </button>
-              )
-            )}
+              ))}
           </section>
-
         </div>
 
         {/* Footer actions */}
@@ -848,17 +1179,23 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
           <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-3">
             {onRestore && (
               <button
-                onClick={() => { onRestore(); onClose(); }}
+                onClick={() => {
+                  onRestore()
+                  onClose()
+                }}
                 className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
               >
                 <RotateCcw size={18} strokeWidth={3} /> Restore
               </button>
             )}
-            {onDelete && (
-              confirmDelete ? (
+            {onDelete &&
+              (confirmDelete ? (
                 <div className="flex-1 flex items-center gap-2">
                   <button
-                    onClick={() => { onDelete(formData.id, formData.type); onClose(); }}
+                    onClick={() => {
+                      onDelete(formData.id, formData.type)
+                      onClose()
+                    }}
                     className="flex-1 flex items-center justify-center gap-1.5 py-4 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-2xl transition-colors"
                   >
                     <Trash2 size={14} /> Yes, delete
@@ -877,67 +1214,137 @@ export function ActivityDrawer({ activity, onSaveDraft, onFinishEditing, onClose
                 >
                   <Trash2 size={18} strokeWidth={3} /> Delete forever
                 </button>
-              )
-            )}
+              ))}
           </div>
-        ) : ((onSendToAI && getListTab(formData.list_id) === 'triage') || !!ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel) && (
-          <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
-            {onSendToAI && getListTab(formData.list_id) === 'triage' && (
-              <button onClick={() => onSendToAI(formData)} className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
-                <Sparkles size={18} strokeWidth={3} /> Send to AI
-              </button>
-            )}
-            {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel && (
-              <button
-                onClick={() => onFinishEditing(formData)}
-                disabled={formData.list_id === 'refine' && (formData.services ?? []).length === 0}
-                title={formData.list_id === 'refine' && (formData.services ?? []).length === 0 ? 'Choose Newsletter and/or Post before adding' : undefined}
-                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs disabled:opacity-40 disabled:hover:bg-green-600 disabled:cursor-not-allowed disabled:shadow-none"
-              >
-                <Check size={18} strokeWidth={3} />
-                {ALL_LISTS.find(l => l.id === formData.list_id)?.finishLabel}
-              </button>
-            )}
-          </div>
+        ) : (
+          ((onSendToAI && getListTab(formData.list_id) === 'triage') ||
+            !!ALL_LISTS.find((l) => l.id === formData.list_id)
+              ?.finishLabel) && (
+            <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
+              {onSendToAI && getListTab(formData.list_id) === 'triage' && (
+                <button
+                  onClick={() => onSendToAI(formData)}
+                  className="w-full bg-amber-500 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                >
+                  <Sparkles size={18} strokeWidth={3} /> Send to AI
+                </button>
+              )}
+              {ALL_LISTS.find((l) => l.id === formData.list_id)
+                ?.finishLabel && (
+                <button
+                  onClick={() => onFinishEditing(formData)}
+                  disabled={
+                    formData.list_id === 'refine' &&
+                    (formData.services ?? []).length === 0
+                  }
+                  title={
+                    formData.list_id === 'refine' &&
+                    (formData.services ?? []).length === 0
+                      ? 'Choose Newsletter and/or Post before adding'
+                      : undefined
+                  }
+                  className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs disabled:opacity-40 disabled:hover:bg-green-600 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  <Check size={18} strokeWidth={3} />
+                  {
+                    ALL_LISTS.find((l) => l.id === formData.list_id)
+                      ?.finishLabel
+                  }
+                </button>
+              )}
+            </div>
+          )
         )}
       </div>
     </div>
   )
 }
 
-function DateInput({ value, onChange, onBlur }: { value: string, onChange: (v: string) => void, onBlur?: () => void }) {
+function DateInput({
+  value,
+  onChange,
+  onBlur,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onBlur?: () => void
+}) {
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div className="relative">
-      <button type="button" tabIndex={-1} onClick={() => ref.current?.showPicker()}
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => ref.current?.showPicker()}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+      >
         <Calendar size={14} />
       </button>
-      <input ref={ref} type="date" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
-        className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
+      <input
+        ref={ref}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`}
+      />
     </div>
   )
 }
 
-function TimeInput({ value, onChange, onBlur }: { value: string, onChange: (v: string) => void, onBlur?: () => void }) {
+function TimeInput({
+  value,
+  onChange,
+  onBlur,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onBlur?: () => void
+}) {
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div className="relative">
-      <button type="button" tabIndex={-1} onClick={() => ref.current?.showPicker()}
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => ref.current?.showPicker()}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10"
+      >
         <Clock size={14} />
       </button>
-      <input ref={ref} type="time" lang="nl" value={value} onChange={e => onChange(e.target.value)} onBlur={onBlur}
-        className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`} />
+      <input
+        ref={ref}
+        type="time"
+        lang="nl"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className={`${inputStyle} pl-8 [&::-webkit-calendar-picker-indicator]:hidden`}
+      />
     </div>
   )
 }
 
-function OverwriteConfirm({ loc, onConfirm, onCancel, label }: { loc: Location, onConfirm: () => void, onCancel: () => void, label?: string }) {
+function OverwriteConfirm({
+  loc,
+  onConfirm,
+  onCancel,
+  label,
+}: {
+  loc: Location
+  onConfirm: () => void
+  onCancel: () => void
+  label?: string
+}) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm">
       <span className="text-amber-800 font-bold flex-1">
-        {label ?? <>Overwrite existing location with <span className="italic">{loc.name}</span>?</>}
+        {label ?? (
+          <>
+            Overwrite existing location with{' '}
+            <span className="italic">{loc.name}</span>?
+          </>
+        )}
       </span>
       <button
         type="button"
@@ -957,7 +1364,14 @@ function OverwriteConfirm({ loc, onConfirm, onCancel, label }: { loc: Location, 
   )
 }
 
-function PlaceCombobox({ value, locations, inputStyle, onChange, onSelectLocation, onBlur }: {
+function PlaceCombobox({
+  value,
+  locations,
+  inputStyle,
+  onChange,
+  onSelectLocation,
+  onBlur,
+}: {
   value: string
   locations: Location[]
   inputStyle: string
@@ -968,7 +1382,7 @@ function PlaceCombobox({ value, locations, inputStyle, onChange, onSelectLocatio
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const filtered = locations.filter(loc =>
+  const filtered = locations.filter((loc) =>
     loc.name.toLowerCase().includes(value.toLowerCase())
   )
 
@@ -985,14 +1399,17 @@ function PlaceCombobox({ value, locations, inputStyle, onChange, onSelectLocatio
     <div ref={ref} className="relative">
       <input
         value={value}
-        onChange={(e) => { onChange(e.target.value); setOpen(true) }}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+        }}
         onFocus={() => setOpen(true)}
         onBlur={onBlur}
         className={inputStyle}
       />
       {open && filtered.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-52 overflow-y-auto">
-          {filtered.map(loc => (
+          {filtered.map((loc) => (
             <li key={loc.id}>
               <button
                 type="button"
@@ -1005,7 +1422,9 @@ function PlaceCombobox({ value, locations, inputStyle, onChange, onSelectLocatio
               >
                 <MapPin size={12} className="text-slate-400 shrink-0" />
                 <span className="font-bold text-slate-700">{loc.name}</span>
-                <span className="text-slate-400 text-xs truncate">{loc.address}</span>
+                <span className="text-slate-400 text-xs truncate">
+                  {loc.address}
+                </span>
               </button>
             </li>
           ))}
@@ -1015,10 +1434,12 @@ function PlaceCombobox({ value, locations, inputStyle, onChange, onSelectLocatio
   )
 }
 
-function Field({ label, children }: { label: string, children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[9px] text-green-600 font-black uppercase tracking-widest">{label}</label>
+      <label className="text-[9px] text-green-600 font-black uppercase tracking-widest">
+        {label}
+      </label>
       {children}
     </div>
   )
@@ -1032,15 +1453,25 @@ const AGE_CATEGORY_OPTIONS = [
   'all ages',
 ]
 
-function AgeCategorySelector({ selected, onChange, onBlur }: { selected: string[], onChange: (cats: string[]) => void, onBlur?: () => void }) {
+function AgeCategorySelector({
+  selected,
+  onChange,
+  onBlur,
+}: {
+  selected: string[]
+  onChange: (cats: string[]) => void
+  onBlur?: () => void
+}) {
   const toggle = (cat: string) => {
-    const next = selected.includes(cat) ? selected.filter(c => c !== cat) : [...selected, cat]
+    const next = selected.includes(cat)
+      ? selected.filter((c) => c !== cat)
+      : [...selected, cat]
     onChange(next)
     setTimeout(() => onBlur?.(), 0)
   }
   return (
     <div className="flex flex-wrap gap-1.5">
-      {AGE_CATEGORY_OPTIONS.map(cat => {
+      {AGE_CATEGORY_OPTIONS.map((cat) => {
         const active = selected.includes(cat)
         return (
           <button
@@ -1061,22 +1492,44 @@ function AgeCategorySelector({ selected, onChange, onBlur }: { selected: string[
   )
 }
 
-function Toggle({ label, icon, checked, onChange }: { label: string, icon?: ReactNode, checked: boolean, onChange: (value: boolean) => void }) {
+function Toggle({
+  label,
+  icon,
+  checked,
+  onChange,
+}: {
+  label: string
+  icon?: ReactNode
+  checked: boolean
+  onChange: (value: boolean) => void
+}) {
   return (
     <button
       type="button"
       onClick={() => onChange(!checked)}
       className="flex items-center gap-3 px-1 py-0.5"
     >
-      <div className={`relative inline-flex h-6 w-16 items-center rounded-full transition-colors ${checked ? 'bg-amber-400' : 'bg-slate-200'}`}>
-        <span className={`absolute text-[9px] font-black uppercase tracking-wider transition-all ${checked ? 'left-2 text-white' : 'right-2 text-slate-400'}`}>
+      <div
+        className={`relative inline-flex h-6 w-16 items-center rounded-full transition-colors ${checked ? 'bg-amber-400' : 'bg-slate-200'}`}
+      >
+        <span
+          className={`absolute text-[9px] font-black uppercase tracking-wider transition-all ${checked ? 'left-2 text-white' : 'right-2 text-slate-400'}`}
+        >
           {checked ? 'YES' : 'NO'}
         </span>
-        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-10' : 'translate-x-1'}`} />
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-10' : 'translate-x-1'}`}
+        />
       </div>
-      <div className={`flex items-center gap-2 transition-colors ${checked ? 'text-amber-500' : 'text-slate-400'}`}>
+      <div
+        className={`flex items-center gap-2 transition-colors ${checked ? 'text-amber-500' : 'text-slate-400'}`}
+      >
         {icon}
-        <span className={`text-xs md:text-sm font-bold whitespace-nowrap transition-colors ${checked ? 'text-amber-500' : 'text-slate-500'}`}>{label}</span>
+        <span
+          className={`text-xs md:text-sm font-bold whitespace-nowrap transition-colors ${checked ? 'text-amber-500' : 'text-slate-500'}`}
+        >
+          {label}
+        </span>
       </div>
     </button>
   )

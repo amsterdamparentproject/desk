@@ -5,7 +5,9 @@ import { CustomersClient } from './CustomersClient'
 export default async function CustomersPage() {
   const rows = await getCustomerRoster()
   return (
-    <Suspense fallback={<div className="p-8 text-slate-500">Loading customers…</div>}>
+    <Suspense
+      fallback={<div className="p-8 text-slate-500">Loading customers…</div>}
+    >
       <CustomersClient initialRows={rows} />
     </Suspense>
   )

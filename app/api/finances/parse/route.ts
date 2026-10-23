@@ -1,46 +1,49 @@
 // app/api/finances/parse/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { verifyDeskSession } from '@/app/utils/auth-gate';
-import { parseCSV } from '@/lib/finance/parser';
-import { calculateSummary } from '@/lib/finance/calculations';
-import { ParsedCSVData } from '@/lib/finance/types';
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { verifyDeskSession } from '@/app/utils/auth-gate'
+import { parseCSV } from '@/lib/finance/parser'
+import { calculateSummary } from '@/lib/finance/calculations'
+import { ParsedCSVData } from '@/lib/finance/types'
 
 export async function POST(request: NextRequest) {
   // Require the desk session, like the sibling API routes (audit D2).
   if (!verifyDeskSession(await cookies())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const { csvText } = await request.json();
+    const { csvText } = await request.json()
 
     if (!csvText || typeof csvText !== 'string') {
-      return NextResponse.json({ error: 'Invalid CSV data' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid CSV data' }, { status: 400 })
     }
 
     // Parse CSV
-    const transactions = parseCSV(csvText);
+    const transactions = parseCSV(csvText)
 
     if (transactions.length === 0) {
-      return NextResponse.json({ error: 'No valid transactions found in CSV' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No valid transactions found in CSV' },
+        { status: 400 }
+      )
     }
 
     // Calculate summary
-    const summary = calculateSummary(transactions);
+    const summary = calculateSummary(transactions)
 
     const result: ParsedCSVData = {
       transactions,
       summary,
       parseDate: new Date().toISOString(),
-    };
+    }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result)
   } catch (error) {
-    console.error('Error parsing CSV:', error);
+    console.error('Error parsing CSV:', error)
     return NextResponse.json(
       { error: 'Failed to parse CSV file' },
       { status: 500 }
-    );
+    )
   }
 }

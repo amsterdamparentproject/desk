@@ -11,11 +11,11 @@
  */
 export function computePublishDate(
   allRows: Array<{ status?: string; newsletter_last?: string | null }>,
-  today: string,
+  today: string
 ): string {
   const dates = allRows
-    .filter(r => r.status === 'published' || r.status === 'archived')
-    .map(r => r.newsletter_last)
+    .filter((r) => r.status === 'published' || r.status === 'archived')
+    .map((r) => r.newsletter_last)
     .filter((d): d is string => typeof d === 'string' && d.length > 0)
 
   let next: string

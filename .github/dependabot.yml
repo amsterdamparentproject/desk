@@ -1,11 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: "/"
+    directory: '/'
     schedule:
       interval: weekly
       day: monday
-      time: "09:00"
+      time: '09:00'
       timezone: Europe/Amsterdam
     open-pull-requests-limit: 5
     groups:
@@ -15,4 +15,4 @@ updates:
       # Security fixes (any version) arrive together in one PR.
       security:
         applies-to: security-updates
-        patterns: ["*"]
+        patterns: ['*']

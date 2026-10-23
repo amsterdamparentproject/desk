@@ -1,12 +1,15 @@
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
-const USER_AGENT = 'AmsterdamParentProject/1.0 (amsterdamparentproject@gmail.com)'
+const USER_AGENT =
+  'AmsterdamParentProject/1.0 (amsterdamparentproject@gmail.com)'
 
 export interface Coordinates {
   latitude: number
   longitude: number
 }
 
-export async function geocodeAddress(address: string): Promise<Coordinates | null> {
+export async function geocodeAddress(
+  address: string
+): Promise<Coordinates | null> {
   if (!address?.trim()) return null
   try {
     const url = `${NOMINATIM_URL}?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=0`

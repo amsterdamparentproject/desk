@@ -12,7 +12,13 @@ interface ShareFormProps {
   initialFileId: string | null
 }
 
-export function ShareForm({ initialDescription, url, title, initialFileUrl, initialFileId }: ShareFormProps) {
+export function ShareForm({
+  initialDescription,
+  url,
+  title,
+  initialFileUrl,
+  initialFileId,
+}: ShareFormProps) {
   const router = useRouter()
   const [description, setDescription] = useState(initialDescription)
   const [type, setType] = useState<'event' | 'resource'>('event')
@@ -25,7 +31,9 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
 
   // File picked manually in the browser (uploaded on submit)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
-  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null)
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(
+    null
+  )
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -51,7 +59,8 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const canSubmit = (description.trim().length > 0 || displayImageUrl !== null) && !submitting
+  const canSubmit =
+    (description.trim().length > 0 || displayImageUrl !== null) && !submitting
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,13 +83,23 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
         body = fd
       } else {
         body = JSON.stringify({
-          title, description, url, type, use_ai: useAi,
-          ...(uploadedId && uploadedUrl ? { id: uploadedId, file_url: uploadedUrl } : {}),
+          title,
+          description,
+          url,
+          type,
+          use_ai: useAi,
+          ...(uploadedId && uploadedUrl
+            ? { id: uploadedId, file_url: uploadedUrl }
+            : {}),
         })
         headers = { 'Content-Type': 'application/json' }
       }
 
-      const res = await fetch('/api/share/submit', { method: 'POST', headers, body })
+      const res = await fetch('/api/share/submit', {
+        method: 'POST',
+        headers,
+        body,
+      })
       if (!res.ok) throw new Error(`Submit failed: ${res.status}`)
       router.push('/')
     } catch (err) {
@@ -97,7 +116,7 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
       <textarea
         autoFocus
         value={description}
-        onChange={e => setDescription(e.target.value)}
+        onChange={(e) => setDescription(e.target.value)}
         placeholder="Paste links, type titles, or add notes..."
         rows={4}
         className="w-full text-sm text-slate-800 border-none p-2 focus:ring-0 resize-none placeholder:text-slate-400"
@@ -132,13 +151,17 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
-            onClick={() => setUseAi(v => !v)}
+            onClick={() => setUseAi((v) => !v)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-              useAi ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+              useAi
+                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
             }`}
           >
             <Sparkles size={14} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Use AI</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">
+              Use AI
+            </span>
           </button>
 
           <div className="flex rounded-lg overflow-hidden border border-slate-200">
@@ -146,7 +169,9 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
               type="button"
               onClick={() => setType('event')}
               className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                type === 'event' ? 'bg-blue-50 text-blue-600' : 'bg-white text-slate-400 hover:bg-slate-50'
+                type === 'event'
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'bg-white text-slate-400 hover:bg-slate-50'
               }`}
             >
               Event
@@ -155,7 +180,9 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
               type="button"
               onClick={() => setType('resource')}
               className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                type === 'resource' ? 'bg-blue-50 text-blue-600' : 'bg-white text-slate-400 hover:bg-slate-50'
+                type === 'resource'
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'bg-white text-slate-400 hover:bg-slate-50'
               }`}
             >
               Resource
@@ -166,7 +193,9 @@ export function ShareForm({ initialDescription, url, title, initialFileUrl, init
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${
-              displayImageUrl ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+              displayImageUrl
+                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
             }`}
           >
             <ImagePlus size={14} />

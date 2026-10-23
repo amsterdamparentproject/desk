@@ -4,8 +4,14 @@ import { computePublishDate } from '../app/utils/publishDate'
 const TODAY = '2026-06-03'
 
 // Shorthand helpers
-const published = (newsletter_last: string) => ({ status: 'published', newsletter_last })
-const staged    = (newsletter_last: string) => ({ status: 'accepted', newsletter_last }) // in next_newsletter, not yet published
+const published = (newsletter_last: string) => ({
+  status: 'published',
+  newsletter_last,
+})
+const staged = (newsletter_last: string) => ({
+  status: 'accepted',
+  newsletter_last,
+}) // in next_newsletter, not yet published
 
 describe('computePublishDate', () => {
   it('returns today + 7 when no newsletters have ever been sent', () => {
@@ -39,7 +45,7 @@ describe('computePublishDate', () => {
   it('ignores newsletter_last from non-published (next_newsletter) cards', () => {
     const rows = [
       published('2026-06-01'), // last sent issue
-      staged('2026-06-15'),   // staged for upcoming issue — must NOT inflate result
+      staged('2026-06-15'), // staged for upcoming issue — must NOT inflate result
       staged('2026-06-15'),
     ]
     expect(computePublishDate(rows, TODAY)).toBe('2026-06-15')
@@ -52,7 +58,7 @@ describe('computePublishDate', () => {
     expect(result > TODAY).toBe(true)
     // Should land on a date that is exactly 14n days after 2026-03-01
     const base = new Date('2026-03-01')
-    const got  = new Date(result)
+    const got = new Date(result)
     const diffDays = (got.getTime() - base.getTime()) / (1000 * 60 * 60 * 24)
     expect(diffDays % 14).toBe(0)
   })
@@ -60,16 +66,14 @@ describe('computePublishDate', () => {
   it('does not advance further than necessary — result is at most 13 days past today', () => {
     const rows = [published('2026-06-01')]
     const result = computePublishDate(rows, TODAY) // expect 2026-06-15
-    const diffDays = (new Date(result).getTime() - new Date(TODAY).getTime()) / (1000 * 60 * 60 * 24)
+    const diffDays =
+      (new Date(result).getTime() - new Date(TODAY).getTime()) /
+      (1000 * 60 * 60 * 24)
     expect(diffDays).toBeLessThanOrEqual(14)
   })
 
   it('result is always strictly in the future', () => {
-    const cases = [
-      [published('2026-06-01')],
-      [published('2025-01-01')],
-      [],
-    ]
+    const cases = [[published('2026-06-01')], [published('2025-01-01')], []]
     for (const rows of cases) {
       expect(computePublishDate(rows, TODAY) > TODAY).toBe(true)
     }

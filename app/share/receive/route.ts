@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
   const text = (formData.get('text') as string) ?? ''
   const url = (formData.get('url') as string) ?? ''
   const fileEntry = formData.get('file')
-  const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null
+  const file =
+    fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null
 
   const params = new URLSearchParams()
   if (title) params.set('title', title)
@@ -32,16 +33,23 @@ export async function POST(request: NextRequest) {
       .upload(path, file, { contentType: file.type, upsert: true })
 
     if (!error) {
-      const fileUrl = supabase.storage.from('activities').getPublicUrl(path).data.publicUrl
+      const fileUrl = supabase.storage.from('activities').getPublicUrl(path)
+        .data.publicUrl
       params.set('file_url', fileUrl)
       params.set('file_id', id)
     }
   }
 
-  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? new URL(request.url).host
+  const host =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    new URL(request.url).host
   const proto = request.headers.get('x-forwarded-proto') ?? 'https'
   // 303 forces the browser to follow up with a GET. The default (307) preserves
   // the POST method, which would re-POST to the /share page and make Next.js
   // treat it as a Server Action call → "Failed to find Server Action".
-  return NextResponse.redirect(new URL(`/share?${params.toString()}`, `${proto}://${host}`), 303)
+  return NextResponse.redirect(
+    new URL(`/share?${params.toString()}`, `${proto}://${host}`),
+    303
+  )
 }

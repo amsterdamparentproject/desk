@@ -34,7 +34,7 @@ function mapProductName(description: string | null | undefined): string {
 }
 
 function mapCustomFields(
-  raw: Stripe.Checkout.Session['custom_fields'],
+  raw: Stripe.Checkout.Session['custom_fields']
 ): CustomField[] {
   if (!raw || raw.length === 0) return []
   return raw.map((field) => ({
@@ -60,7 +60,7 @@ export function mapSessionToRow({
   const paymentIntentId =
     typeof session.payment_intent === 'string'
       ? session.payment_intent
-      : session.payment_intent?.id ?? ''
+      : (session.payment_intent?.id ?? '')
 
   const dashboardUrl = `https://dashboard.stripe.com/${ACCOUNT_ID}${modePath}/payments/${paymentIntentId}`
 
@@ -81,7 +81,7 @@ export function mapSessionToRow({
   const customerId =
     typeof session.customer === 'string'
       ? session.customer
-      : session.customer?.id ?? null
+      : (session.customer?.id ?? null)
 
   return {
     sessionId: session.id,
