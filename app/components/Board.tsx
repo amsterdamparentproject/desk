@@ -1,6 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useSyncExternalStore,
+} from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Column, LocationCard } from './Column'
 import { ActivityCard } from './card'
@@ -154,6 +160,21 @@ function IncludedCard({
 }
 
 const PUBLISH_DATE_KEY = 'desk_publish_date'
+const PUBLISH_DATE_EVENT = 'desk-publish-date-change'
+
+// The publish date lives in localStorage; read it as an external store so the
+// server render and hydration use '' and the client then picks up the saved value.
+function subscribePublishDate(onChange: () => void) {
+  window.addEventListener('storage', onChange)
+  window.addEventListener(PUBLISH_DATE_EVENT, onChange)
+  return () => {
+    window.removeEventListener('storage', onChange)
+    window.removeEventListener(PUBLISH_DATE_EVENT, onChange)
+  }
+}
+const getPublishDateSnapshot = () =>
+  localStorage.getItem(PUBLISH_DATE_KEY) ?? ''
+const getPublishDateServerSnapshot = () => ''
 
 interface BoardProps {
   initialActivities: DeskActivity[]
@@ -172,41 +193,35 @@ export default function Board({
     new Set()
   )
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
-  const [publishDate, setPublishDate] = useState<string>('')
-
-  useEffect(() => {
-    const stored = localStorage.getItem(PUBLISH_DATE_KEY)
-    if (stored) setPublishDate(stored)
-  }, [])
+  const publishDate = useSyncExternalStore(
+    subscribePublishDate,
+    getPublishDateSnapshot,
+    getPublishDateServerSnapshot
+  )
 
   const handlePublishDateChange = (date: string) => {
-    setPublishDate(date)
     localStorage.setItem(PUBLISH_DATE_KEY, date)
+    window.dispatchEvent(new Event(PUBLISH_DATE_EVENT))
   }
 
   const [activities, setActivities] =
     useState<DeskActivity[]>(initialActivities)
+  // URL-driven drawer: ?type=event|resource|location&id=<uuid>
+  const urlId = searchParams.get('id')
+  const urlType = searchParams.get('type')
   const [selectedActivity, setSelectedActivity] = useState<DeskActivity | null>(
-    null
+    () =>
+      urlId && urlType && urlType !== 'location'
+        ? (initialActivities.find((a) => a.id === urlId) ?? null)
+        : null
   )
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    null
+    () =>
+      urlId && urlType === 'location'
+        ? (initialLocations.find((l) => l.id === urlId) ?? null)
+        : null
   )
   const [newsletterOpen, setNewsletterOpen] = useState(false)
-
-  // URL-driven drawer: ?type=event|resource|location&id=<uuid>
-  useEffect(() => {
-    const id = searchParams.get('id')
-    const type = searchParams.get('type')
-    if (!id || !type) return
-    if (type === 'location') {
-      const loc = initialLocations.find((l) => l.id === id)
-      if (loc) setSelectedLocation(loc)
-    } else {
-      const act = initialActivities.find((a) => a.id === id)
-      if (act) setSelectedActivity(act)
-    }
-  }, [])
 
   const openActivity = useCallback(
     (activity: DeskActivity) => {
@@ -235,13 +250,13 @@ export default function Board({
     new Map()
   )
 
-  const disarmProcessingTimeout = (id: string) => {
+  const disarmProcessingTimeout = useCallback((id: string) => {
     const t = processingTimeouts.current.get(id)
     if (t !== undefined) {
       clearTimeout(t)
       processingTimeouts.current.delete(id)
     }
-  }
+  }, [])
   const [openCols, setOpenCols] = useState<Set<ListId>>(() => {
     const allIds = [...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map((col) => col.id)
     return new Set(allIds)
@@ -252,7 +267,8 @@ export default function Board({
   const toggleSection = (key: string) =>
     setCollapsedSections((prev) => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
 
@@ -454,7 +470,8 @@ export default function Board({
   const toggleArchiveSelect = (id: string) =>
     setSelectedArchiveIds((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
 
@@ -797,15 +814,25 @@ export default function Board({
   const processingActivities = activities.filter(
     (a) => a.status === 'processing'
   )
+  // Latest-value refs so the polling interval can read current data on each
+  // tick without being torn down and recreated on every render.
+  const processingRef = useRef(processingActivities)
+  const moveToErrorRef = useRef(moveToError)
   useEffect(() => {
-    if (processingActivities.length === 0) return
-    const processingMeta = processingActivities.map((a) => ({
-      id: a.id,
-      type: a.type,
-      created_at: a.created_at,
-    }))
-    const processingIds = new Set(processingMeta.map((p) => p.id))
+    processingRef.current = processingActivities
+    moveToErrorRef.current = moveToError
+  })
+  const hasProcessing = processingActivities.length > 0
+  useEffect(() => {
+    if (!hasProcessing) return
     const intervalId = setInterval(async () => {
+      const processingMeta = processingRef.current.map((a) => ({
+        id: a.id,
+        type: a.type,
+        created_at: a.created_at,
+      }))
+      if (processingMeta.length === 0) return
+      const processingIds = new Set(processingMeta.map((p) => p.id))
       const fetched = await pollForUpdates(processingMeta)
       setActivities((prev) => {
         const fetchedMap = new Map(fetched.map((a) => [a.id, a]))
@@ -836,12 +863,12 @@ export default function Board({
         } else if (now - new Date(a.created_at).getTime() > 5 * 60 * 1000) {
           // Stuck for more than 10 minutes — move to error
           disarmProcessingTimeout(a.id)
-          moveToError(a.id, a.type, a.title || '', true)
+          moveToErrorRef.current(a.id, a.type, a.title || '', true)
         }
       })
     }, 3000)
     return () => clearInterval(intervalId)
-  }, [processingActivities.length])
+  }, [hasProcessing, disarmProcessingTimeout])
 
   // 'error' is folded into the Capture column as a collapsible section instead
   // of its own top-level column — stays in TRIAGE_LISTS (and ALL_LISTS) so

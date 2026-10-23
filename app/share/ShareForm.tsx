@@ -124,6 +124,7 @@ export function ShareForm({
 
       {displayImageUrl && (
         <div className="relative mx-2 mb-2">
+          {/* eslint-disable-next-line @next/next/no-img-element -- local blob/object URL preview can't use next/image */}
           <img
             src={displayImageUrl}
             alt="Selected image"

@@ -12,6 +12,7 @@ async function BoardWithData() {
   const supabase = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
   const now = new Date().toISOString()
+  // eslint-disable-next-line react-hooks/purity -- async Server Component: runs once per request, so reading the clock here is intended
   const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString()
 
   // Run cleanup in parallel with data fetch — previously these were sequential,

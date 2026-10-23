@@ -29,10 +29,8 @@ export async function POST(request: NextRequest) {
 
   // Strip fields n8n injects that aren't part of the DB schema
   const sanitize = (item: DeskActivity): DeskActivity => {
-    const { error: _error, ...clean } = item as unknown as Record<
-      string,
-      unknown
-    >
+    const clean = { ...item } as unknown as Record<string, unknown>
+    delete clean.error
     return clean as unknown as DeskActivity
   }
 

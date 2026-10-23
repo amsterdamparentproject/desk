@@ -11,7 +11,6 @@ import {
   Newspaper,
   Mail,
 } from 'lucide-react'
-import { ALL_LISTS, ListId } from '../../types/list'
 import { CardProps } from '../../types/card'
 
 // Helper function placed outside the component to prevent re-instantiation on every render
@@ -25,7 +24,6 @@ const formatDate = (dateStr: string | null | undefined): string => {
 export function Card({
   activity,
   onDetails,
-  onMove,
   detailsAction,
   onToggleService,
   children,

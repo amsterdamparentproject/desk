@@ -17,9 +17,10 @@ import {
 } from '../app/actions/activities'
 import type { DeskActivity } from '../app/types/activity'
 
+let mockSearch = ''
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mockSearch),
 }))
 
 vi.mock('../app/actions/activities', () => ({
@@ -78,19 +79,11 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
   }
 }
 
-function webhookData(overrides: Partial<DeskActivity> = {}): DeskActivity {
-  return activity({
-    title: 'AI Title',
-    newsletter_description: 'AI blurb',
-    file_url: null,
-    ...overrides,
-  })
-}
-
 const DEFAULT_PUBLISH_DATE = '2026-05-18'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockSearch = ''
   vi.mocked(createActivity).mockResolvedValue(undefined)
   vi.mocked(saveActivity).mockResolvedValue(undefined)
   vi.mocked(deleteActivity).mockResolvedValue(undefined)
@@ -267,5 +260,39 @@ describe('ActivityDrawer', () => {
     await waitFor(() =>
       expect(deleteActivity).toHaveBeenCalledWith('act-1', 'event')
     )
+  })
+
+  it('syncs the recurrence rule when repeat controls change', async () => {
+    const user = userEvent.setup()
+    render(<Board initialActivities={[activity()]} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const frequency = (await screen.findAllByRole('combobox')).find((el) =>
+      within(el).queryByRole('option', { name: 'Weekly' })
+    )!
+    await user.selectOptions(frequency, 'weekly')
+    await user.click(await screen.findByRole('button', { name: 'Mon' }))
+    fireEvent.blur(frequency)
+
+    await waitFor(() =>
+      expect(saveActivity).toHaveBeenCalledWith(
+        'act-1',
+        'event',
+        expect.objectContaining({
+          repeat_frequency: 'weekly',
+          repeat_rrule: expect.stringMatching(/FREQ=WEEKLY.*BYDAY=MO/),
+        })
+      )
+    )
+  })
+
+  it('opens the drawer for the activity named in the URL', async () => {
+    mockSearch = 'type=event&id=act-1'
+    render(<Board initialActivities={[activity()]} />)
+
+    expect(
+      await screen.findByPlaceholderText(/newsletter snippet/i)
+    ).toBeInTheDocument()
   })
 })

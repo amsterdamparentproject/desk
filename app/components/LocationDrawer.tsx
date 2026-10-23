@@ -1,5 +1,5 @@
 // components/LocationDrawer.tsx
-import { ReactNode, useState, useRef } from 'react'
+import { ReactNode, useState, useRef, useLayoutEffect } from 'react'
 import { useAutosizeTextArea } from '../hooks/useAutosizeTextArea'
 import {
   X,
@@ -7,8 +7,6 @@ import {
   Edit,
   Check,
   ExternalLink,
-  Globe,
-  FileText,
   Tag,
   Mail,
   Trash2,
@@ -61,7 +59,9 @@ export function LocationDrawer({
   )
   const [categoryInput, setCategoryInput] = useState('')
   const latestFormData = useRef(formData)
-  latestFormData.current = formData
+  useLayoutEffect(() => {
+    latestFormData.current = formData
+  })
   const descriptionRef = useAutosizeTextArea(formData.description ?? '')
 
   const handleChange = (field: keyof Location, value: unknown) => {

@@ -1,20 +1,8 @@
-import {
-  BaseActivity,
-  CaptureDataProps,
-  DeskActivity,
-  Service,
-} from './activity'
+import { CaptureDataProps, DeskActivity, Service } from './activity'
 import { ListId } from './list'
 
-type CardAction = 'approve' | 'move' | 'edit' | 'copy' | 'archive'
-
 export type TriageStatus =
-  | 'new'
-  | 'processing'
-  | 'processed'
-  | 'accepted'
-  | 'published'
-  | 'archived'
+  'new' | 'processing' | 'processed' | 'accepted' | 'published' | 'archived'
 
 // Base card component props
 export interface CardProps {

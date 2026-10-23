@@ -1,5 +1,5 @@
 // components/ActivityDrawer.tsx
-import { ReactNode, useEffect, useRef, useState, useCallback } from 'react'
+import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   X,
   MapPin,
@@ -139,9 +139,6 @@ export function ActivityDrawer({
   )
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null)
-  const [pendingLocationSource, setPendingLocationSource] = useState<
-    'org' | 'location' | null
-  >(null)
   const [locationSaveState, setLocationSaveState] = useState<
     'idle' | 'saving' | 'saved'
   >('idle')
@@ -151,7 +148,9 @@ export function ActivityDrawer({
 
   // Always track latest formData so onBlur handlers don't capture stale closure values
   const latestFormData = useRef(formData)
-  latestFormData.current = formData
+  useLayoutEffect(() => {
+    latestFormData.current = formData
+  })
   const handleBlurSave = () => onSaveDraft(latestFormData.current)
 
   const activityServices = formData.services ?? []
@@ -205,7 +204,17 @@ export function ActivityDrawer({
         ? repeatDays
         : []
 
-  useEffect(() => {
+  // Keep formData's rrule in sync with the repeat controls. This is derived
+  // state, so adjust it during render (when the inputs change) rather than in
+  // an effect, which would cost an extra render pass.
+  const repeatKey = JSON.stringify([
+    repeatFrequency,
+    effectiveDays,
+    repeatUntil,
+  ])
+  const [syncedRepeatKey, setSyncedRepeatKey] = useState<string | null>(null)
+  if (syncedRepeatKey !== repeatKey) {
+    setSyncedRepeatKey(repeatKey)
     const rrule = buildRrule({
       frequency: repeatFrequency,
       days: effectiveDays,
@@ -216,13 +225,7 @@ export function ActivityDrawer({
       repeat_rrule: rrule || null,
       repeat_frequency: (repeatFrequency as RepeatFrequency) || null,
     }))
-  }, [
-    repeatFrequency,
-    repeatDays,
-    repeatUntil,
-    repeatMonthlyPos,
-    repeatMonthlyDay,
-  ])
+  }
 
   const toggleRepeatDay = (abbr: string) => {
     setRepeatDays((prev) =>
@@ -310,7 +313,6 @@ export function ActivityDrawer({
     onSaveDraft(next)
     setAppliedLocationName(loc.name)
     setPendingLocation(null)
-    setPendingLocationSource(null)
   }
 
   const handleSaveToLocations = async () => {
@@ -332,10 +334,9 @@ export function ActivityDrawer({
     }
   }
 
-  const requestApplyLocation = (loc: Location, source: 'org' | 'location') => {
+  const requestApplyLocation = (loc: Location) => {
     if (hasExistingLocation) {
       setPendingLocation(loc)
-      setPendingLocationSource(source)
     } else {
       applyLocation(loc)
     }
@@ -842,7 +843,7 @@ export function ActivityDrawer({
                   onChange={(val) => handleChange('organization', val)}
                   onSelectLocation={(loc) => {
                     handleChange('organization', loc.name)
-                    requestApplyLocation(loc, 'org')
+                    requestApplyLocation(loc)
                   }}
                   onBlur={handleBlurSave}
                 />
@@ -853,9 +854,7 @@ export function ActivityDrawer({
                   locations={locations}
                   inputStyle={inputStyle}
                   onChange={setAppliedLocationName}
-                  onSelectLocation={(loc) =>
-                    requestApplyLocation(loc, 'location')
-                  }
+                  onSelectLocation={(loc) => requestApplyLocation(loc)}
                   onBlur={handleBlurSave}
                 />
               </Field>
@@ -867,7 +866,6 @@ export function ActivityDrawer({
                 onConfirm={() => applyLocation(pendingLocation)}
                 onCancel={() => {
                   setPendingLocation(null)
-                  setPendingLocationSource(null)
                 }}
               />
             )}
@@ -990,6 +988,7 @@ export function ActivityDrawer({
             </Field>
             {displayImageUrl && (
               <div className="relative border border-slate-200 rounded-xl overflow-hidden bg-slate-50 max-h-96 flex justify-center items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary remote URLs and local blob previews can't use next/image */}
                 <img
                   src={displayImageUrl}
                   alt="Activity image"

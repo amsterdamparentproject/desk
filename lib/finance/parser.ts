@@ -64,6 +64,7 @@ function parseCSVLine(line: string): ParsedTransaction | null {
     return null
   }
 
+  // The column after transactionType is notifications, which we don't use.
   const [
     date,
     description,
@@ -73,7 +74,7 @@ function parseCSVLine(line: string): ParsedTransaction | null {
     debitCredit,
     amountStr,
     transactionType,
-    notifications,
+    ,
     balanceStr,
   ] = fields
 

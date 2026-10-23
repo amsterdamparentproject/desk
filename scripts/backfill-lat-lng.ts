@@ -39,7 +39,7 @@ async function geocode(
       latitude: parseFloat(data[0].lat),
       longitude: parseFloat(data[0].lon),
     }
-  } catch (err) {
+  } catch {
     return null
   }
 }
