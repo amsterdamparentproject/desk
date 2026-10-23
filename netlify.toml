@@ -2,5 +2,8 @@
   command = "next build"
   publish = ".next"
 
+[build.environment]
+  NODE_VERSION = "24"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
