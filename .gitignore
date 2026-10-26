@@ -45,3 +45,5 @@ __claude__/
 
 # data
 lib/data/*
+# Sentry
+.env.sentry-build-plugin
