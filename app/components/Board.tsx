@@ -712,7 +712,20 @@ export default function Board({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...postDeskData, id, action: 'add' }),
         })
-        if (!res.ok) throw new Error(`Webhook failed with status ${res.status}`)
+        if (!res.ok) {
+          // The send route forwards n8n's status/error so a 403 (bad secret),
+          // 404 (workflow inactive / wrong URL) or config error is visible.
+          const detail = await res.json().catch(() => null)
+          const upstream = [
+            detail?.status ? `n8n responded ${detail.status}` : null,
+            detail?.error ?? null,
+          ]
+            .filter(Boolean)
+            .join(': ')
+          throw new Error(
+            `Webhook failed with status ${res.status}${upstream ? ` (${upstream})` : ''}`
+          )
+        }
       } catch (err) {
         disarmProcessingTimeout(id)
         console.error('Capture Error:', err)

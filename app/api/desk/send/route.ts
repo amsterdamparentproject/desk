@@ -11,5 +11,8 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
   const result = await postDesk(body)
-  return NextResponse.json(result)
+  // postDesk reports n8n failures in the body rather than throwing. Surface them
+  // as a non-2xx so the client's `!res.ok` check actually fires (it used to see
+  // a 200 and wait out the 2-minute processing timeout instead).
+  return NextResponse.json(result, { status: result.success ? 200 : 502 })
 }
