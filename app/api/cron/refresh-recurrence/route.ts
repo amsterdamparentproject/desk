@@ -5,6 +5,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabaseClient = SupabaseClient<any, any, any>
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
+import { endedSeriesPatch } from '@/app/utils/endedSeries'
 
 function getYesterday(): string {
   const d = new Date()
@@ -18,7 +19,9 @@ async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
 
   const { data: events, error } = await supabase
     .from('events')
-    .select('id, title, repeat_rrule, start_date, repeat_next_date')
+    .select(
+      'id, title, repeat_rrule, start_date, repeat_next_date, status, list_id, services'
+    )
     .not('repeat_rrule', 'is', null)
     .neq('status', 'archived')
 
@@ -30,6 +33,7 @@ async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
     title: string
     old_date: string | null
     new_date: string | null
+    aged_out?: boolean
   }[] = []
 
   for (const event of events ?? []) {
@@ -46,9 +50,23 @@ async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
         : yesterday
     const nextDate = computeNextDate(frequency, days, untilDate, refDate)
 
+    // Series over (UNTIL passed): age the event out like sweepStaleUpcoming
+    // does, and skip rows that are already settled instead of rewriting
+    // null -> null on every run.
+    const ended = nextDate === null && !!untilDate
+    let patch: Record<string, unknown> = { repeat_next_date: nextDate }
+    if (ended) {
+      const endedPatch = endedSeriesPatch(event)
+      if (!endedPatch) {
+        skipped++
+        continue
+      }
+      patch = endedPatch
+    }
+
     const { error: updateError } = await supabase
       .from('events')
-      .update({ repeat_next_date: nextDate, updated_at: now })
+      .update({ ...patch, updated_at: now })
       .eq('id', event.id)
 
     if (updateError) {
@@ -60,6 +78,9 @@ async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
         title: event.title,
         old_date: event.repeat_next_date ?? null,
         new_date: nextDate,
+        ...(ended && ('list_id' in patch || 'services' in patch)
+          ? { aged_out: true }
+          : {}),
       })
     }
   }
