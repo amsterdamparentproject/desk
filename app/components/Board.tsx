@@ -181,6 +181,22 @@ interface BoardProps {
   initialLocations?: Location[]
 }
 
+// /api/desk/send forwards n8n's outcome in its JSON body; fold it into the
+// error so a 403 (bad secret), 404 (workflow inactive / wrong URL) or a config
+// error is visible in the console instead of a bare "502".
+async function webhookFailure(res: Response): Promise<Error> {
+  const detail = await res.json().catch(() => null)
+  const upstream = [
+    detail?.status ? `n8n responded ${detail.status}` : null,
+    detail?.error ?? null,
+  ]
+    .filter(Boolean)
+    .join(': ')
+  return new Error(
+    `Webhook failed with status ${res.status}${upstream ? ` (${upstream})` : ''}`
+  )
+}
+
 export default function Board({
   initialActivities,
   initialLocations = [],
@@ -712,20 +728,7 @@ export default function Board({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...postDeskData, id, action: 'add' }),
         })
-        if (!res.ok) {
-          // The send route forwards n8n's status/error so a 403 (bad secret),
-          // 404 (workflow inactive / wrong URL) or config error is visible.
-          const detail = await res.json().catch(() => null)
-          const upstream = [
-            detail?.status ? `n8n responded ${detail.status}` : null,
-            detail?.error ?? null,
-          ]
-            .filter(Boolean)
-            .join(': ')
-          throw new Error(
-            `Webhook failed with status ${res.status}${upstream ? ` (${upstream})` : ''}`
-          )
-        }
+        if (!res.ok) throw await webhookFailure(res)
       } catch (err) {
         disarmProcessingTimeout(id)
         console.error('Capture Error:', err)
@@ -810,7 +813,7 @@ export default function Board({
           file: null,
         }),
       })
-      if (!res.ok) throw new Error(`Webhook failed with status ${res.status}`)
+      if (!res.ok) throw await webhookFailure(res)
     } catch (err) {
       disarmProcessingTimeout(activity.id)
       console.error('Send to AI Error:', err)
