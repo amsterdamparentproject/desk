@@ -313,7 +313,12 @@ export function SourcesClient({
                     </td>
                     <td className="py-3 px-4 text-slate-500 hidden lg:table-cell">
                       {source.last_fetched_at ? (
-                        new Date(source.last_fetched_at).toLocaleDateString()
+                        new Date(source.last_fetched_at).toLocaleDateString(
+                          'en-GB',
+                          {
+                            timeZone: 'Europe/Amsterdam',
+                          }
+                        )
                       ) : (
                         <span className="text-slate-300">Never</span>
                       )}

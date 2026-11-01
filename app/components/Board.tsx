@@ -974,12 +974,20 @@ export default function Board({
     .filter((a) => !!a.repeat_rrule)
     .sort(byPostDate)
   const postSingleEvents = postEvents.filter((a) => !a.repeat_rrule)
+  // Last day of the current month as YYYY-MM-DD. Derived in a fixed zone (the
+  // server renders in UTC, the browser in Amsterdam) with pure UTC math after
+  // that, so server and client agree — building it from local Date setters and
+  // then toISOString() made them differ by a day, which moved month-end events
+  // between sections and caused a hydration text mismatch (React #418).
   const matchThisMonthEnd = (() => {
-    const d = new Date()
-    d.setDate(1)
-    d.setMonth(d.getMonth() + 1)
-    d.setDate(0)
-    return d.toISOString().split('T')[0]
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Amsterdam',
+      year: 'numeric',
+      month: 'numeric',
+    }).formatToParts(new Date())
+    const y = Number(parts.find((p) => p.type === 'year')?.value)
+    const m = Number(parts.find((p) => p.type === 'month')?.value)
+    return new Date(Date.UTC(y, m, 0)).toISOString().split('T')[0]
   })()
   const matchThisMonth = postSingleEvents
     .filter((a) => {
