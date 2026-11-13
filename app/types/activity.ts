@@ -51,6 +51,12 @@ export interface BaseActivity {
   triage_notes: string | null
   file_url: string | null
 
+  // AI parse diagnostics (015_parse_diagnostics.sql). Optional: absent until
+  // the migration is applied. Written server-side only.
+  parse_error?: string | null
+  parse_warnings?: string[] | null
+  parse_raw?: unknown
+
   // Core content
   title: string
   description: string

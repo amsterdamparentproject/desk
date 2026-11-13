@@ -12,6 +12,10 @@ import { ListId } from '@/app/types/list'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 import { postDesk } from '@/lib/PostToWebhook'
 import { geocodeAddress } from '@/app/utils/geocode'
+import { safeFileName } from '@/lib/parse/files'
+import { tableFor, updateWithParseColumns } from '@/lib/parse/server'
+import { convertRow } from '@/lib/convert'
+import { todayInAmsterdam } from '@/lib/parse/schema'
 
 type WritableEvent = Omit<EventActivity, 'id' | 'created_at' | 'updated_at'>
 type WritableResource = Omit<
@@ -24,7 +28,7 @@ export async function uploadActivityFile(
   file: File
 ): Promise<string> {
   const supabase = createAdminClient()
-  const path = `${id}/${file.name}`
+  const path = `${id}/${safeFileName(file.name)}`
   const { error } = await supabase.storage
     .from('activities')
     .upload(path, file, { contentType: file.type, upsert: true })
@@ -71,6 +75,8 @@ export async function captureFromShare(data: {
   if (data.use_ai) {
     await postDesk({
       description: data.description,
+      url: data.url || null,
+      file_url: data.file_url ?? null,
       file: null,
       list_id,
       use_ai: true,
@@ -287,12 +293,19 @@ export async function upsertEnrichedActivity(
       : null
   }
 
-  const { error } = await supabase.from(table).upsert(insert, {
-    onConflict: 'title,start_date,start_time,url',
-    ignoreDuplicates: true,
-  })
+  const { data: inserted, error } = await supabase
+    .from(table)
+    .upsert(insert, {
+      onConflict: 'title,start_date,start_time,url',
+      ignoreDuplicates: true,
+    })
+    .select('id')
 
   if (error) throw new Error(error.message)
+
+  // ignoreDuplicates returns no row when the unique key already existed. Tell
+  // the caller so a skipped duplicate can be surfaced instead of vanishing.
+  if (!inserted || inserted.length === 0) return { inserted: false }
 
   if (data.location && data.latitude == null) {
     const coords = await geocodeAddress(data.location)
@@ -303,6 +316,40 @@ export async function upsertEnrichedActivity(
         .eq('id', id)
     }
   }
+  return { inserted: true }
+}
+
+/** Puts a visible reason on a card that could not be sent to / parsed by the AI. */
+export async function flagParseError(
+  id: string,
+  type: 'event' | 'resource',
+  message: string
+) {
+  await updateWithParseColumns(
+    tableFor(type),
+    id,
+    {},
+    {
+      error: message.slice(0, 300),
+      warnings: [],
+    }
+  )
+}
+
+/** Clears the parse error/warnings shown on a card once a human has dealt with them. */
+export async function dismissParseNotice(
+  id: string,
+  type: 'event' | 'resource'
+) {
+  await updateWithParseColumns(
+    tableFor(type),
+    id,
+    {},
+    {
+      error: null,
+      warnings: [],
+    }
+  )
 }
 
 export async function deleteActivity(id: string, type: 'event' | 'resource') {
@@ -327,6 +374,42 @@ export async function deleteActivity(id: string, type: 'event' | 'resource') {
 
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+// Moves a record between the events and resources tables, keeping its id,
+// image and history. Insert first, delete second; if the delete fails the new
+// row is removed again so we never end up with two copies.
+export async function convertActivityType(
+  id: string,
+  from: 'event' | 'resource',
+  to: 'event' | 'resource'
+): Promise<Record<string, unknown>> {
+  if (from === to) throw new Error('Already a ' + to)
+  const supabase = createAdminClient()
+  const { data: row, error: readError } = await supabase
+    .from(tableFor(from))
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (readError || !row) {
+    throw new Error(readError?.message ?? 'Record not found')
+  }
+
+  const { insert, patch } = convertRow(row, to, todayInAmsterdam())
+  const { error: insertError } = await supabase
+    .from(tableFor(to))
+    .insert(insert)
+  if (insertError) throw new Error(insertError.message)
+
+  const { error: deleteError } = await supabase
+    .from(tableFor(from))
+    .delete()
+    .eq('id', id)
+  if (deleteError) {
+    await supabase.from(tableFor(to)).delete().eq('id', id)
+    throw new Error(deleteError.message)
+  }
+  return patch
 }
 
 export async function archiveActivity(id: string, type: 'event' | 'resource') {

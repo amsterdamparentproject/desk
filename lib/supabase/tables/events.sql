@@ -62,7 +62,12 @@ CREATE TABLE activities.events (
   neighborhood text,
   area text,
   latitude numeric(9, 6),
-  longitude numeric(9, 6)
+  longitude numeric(9, 6),
+
+  -- AI parse diagnostics (015_parse_diagnostics.sql)
+  parse_error text,
+  parse_warnings text[] NOT NULL DEFAULT '{}',
+  parse_raw jsonb
 );
 
 CREATE INDEX events_lat_lng_idx ON activities.events (latitude, longitude);

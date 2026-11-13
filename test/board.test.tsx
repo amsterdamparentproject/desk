@@ -30,6 +30,9 @@ vi.mock('../app/actions/activities', () => ({
   archiveActivity: vi.fn(),
   moveActivity: vi.fn(),
   uploadActivityFile: vi.fn(),
+  flagParseError: vi.fn().mockResolvedValue(undefined),
+  convertActivityType: vi.fn().mockResolvedValue({}),
+  dismissParseNotice: vi.fn().mockResolvedValue(undefined),
   pollForUpdates: vi.fn().mockResolvedValue([]),
 }))
 

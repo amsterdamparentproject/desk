@@ -53,6 +53,10 @@ The AI capture flow in `Board.handleAddEvent`:
 
 If the webhook call times out or fails, the card moves to the `error` list.
 
+### Parse callback & resilience (`app/api/desk/callback/route.ts`, `lib/parse/`)
+
+n8n posts AI results to the callback. It resolves the record's real table by id (never trusting the AI's `type`), validates output with Zod (`lib/parse/schema.ts` — the AI may only set content fields; `file_url`/`list_id`/`status`/`services` are ignored), and records `parse_error` / `parse_warnings` / `parse_raw` on the card (migration `015`; writes degrade gracefully if it hasn't been run). Failure payloads (`{ id, failed: true, error }`) move the card to Errors with a reason. Extra events the AI splits out get deterministic ids (`childActivityId`) so retries don't duplicate, and inherit the parent's `file_url`. `POST /api/cron/sweep-stuck` (n8n secret header) moves cards stuck in `processing` to Errors. See `__claude__/n8n-parse-resilience.md` for the matching n8n changes.
+
 ### Recurrence (`app/utils/rrule.ts`)
 
 Custom RRULE parser/builder — no external library. Supported frequencies: `daily`, `weekly`, `biweekly` (`FREQ=WEEKLY;INTERVAL=2`), `monthly` (positional weekday only, e.g. `BYDAY=1MO`). `computeNextDate` calculates the next occurrence from `start_date` and is called server-side in `saveActivity` to persist `repeat_next_date`.
@@ -78,7 +82,10 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 | `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                                          |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key                                                               |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Admin key (server only)                                                       |
-| `N8N_WEBHOOK_SECRET`            | Shared secret for `X-N8N-WEBHOOK-SECRET` header                               |
+| `DESK_HMAC_KEY`                 | Key for HMAC-signed Desk<->n8n requests (`lib/auth/`); same value as the n8n Crypto credential |
+| `N8N_WEBHOOK_SECRET`            | Legacy shared secret for `X-N8N-WEBHOOK-SECRET`; being phased out             |
+| `SEND_LEGACY_N8N_SECRET`        | Set `false` to stop sending the legacy header to n8n                          |
+| `ALLOW_LEGACY_N8N_SECRET`       | Set `false` to reject the legacy header from n8n (signatures only)            |
 | `N8N_DESK_WEBHOOK_URL`          | Production n8n webhook                                                        |
 | `TEST_N8N_DESK_WEBHOOK_URL`     | Dev/test n8n webhook (workflow must be listening)                             |
 | `DESK_PASSWORD`                 | Shared login password; also the value stored in the `app_desk_session` cookie |

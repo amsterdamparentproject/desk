@@ -30,12 +30,14 @@ import { LocationForm } from './card'
 import {
   advanceLocation,
   archiveActivity,
+  convertActivityType,
   createActivity,
   createLocation,
   decideLocationPost,
   deleteActivity,
   deleteLocation,
   finishNewsletterIssue,
+  flagParseError,
   moveActivity,
   pollForUpdates,
   saveActivity,
@@ -504,6 +506,46 @@ export default function Board({
     }
   }
 
+  // Returns the changed fields so the open drawer can mirror them, or null if
+  // the conversion failed (nothing changed in that case).
+  const handleConvertType = async (
+    id: string,
+    to: 'event' | 'resource'
+  ): Promise<Record<string, unknown> | null> => {
+    const activity = activities.find((e) => e.id === id)
+    if (!activity || activity.type === to) return null
+    try {
+      const patch = await convertActivityType(id, activity.type, to)
+      const cleared =
+        to === 'resource'
+          ? {
+              start_date: undefined,
+              end_date: null,
+              start_time: null,
+              end_time: null,
+              day_of_week: null,
+              duration_minutes: null,
+              repeat_rrule: null,
+              repeat_frequency: null,
+              repeat_next_date: null,
+              tagline: null,
+            }
+          : {}
+      setActivities((prev) =>
+        prev.map((e) =>
+          e.id === id ? { ...e, ...cleared, ...patch, type: to } : e
+        )
+      )
+      return { ...cleared, ...patch, type: to }
+    } catch (err) {
+      console.error('Convert failed:', err)
+      alert(
+        `Couldn't convert to ${to}: ${err instanceof Error ? err.message : 'unknown error'}`
+      )
+      return null
+    }
+  }
+
   const handleDeleteActivity = async (
     id: string,
     type: 'event' | 'resource'
@@ -621,7 +663,8 @@ export default function Board({
     id: string,
     type: 'event' | 'resource',
     description: string,
-    seedCreated: boolean
+    seedCreated: boolean,
+    reason?: string
   ) => {
     setActivities((prev) =>
       prev.map((e) =>
@@ -631,6 +674,7 @@ export default function Board({
               list_id: 'error' as ListId,
               status: 'new' as const,
               title: description,
+              ...(reason ? { parse_error: reason } : {}),
             }
           : e
       )
@@ -648,6 +692,7 @@ export default function Board({
         description,
       }).catch(() => {})
     }
+    if (reason) await flagParseError(id, type, reason).catch(() => {})
   }
 
   const handleAddEvent = async (captureData: CaptureDataProps) => {
@@ -688,7 +733,13 @@ export default function Board({
         setTimeout(
           async () => {
             processingTimeouts.current.delete(id)
-            await moveToError(id, type, description, true)
+            await moveToError(
+              id,
+              type,
+              description,
+              true,
+              'No response from the AI after 2 minutes'
+            )
           },
           2 * 60 * 1000
         )
@@ -707,6 +758,17 @@ export default function Board({
           )
         } catch (err) {
           console.error('File upload failed:', err)
+          // Don't send an image-less capture to the AI as if nothing happened.
+          // Park it in Errors with the reason so the image can be re-attached.
+          disarmProcessingTimeout(id)
+          await moveToError(
+            id,
+            type,
+            description,
+            false,
+            `Image upload failed (${err instanceof Error ? err.message : 'unknown error'}) — re-attach the image and try again`
+          )
+          return
         }
       }
 
@@ -732,7 +794,13 @@ export default function Board({
       } catch (err) {
         disarmProcessingTimeout(id)
         console.error('Capture Error:', err)
-        await moveToError(id, type, description, seedCreated)
+        await moveToError(
+          id,
+          type,
+          description,
+          seedCreated,
+          err instanceof Error ? err.message : 'Could not reach the AI'
+        )
       }
     } else {
       const reviewed = createNewActivity(description, {
@@ -792,7 +860,12 @@ export default function Board({
           setActivities((prev) =>
             prev.map((e) =>
               e.id === activity.id
-                ? { ...e, status: 'new' as const, list_id: 'error' as ListId }
+                ? {
+                    ...e,
+                    status: 'new' as const,
+                    list_id: 'error' as ListId,
+                    parse_error: 'No response from the AI after 2 minutes',
+                  }
                 : e
             )
           )
@@ -817,13 +890,21 @@ export default function Board({
     } catch (err) {
       disarmProcessingTimeout(activity.id)
       console.error('Send to AI Error:', err)
+      const reason =
+        err instanceof Error ? err.message : 'Could not reach the AI'
       setActivities((prev) =>
         prev.map((e) =>
           e.id === activity.id
-            ? { ...e, status: 'new' as const, list_id: 'error' as ListId }
+            ? {
+                ...e,
+                status: 'new' as const,
+                list_id: 'error' as ListId,
+                parse_error: reason,
+              }
             : e
         )
       )
+      await flagParseError(activity.id, activity.type, reason).catch(() => {})
     }
   }
 
@@ -879,7 +960,13 @@ export default function Board({
         } else if (now - new Date(a.created_at).getTime() > 5 * 60 * 1000) {
           // Stuck for more than 10 minutes — move to error
           disarmProcessingTimeout(a.id)
-          moveToErrorRef.current(a.id, a.type, a.title || '', true)
+          moveToErrorRef.current(
+            a.id,
+            a.type,
+            a.title || '',
+            true,
+            'Still processing after 5 minutes'
+          )
         }
       })
     }, 3000)
@@ -1698,6 +1785,7 @@ export default function Board({
           onClose={closeDrawer}
           onSendToAI={handleSendToAI}
           onDelete={handleDeleteActivity}
+          onConvertType={handleConvertType}
           readOnly={selectedActivity.status === 'archived'}
           onRestore={() => handleRestoreEvent(selectedActivity.id)}
           locations={locations}

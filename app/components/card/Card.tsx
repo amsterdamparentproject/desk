@@ -12,6 +12,7 @@ import {
   Mail,
 } from 'lucide-react'
 import { CardProps } from '../../types/card'
+import { ParseNotice } from './ParseNotice'
 
 // Helper function placed outside the component to prevent re-instantiation on every render
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -181,6 +182,8 @@ export function Card({
         >
           {activity.title}
         </h3>
+
+        <ParseNotice activity={activity} compact />
 
         {/* Structural Descriptive Meta Rows */}
         <div className="space-y-2">

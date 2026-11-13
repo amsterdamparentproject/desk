@@ -38,7 +38,8 @@ import {
   computeNextDate,
   parsePositionalDay,
 } from '../utils/rrule'
-import { upsertLocation } from '../actions/activities'
+import { upsertLocation, dismissParseNotice } from '../actions/activities'
+import { ParseNotice } from './card/ParseNotice'
 
 const AREAS = [
   'West',
@@ -86,6 +87,10 @@ interface ActivityDrawerProps {
   onClose: () => void
   onSendToAI?: (data: DeskActivity) => void
   onDelete?: (id: string, type: 'event' | 'resource') => void
+  onConvertType?: (
+    id: string,
+    to: 'event' | 'resource'
+  ) => Promise<Record<string, unknown> | null>
   readOnly?: boolean
   onRestore?: () => void
   locations?: Location[]
@@ -128,6 +133,7 @@ export function ActivityDrawer({
   onClose,
   onSendToAI,
   onDelete,
+  onConvertType,
   readOnly,
   onRestore,
   locations = [],
@@ -152,6 +158,29 @@ export function ActivityDrawer({
     latestFormData.current = formData
   })
   const handleBlurSave = () => onSaveDraft(latestFormData.current)
+
+  const [converting, setConverting] = useState(false)
+  const handleConvert = async () => {
+    if (!onConvertType || converting) return
+    const to = formData.type === 'event' ? 'resource' : 'event'
+    if (
+      to === 'resource' &&
+      !window.confirm(
+        'Convert to a resource? The date, time and repeat settings are removed (a note of the old schedule is kept in the triage notes), and it leaves the Post.'
+      )
+    ) {
+      return
+    }
+    setConverting(true)
+    try {
+      // Flush any pending edit first so it lands before the row moves tables.
+      await onSaveDraft(latestFormData.current)
+      const patch = await onConvertType(formData.id, to)
+      if (patch) setFormData((prev) => ({ ...prev, ...patch }) as DeskActivity)
+    } finally {
+      setConverting(false)
+    }
+  }
 
   const activityServices = formData.services ?? []
   const handleToggleService = (service: Service, enabled: boolean) => {
@@ -424,6 +453,31 @@ export function ActivityDrawer({
         >
           {/* Primary content */}
           <section className="space-y-4">
+            <ParseNotice
+              activity={formData}
+              onDismiss={async () => {
+                await dismissParseNotice(formData.id, formData.type)
+                setFormData((prev) => ({
+                  ...prev,
+                  parse_error: null,
+                  parse_warnings: [],
+                }))
+              }}
+            />
+            {onConvertType && !readOnly && (
+              <button
+                type="button"
+                onClick={handleConvert}
+                disabled={converting}
+                className="text-[11px] font-black uppercase tracking-wide text-slate-500 hover:text-slate-900 underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                {converting
+                  ? 'Converting…'
+                  : formData.type === 'event'
+                    ? 'This is a resource, not an event →'
+                    : 'This is an event, not a resource →'}
+              </button>
+            )}
             <Field label="Title">
               <input
                 className="w-full text-2xl font-black tracking-tight border-none p-0 focus:ring-0 focus:outline-none text-slate-900"
