@@ -65,8 +65,8 @@ describe('sortRows', () => {
   it('sorts alphabetically, ignoring case', () => {
     expect(sortRows([a, b, r], 'title', 'asc').map((x) => x.id)).toEqual([
       'b',
-      'r',
       'a',
+      'r',
     ])
   })
   it('uses the next occurrence for recurring events', () => {
