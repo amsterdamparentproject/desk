@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { verifyDeskSession } from '@/app/utils/auth-gate'
 import { createAdminClient } from '@/app/utils/supabase/server'
 import { postDesk } from '@/lib/PostToWebhook'
+import { safeFileName } from '@/lib/parse/files'
 import type { ListId } from '@/app/types/list'
 
 export async function POST(request: NextRequest) {
@@ -56,8 +57,7 @@ export async function POST(request: NextRequest) {
   let file_url = preloadedFileUrl
 
   if (pendingFile) {
-    const safeName =
-      pendingFile.name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload'
+    const safeName = safeFileName(pendingFile.name)
     const path = `${id}/${safeName}`
     const { error: uploadError } = await supabase.storage
       .from('activities')
@@ -92,6 +92,8 @@ export async function POST(request: NextRequest) {
   if (use_ai) {
     postDesk({
       description,
+      url: url || null,
+      file_url,
       file: null,
       list_id,
       use_ai: true,

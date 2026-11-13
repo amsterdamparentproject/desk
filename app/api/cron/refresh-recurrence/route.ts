@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/app/utils/supabase/server'
+import { authorizeN8nRequest } from '@/lib/auth/n8n-auth'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,8 +90,8 @@ async function refreshDb(supabase: AnySupabaseClient, yesterday: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-n8n-webhook-secret')
-  if (!secret || secret !== process.env.N8N_WEBHOOK_SECRET) {
+  // n8n signs the route path (or sends the legacy secret during cutover).
+  if (!authorizeN8nRequest(req.headers, req.nextUrl.pathname).ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

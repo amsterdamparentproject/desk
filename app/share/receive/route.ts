@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { verifyDeskSession } from '@/app/utils/auth-gate'
 import { createAdminClient } from '@/app/utils/supabase/server'
+import { safeFileName } from '@/lib/parse/files'
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (file) {
     const id = crypto.randomUUID()
     const supabase = createAdminClient()
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_') || 'upload'
+    const safeName = safeFileName(file.name)
     const path = `${id}/${safeName}`
 
     const { error } = await supabase.storage
