@@ -83,26 +83,17 @@ describe('authorizeN8nRequest', () => {
     process.env.DESK_HMAC_KEY = key
     expect(authorizeN8nRequest(headersOf(signed), 'abc', now)).toEqual({
       ok: true,
-      method: 'hmac',
     })
   })
 
-  it('accepts the legacy secret while it is allowed, then stops', () => {
+  it('rejects the old shared-secret header', () => {
     process.env.DESK_HMAC_KEY = key
-    process.env.N8N_WEBHOOK_SECRET = 'legacy'
     const legacy = headersOf({ 'x-n8n-webhook-secret': 'legacy' })
-    expect(authorizeN8nRequest(legacy, 'abc', now)).toEqual({
-      ok: true,
-      method: 'legacy',
-    })
-    process.env.ALLOW_LEGACY_N8N_SECRET = 'false'
     expect(authorizeN8nRequest(legacy, 'abc', now).ok).toBe(false)
   })
 
-  it('in strict mode a bad signature is not rescued by the legacy header', () => {
+  it('rejects a bad signature even when the old header is sent too', () => {
     process.env.DESK_HMAC_KEY = key
-    process.env.N8N_WEBHOOK_SECRET = 'legacy'
-    process.env.ALLOW_LEGACY_N8N_SECRET = 'false'
     const both = headersOf({ ...signed, 'x-n8n-webhook-secret': 'legacy' })
     expect(authorizeN8nRequest(both, 'WRONG', now).ok).toBe(false)
     expect(authorizeN8nRequest(both, 'abc', now).ok).toBe(true)
@@ -110,7 +101,6 @@ describe('authorizeN8nRequest', () => {
 
   it('rejects everything when nothing is configured or sent', () => {
     delete process.env.DESK_HMAC_KEY
-    delete process.env.N8N_WEBHOOK_SECRET
     expect(authorizeN8nRequest(headersOf({}), 'abc', now).ok).toBe(false)
     expect(authorizeN8nRequest(headersOf(signed), 'abc', now).ok).toBe(false)
   })

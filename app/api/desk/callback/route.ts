@@ -44,8 +44,7 @@ export async function POST(request: NextRequest) {
   const first = items[0] as Record<string, unknown> | undefined
   const failure = extractFailure(first)
 
-  // n8n signs the activity id (or accepts the legacy secret header while the
-  // cutover is in progress). See lib/auth/n8n-auth.ts.
+  // n8n signs the activity id (HMAC, see lib/auth/n8n-auth.ts).
   const subject =
     failure?.id ?? (typeof first?.id === 'string' ? first.id : null)
   const auth = authorizeN8nRequest(request.headers, subject)

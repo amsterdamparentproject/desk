@@ -33,7 +33,6 @@ const delayArg = process.argv.find((a) => a.startsWith('--delay='))
 const DELAY_MS = delayArg ? Number(delayArg.split('=')[1]) : 3000
 
 const webhookUrl = process.env.N8N_DESK_WEBHOOK_URL
-const secret = process.env.N8N_WEBHOOK_SECRET
 const hmacKey = process.env.DESK_HMAC_KEY
 
 if (
@@ -43,10 +42,8 @@ if (
   console.error('Missing Supabase env vars in .env.local')
   process.exit(1)
 }
-if (APPLY && (!webhookUrl || (!secret && !hmacKey))) {
-  console.error(
-    'Missing N8N_DESK_WEBHOOK_URL, and DESK_HMAC_KEY or N8N_WEBHOOK_SECRET, in .env.local'
-  )
+if (APPLY && (!webhookUrl || !hmacKey)) {
+  console.error('Missing N8N_DESK_WEBHOOK_URL or DESK_HMAC_KEY in .env.local')
   process.exit(1)
 }
 if (APPLY && !/^https?:\/\//.test(webhookUrl!)) {
@@ -126,10 +123,9 @@ async function main() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(secret ? { 'X-N8N-WEBHOOK-SECRET': secret } : {}),
           // Same signing scheme as lib/auth/hmac.ts (direction desk>n8n,
           // subject = activity id).
-          ...(hmacKey ? signHeaders(hmacKey, String(row.id)) : {}),
+          ...signHeaders(hmacKey!, String(row.id)),
         },
         body: JSON.stringify({
           ...row,

@@ -6,17 +6,12 @@ import { signedHeaders } from '@/lib/auth/hmac'
 const isLocal = process.env.NODE_ENV === 'development'
 
 const postToWebhook = async (webhookURL: string | undefined, data: unknown) => {
-  // Signed requests (preferred): timestamp + HMAC over the activity id, so the
-  // secret itself never appears in n8n's execution history. The legacy shared
-  // secret header is still sent until SEND_LEGACY_N8N_SECRET=false.
+  // Requests are signed (timestamp + HMAC over the activity id), so no shared
+  // secret ever appears in n8n's execution history.
   const hmacKey = process.env.DESK_HMAC_KEY
-  const legacySecret =
-    process.env.SEND_LEGACY_N8N_SECRET === 'false'
-      ? undefined
-      : process.env.N8N_WEBHOOK_SECRET
 
   try {
-    if (!webhookURL || (!hmacKey && !legacySecret)) {
+    if (!webhookURL || !hmacKey) {
       console.error('postToWebhook error: Missing environment variables')
       return { success: false, error: 'Configuration error' }
     }
@@ -24,16 +19,14 @@ const postToWebhook = async (webhookURL: string | undefined, data: unknown) => {
     // Convert data to FormData if it contains File objects
     let body: FormData | string
     const headers: Record<string, string> = {}
-    if (legacySecret) headers['X-N8N-WEBHOOK-SECRET'] = legacySecret
-    if (hmacKey) {
-      const subject =
-        data instanceof FormData
-          ? String(data.get('id') ?? '')
-          : String((data as { id?: unknown } | null)?.id ?? '')
-      if (subject) {
-        Object.assign(headers, signedHeaders(hmacKey, 'desk>n8n', subject))
-      }
+    const subject =
+      data instanceof FormData
+        ? String(data.get('id') ?? '')
+        : String((data as { id?: unknown } | null)?.id ?? '')
+    if (!subject) {
+      return { success: false, error: 'Missing activity id' }
     }
+    Object.assign(headers, signedHeaders(hmacKey, 'desk>n8n', subject))
 
     if (data instanceof FormData) {
       body = data

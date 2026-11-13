@@ -957,8 +957,14 @@ export default function Board({
       fetched.forEach((a) => {
         if (a.status !== 'processing') {
           disarmProcessingTimeout(a.id)
-        } else if (now - new Date(a.created_at).getTime() > 5 * 60 * 1000) {
-          // Stuck for more than 10 minutes — move to error
+        } else if (
+          // Measure from when processing started (status writes bump
+          // updated_at), not from creation: re-sending an old card to the AI
+          // would otherwise be flagged as stuck within seconds.
+          now - new Date(a.updated_at || a.created_at).getTime() >
+          5 * 60 * 1000
+        ) {
+          // Stuck for more than 5 minutes — move to error
           disarmProcessingTimeout(a.id)
           moveToErrorRef.current(
             a.id,

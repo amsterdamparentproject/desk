@@ -77,15 +77,12 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 
 ## Environment variables
 
-| Variable                        | Purpose                                                                       |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                                          |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key                                                               |
-| `SUPABASE_SERVICE_ROLE_KEY`     | Admin key (server only)                                                       |
+| Variable                        | Purpose                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                                                           |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key                                                                                |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Admin key (server only)                                                                        |
 | `DESK_HMAC_KEY`                 | Key for HMAC-signed Desk<->n8n requests (`lib/auth/`); same value as the n8n Crypto credential |
-| `N8N_WEBHOOK_SECRET`            | Legacy shared secret for `X-N8N-WEBHOOK-SECRET`; being phased out             |
-| `SEND_LEGACY_N8N_SECRET`        | Set `false` to stop sending the legacy header to n8n                          |
-| `ALLOW_LEGACY_N8N_SECRET`       | Set `false` to reject the legacy header from n8n (signatures only)            |
-| `N8N_DESK_WEBHOOK_URL`          | Production n8n webhook                                                        |
-| `TEST_N8N_DESK_WEBHOOK_URL`     | Dev/test n8n webhook (workflow must be listening)                             |
-| `DESK_PASSWORD`                 | Shared login password; also the value stored in the `app_desk_session` cookie |
+| `N8N_DESK_WEBHOOK_URL`          | Production n8n webhook                                                                         |
+| `TEST_N8N_DESK_WEBHOOK_URL`     | Dev/test n8n webhook (workflow must be listening)                                              |
+| `DESK_PASSWORD`                 | Shared login password; also the value stored in the `app_desk_session` cookie                  |

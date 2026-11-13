@@ -18,7 +18,7 @@ const DEFAULT_MINUTES = 5
  *   POST /api/cron/sweep-stuck?minutes=10 to change the threshold
  */
 export async function POST(req: NextRequest) {
-  // n8n signs the route path (or sends the legacy secret during cutover).
+  // n8n signs the route path (HMAC, see lib/auth/n8n-auth.ts).
   if (!authorizeN8nRequest(req.headers, req.nextUrl.pathname).ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
