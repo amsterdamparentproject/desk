@@ -7,6 +7,7 @@ import {
   isPostEligible,
   postGroup,
   doneGroup,
+  inIssueWindow,
   isDoneRow,
   needsAttention,
   effectiveStart,
@@ -183,6 +184,38 @@ describe('doneGroup / isDoneRow', () => {
     expect(isDoneRow({ status: 'processed', list_id: 'refined' })).toBe(false)
     expect(isDoneRow({ status: 'published', list_id: 'refined' })).toBe(true)
     expect(isDoneRow({ status: 'archived', list_id: 'done' })).toBe(true)
+  })
+})
+
+describe('inIssueWindow', () => {
+  const [from, to] = ['2026-11-16', '2026-11-30']
+  const w = (o: Partial<DeskActivity>) =>
+    inIssueWindow(row(o), from, to, '2026-11-14')
+  it('keeps resources and undated events', () => {
+    expect(w({ type: 'resource' })).toBe(true)
+    expect(w({ start_date: undefined })).toBe(true)
+  })
+  it('matches single events overlapping the window', () => {
+    expect(w({ start_date: '2026-11-20' })).toBe(true)
+    expect(w({ start_date: '2026-12-05' })).toBe(false)
+    expect(w({ start_date: '2026-11-10', end_date: '2026-11-17' })).toBe(true)
+    expect(w({ start_date: '2026-11-01' })).toBe(false)
+  })
+  it('matches recurring events whose next date is within the window end', () => {
+    expect(
+      w({
+        start_date: '2026-11-01',
+        repeat_rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        repeat_next_date: '2026-11-16',
+      })
+    ).toBe(true)
+    expect(
+      w({
+        start_date: '2026-11-01',
+        repeat_rrule: 'FREQ=WEEKLY;BYDAY=MO',
+        repeat_next_date: '2027-01-04',
+      })
+    ).toBe(false)
   })
 })
 

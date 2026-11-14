@@ -168,3 +168,23 @@ export function doneGroup(
 export const isDoneRow = (
   a: Pick<DeskActivity, 'status' | 'list_id'>
 ): boolean => a.list_id === 'done' || a.status === 'published'
+
+// Does this row belong in an issue covering windowStart..windowEnd (YYYY-MM-DD)?
+// Resources and undated events are evergreen, so they always qualify; recurring
+// events qualify when their next occurrence falls on or before the window end;
+// single events when their date range overlaps the window.
+export function inIssueWindow(
+  a: DeskActivity,
+  windowStart: string,
+  windowEnd: string,
+  today?: string
+): boolean {
+  if (a.type === 'resource') return true
+  if (a.repeat_rrule) {
+    const next = effectiveStart(a, today)
+    return !next || next <= windowEnd
+  }
+  if (!a.start_date) return true
+  const end = a.end_date ?? a.start_date
+  return end >= windowStart && a.start_date <= windowEnd
+}

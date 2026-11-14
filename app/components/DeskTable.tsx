@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ArrowDown,
@@ -19,6 +19,7 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
+import { addDays } from '@/lib/issue-date'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
 import { ParseNotice } from './card/ParseNotice'
 import {
@@ -30,6 +31,7 @@ import {
   matchMonthEnd,
   postGroup,
   doneGroup,
+  inIssueWindow,
   type DoneGroup,
   type PostGroup,
   type SortDir,
@@ -63,7 +65,7 @@ const addedLabel = (createdAt: string, today: string) => {
   return dayMonth(day)
 }
 
-type StageFilter = 'all' | 'next' | PostGroup | DoneGroup
+type StageFilter = 'all' | 'potential' | 'selected' | PostGroup | DoneGroup
 
 interface DeskTableProps {
   // 'triage' = held rows + capture bar + Done refining.
@@ -72,6 +74,9 @@ interface DeskTableProps {
   // 'post' = refined events tagged Post, grouped This match / Future match /
   // Recurring.
   mode?: 'triage' | 'newsletter' | 'post' | 'done'
+  // Newsletter mode: publish date of the next issue; the issue covers the
+  // following two weeks.
+  issueDate?: string
   rows: DeskActivity[]
   onOpen: (activity: DeskActivity) => void
   onAdd?: (data: CaptureDataProps) => void
@@ -85,6 +90,7 @@ interface DeskTableProps {
 
 export function DeskTable({
   mode = 'triage',
+  issueDate,
   rows,
   onOpen,
   onAdd,
@@ -101,7 +107,9 @@ export function DeskTable({
   const [sortDir, setSortDir] = useState<SortDir>(
     mode === 'triage' ? 'desc' : 'asc'
   )
-  const [stage, setStage] = useState<StageFilter>('all')
+  const [stage, setStage] = useState<StageFilter>(
+    mode === 'newsletter' && issueDate ? 'potential' : 'all'
+  )
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [query, setQuery] = useState('')
   const [onlyProblems, setOnlyProblems] = useState(false)
@@ -120,6 +128,21 @@ export function DeskTable({
   const problemCount = rows.filter((a) => needsAttention(a, today)).length
 
   const nextCount = rows.filter((a) => a.in_next_issue).length
+  const windowEnd = issueDate ? addDays(issueDate, 14) : null
+  // Potential = refined for the newsletter, happening in the issue window, and
+  // not yet selected.
+  const isPotential = useCallback(
+    (a: DeskActivity) =>
+      !a.in_next_issue &&
+      !isPastEvent(a, today) &&
+      a.status !== 'processing' &&
+      a.status !== 'failed' &&
+      (!issueDate ||
+        !windowEnd ||
+        inIssueWindow(a, issueDate, windowEnd, today)),
+    [issueDate, windowEnd, today]
+  )
+  const potentialCount = rows.filter(isPotential).length
   const monthEnd = matchMonthEnd()
   const postCounts = {
     this: rows.filter((a) => postGroup(a, monthEnd) === 'this').length,
@@ -140,7 +163,9 @@ export function DeskTable({
             if (stage === 'all') return true
             if (mode === 'post') return postGroup(a, monthEnd) === stage
             if (mode === 'done') return doneGroup(a) === stage
-            return (stage === 'next') === a.in_next_issue
+            if (stage === 'selected') return a.in_next_issue
+            if (stage === 'potential') return isPotential(a)
+            return true
           }),
           { type: typeFilter, query, onlyProblems, today }
         ),
@@ -152,6 +177,7 @@ export function DeskTable({
       stage,
       mode,
       monthEnd,
+      isPotential,
       typeFilter,
       query,
       onlyProblems,
@@ -192,32 +218,46 @@ export function DeskTable({
               {nextCount}
             </span>
             <span className="text-[11px] font-bold text-blue-700">
-              {nextCount === 1 ? 'item' : 'items'} in the next issue
+              {nextCount === 1 ? 'item' : 'items'} selected
+              {issueDate ? ` for ${issueDate}` : ''}
             </span>
             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
               <span className="h-2.5 w-2.5 rounded-sm bg-emerald-300" />
-              green = eligible to add
+              green = potential
             </span>
-            <div className="ml-auto inline-flex rounded-lg bg-white p-0.5 border border-blue-100">
-              {(
-                [
-                  ['all', 'All'],
-                  ['next', 'Next issue'],
-                ] as const
-              ).map(([key, label]) => (
+            <div className="ml-auto flex items-center gap-1.5">
+              <div className="inline-flex rounded-lg bg-white p-0.5 border border-blue-100">
+                {(
+                  [
+                    ['potential', 'Potential', potentialCount],
+                    ['selected', 'Selected', nextCount],
+                  ] as const
+                ).map(([key, label, n]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setStage(stage === key ? 'all' : key)}
+                    className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                      stage === key
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-500 hover:text-slate-900'
+                    }`}
+                  >
+                    {label} <span className="opacity-60">{n}</span>
+                  </button>
+                ))}
+              </div>
+              {stage !== 'all' && (
                 <button
-                  key={key}
                   type="button"
-                  onClick={() => setStage(key)}
-                  className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
-                    stage === key
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
+                  onClick={() => setStage('all')}
+                  title="Clear the filter and show every refined newsletter item"
+                  aria-label="Clear filter"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-blue-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-colors"
                 >
-                  {label}
+                  <X size={14} strokeWidth={3} />
                 </button>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -414,6 +454,7 @@ export function DeskTable({
                   }
                   onOpen={onOpen}
                   mode={mode}
+                  potential={isPotential(a)}
                   onDoneRefining={onDoneRefining}
                   onToggleNextIssue={onToggleNextIssue}
                   onRestore={onRestore}
@@ -462,6 +503,7 @@ function Row({
   fresh,
   onOpen,
   mode,
+  potential,
   onDoneRefining,
   onToggleNextIssue,
   onRestore,
@@ -474,6 +516,7 @@ function Row({
   fresh: boolean
   onOpen: (a: DeskActivity) => void
   mode: 'triage' | 'newsletter' | 'post' | 'done'
+  potential?: boolean
   onRestore?: (id: string) => void
   onDelete?: (id: string, type: 'event' | 'resource') => void
   onDoneRefining?: (id: string) => void
@@ -485,12 +528,7 @@ function Row({
   const failed = a.status === 'failed'
   const inNext = mode === 'newsletter' && a.in_next_issue
   // Newsletter rows that could still be added to the next issue.
-  const eligible =
-    mode === 'newsletter' &&
-    !a.in_next_issue &&
-    !isPastEvent(a, today) &&
-    !processing &&
-    !failed
+  const eligible = mode === 'newsletter' && potential
   const past = isPastEvent(a, today)
   const start = effectiveStart(a, today)
   const services = a.services ?? []

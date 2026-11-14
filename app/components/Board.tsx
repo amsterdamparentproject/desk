@@ -940,6 +940,7 @@ export default function Board({
       ) : activeTab === 'newsletter' ? (
         <DeskTable
           mode="newsletter"
+          issueDate={publishDate}
           rows={activities.filter(
             (e) =>
               e.services.includes('newsletter') &&
