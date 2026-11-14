@@ -811,7 +811,7 @@ export function ActivityDrawer({
                       ))}
                     </div>
                   </Field>
-                  <Field label="Repeat ends (until date)">
+                  <Field label="Last repeat (inclusive)">
                     <DateInput
                       value={repeatUntil}
                       onChange={setRepeatUntil}
@@ -824,7 +824,7 @@ export function ActivityDrawer({
               {repeatFrequency &&
                 repeatFrequency !== 'weekly' &&
                 repeatFrequency !== 'biweekly' && (
-                  <Field label="Repeat ends (until date)">
+                  <Field label="Last repeat (inclusive)">
                     <DateInput
                       value={repeatUntil}
                       onChange={setRepeatUntil}
