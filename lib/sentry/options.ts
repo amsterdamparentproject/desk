@@ -1,4 +1,4 @@
-import { DENY_URLS, IGNORE_ERRORS, scrubBreadcrumb, scrubEvent } from "./scrub";
+import { DENY_URLS, IGNORE_ERRORS, scrubBreadcrumb, scrubEvent } from './scrub'
 
 /**
  * Options shared by every Sentry.init (client, server, edge) in every app.
@@ -25,4 +25,4 @@ export const sharedSentryOptions = {
   denyUrls: DENY_URLS,
   beforeSend: scrubEvent,
   beforeBreadcrumb: scrubBreadcrumb,
-};
+}

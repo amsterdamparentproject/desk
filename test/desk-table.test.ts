@@ -191,9 +191,9 @@ describe('inIssueWindow', () => {
   const [from, to] = ['2026-11-16', '2026-11-30']
   const w = (o: Partial<DeskActivity>) =>
     inIssueWindow(row(o), from, to, '2026-11-14')
-  it('keeps resources and undated events', () => {
+  it('keeps resources but not undated events', () => {
     expect(w({ type: 'resource' })).toBe(true)
-    expect(w({ start_date: undefined })).toBe(true)
+    expect(w({ start_date: undefined })).toBe(false)
   })
   it('matches single events overlapping the window', () => {
     expect(w({ start_date: '2026-11-20' })).toBe(true)
