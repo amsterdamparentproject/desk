@@ -313,19 +313,17 @@ describe('ActivityDrawer', () => {
     await user.click(await screen.findByText('Test Event'))
 
     await user.click(await screen.findByRole('radio', { name: 'Weekly' }))
-    await user.click(await screen.findByRole('checkbox', { name: 'Mon' }))
-    // Weekday pills are saved by the next field's blur, like the rest of the drawer.
-    const lastRepeat = (await screen.findByText('Last repeat (inclusive)'))
-      .parentElement!.querySelector('input')!
-    fireEvent.blur(lastRepeat)
+    // Mon is the default (the fixture starts on a Monday), so tap Wed: only
+    // saving on tap can persist it, there is no blur to wait for.
+    await user.click(await screen.findByRole('checkbox', { name: 'Wed' }))
 
     await waitFor(() =>
-      expect(saveActivity).toHaveBeenCalledWith(
+      expect(saveActivity).toHaveBeenLastCalledWith(
         'act-1',
         'event',
         expect.objectContaining({
           repeat_frequency: 'weekly',
-          repeat_rrule: expect.stringMatching(/FREQ=WEEKLY.*BYDAY=MO/),
+          repeat_rrule: expect.stringMatching(/FREQ=WEEKLY.*BYDAY=.*WE/),
         })
       )
     )

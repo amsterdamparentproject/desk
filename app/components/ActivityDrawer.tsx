@@ -803,7 +803,10 @@ export function ActivityDrawer({
                           index={i}
                           size="sm"
                           active={repeatDays.includes(abbr)}
-                          onClick={() => toggleRepeatDay(abbr)}
+                          onClick={() => {
+                            toggleRepeatDay(abbr)
+                            setTimeout(handleBlurSave, 0)
+                          }}
                         >
                           {label}
                         </Pill>
