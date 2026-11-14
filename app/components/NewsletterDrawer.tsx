@@ -5,8 +5,7 @@ import { X, Check, Newspaper, Archive } from 'lucide-react'
 import { DeskActivity } from '../types/activity'
 import { parseRrule, computeNextDate } from '../utils/rrule'
 import {
-  distinctDates,
-  formatDayTimes,
+  formatNewsletterDates,
   hasOccurrences,
   nextOccurrence,
 } from '@/lib/occurrences'
@@ -117,16 +116,7 @@ function getDateDisplay(
     const inWindow = all.filter(
       (o) => o.date >= windowStart && o.date <= windowEnd
     )
-    const shown = inWindow.length > 0 ? inWindow : all
-    return distinctDates(shown)
-      .map((date) => {
-        // Hyphen, like single-date events.
-        const times = formatDayTimes(
-          shown.filter((o) => o.date === date)
-        ).replaceAll('–', '-')
-        return fmtFull(parseLocal(date)) + (times ? ` @ ${times}` : '')
-      })
-      .join(', ')
+    return formatNewsletterDates(inWindow.length > 0 ? inWindow : all)
   }
 
   const sd = parseLocal(effectiveStart)
