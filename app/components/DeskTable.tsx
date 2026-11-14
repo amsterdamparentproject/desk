@@ -63,7 +63,7 @@ const addedLabel = (createdAt: string, today: string) => {
   return dayMonth(day)
 }
 
-type StageFilter = 'all' | 'next' | 'candidates' | PostGroup | DoneGroup
+type StageFilter = 'all' | 'next' | PostGroup | DoneGroup
 
 interface DeskTableProps {
   // 'triage' = held rows + capture bar + Done refining.
@@ -194,12 +194,15 @@ export function DeskTable({
             <span className="text-[11px] font-bold text-blue-700">
               {nextCount === 1 ? 'item' : 'items'} in the next issue
             </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+              <span className="h-2.5 w-2.5 rounded-sm bg-emerald-300" />
+              green = eligible to add
+            </span>
             <div className="ml-auto inline-flex rounded-lg bg-white p-0.5 border border-blue-100">
               {(
                 [
                   ['all', 'All'],
                   ['next', 'Next issue'],
-                  ['candidates', 'Candidates'],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -481,6 +484,13 @@ function Row({
   const processing = a.status === 'processing'
   const failed = a.status === 'failed'
   const inNext = mode === 'newsletter' && a.in_next_issue
+  // Newsletter rows that could still be added to the next issue.
+  const eligible =
+    mode === 'newsletter' &&
+    !a.in_next_issue &&
+    !isPastEvent(a, today) &&
+    !processing &&
+    !failed
   const past = isPastEvent(a, today)
   const start = effectiveStart(a, today)
   const services = a.services ?? []
@@ -505,7 +515,9 @@ function Row({
           ? 'border-l-4 border-l-red-400'
           : inNext
             ? 'border-l-4 border-l-blue-500 bg-blue-50/70'
-            : 'border-l-4 border-l-transparent'
+            : eligible
+              ? 'border-l-4 border-l-emerald-400 bg-emerald-50/60'
+              : 'border-l-4 border-l-transparent'
       } ${fresh ? 'bg-amber-50/70' : ''}`}
     >
       {/* Thumbnail */}
