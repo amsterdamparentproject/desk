@@ -75,6 +75,10 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 - `logout` (`app/actions/auth.ts`) clears the cookie and redirects to `/login`; wired up as a "Log out" button in `DeskNav`.
 - `proxy.ts` (Next 16's replacement for `middleware.ts`) gates Server Actions: any POST carrying a `next-action` header gets a 401 unless the `app_desk_session` cookie matches `DESK_PASSWORD`. Without it, only page loads would be protected, since Server Actions are independently invocable POST endpoints. API routes (no `next-action` header) do their own auth (`verifyDeskSession` or the n8n webhook secret). The old `?token=` magic-link flow is gone, replaced by the login page.
 
+### Post feed (`app/api/post/activities/route.ts`)
+
+`GET /api/post/activities?from=&to=[&member1_days=&member2_days=&available_only=true]` feeds Postpartum Post's match page. Auth is a bearer token, `POST_DESK_SECRET` (`lib/auth/post-auth.ts`). Desk owns eligibility (event, `refined`, `postpartum_post`, status not new/processing/failed/archived, not past) and `lib/post-feed.ts` expands recurring and multi-date events into one row per occurrence (`date`, `weekday`, times, `both_available`). Locations are included. Post caches the response for ~5 minutes and serves the last good copy if Desk is down.
+
 ### Database schema source files
 
 `lib/supabase/` contains the canonical schema definitions and migrations. Schema changes go in `lib/supabase/migrations/` as `YYYYMMDD_description.sql` files and are run manually in the Supabase SQL editor. Update the relevant `.sql` definition file alongside any migration.
@@ -89,6 +93,7 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 | `DESK_HMAC_KEY`                 | Key for HMAC-signed Desk<->n8n requests (`lib/auth/`); same value as the n8n Crypto credential |
 | `N8N_DESK_WEBHOOK_URL`          | Production n8n webhook                                                                         |
 | `TEST_N8N_DESK_WEBHOOK_URL`     | Dev/test n8n webhook (workflow must be listening)                                              |
+| `POST_DESK_SECRET`              | Bearer token Postpartum Post sends to `/api/post/activities`                  |
 | `DESK_PASSWORD`                 | Shared login password; also the value stored in the `app_desk_session` cookie                  |
 
 ### Multiple dates per event
