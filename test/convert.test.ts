@@ -14,7 +14,6 @@ const event = {
   end_time: '16:00:00',
   repeat_rrule: 'FREQ=WEEKLY;BYDAY=FR',
   tagline: 'x',
-  calendar_skip: false,
 }
 
 describe('convertRow', () => {
@@ -22,7 +21,6 @@ describe('convertRow', () => {
     const { insert, patch } = convertRow(event, 'resource', '2026-11-13')
     expect(insert.start_date).toBeUndefined()
     expect(insert.tagline).toBeUndefined()
-    expect(insert.calendar_skip).toBeUndefined()
     expect(insert.title).toBe('Book on Lap')
     expect(patch).not.toHaveProperty('list_id')
     expect(patch.services).toEqual(['newsletter'])

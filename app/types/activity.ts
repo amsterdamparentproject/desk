@@ -112,9 +112,6 @@ export interface EventActivity extends BaseActivity {
   repeat_frequency: RepeatFrequency | null
   repeat_next_date: string | null
 
-  // Event-specific calendar tracking
-  calendar_skip: boolean
-  calendar_sent: boolean
 }
 
 // Purely uses BaseActivity fields right now (e.g., title, description, url, organization)
@@ -156,8 +153,6 @@ export type DeskActivity = BaseActivity & {
   repeat_rrule?: string | null
   repeat_frequency?: RepeatFrequency | null
   repeat_next_date?: string | null
-  calendar_skip?: boolean
-  calendar_sent?: boolean
 }
 
 /**
@@ -209,8 +204,6 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   repeat_rrule: '',
   repeat_frequency: null,
   repeat_next_date: '',
-  calendar_skip: false,
-  calendar_sent: false,
 }
 
 export const createNewActivity = (

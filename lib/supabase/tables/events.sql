@@ -43,12 +43,10 @@ CREATE TABLE activities.events (
   -- APP Website
   tagline text,
 
-  -- Newsletter & Calendar Tracking
+  -- Newsletter tracking
   newsletter_description text,
   newsletter_last date,
   newsletter_highlight boolean DEFAULT false,
-  calendar_skip boolean DEFAULT false,
-  calendar_sent boolean DEFAULT false,
 
   -- Postpartum Post
   postpartum_post boolean NOT NULL DEFAULT true,

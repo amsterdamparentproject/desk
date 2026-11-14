@@ -182,8 +182,6 @@ const EVENT_FIELDS = [
   'repeat_rrule',
   'repeat_frequency',
   'repeat_next_date',
-  'calendar_skip',
-  'calendar_sent',
 ] as const satisfies readonly (keyof WritableEvent)[]
 
 const RESOURCE_FIELDS = [

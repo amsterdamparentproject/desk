@@ -69,8 +69,6 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
     file_url: null,
     repeat_frequency: null,
     repeat_next_date: null,
-    calendar_skip: false,
-    calendar_sent: false,
     location: null,
     neighborhood: null,
     area: null,

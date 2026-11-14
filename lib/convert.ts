@@ -20,8 +20,6 @@ const EVENT_ONLY = [
   'repeat_frequency',
   'repeat_next_date',
   'tagline',
-  'calendar_skip',
-  'calendar_sent',
 ] as const
 
 const asString = (v: unknown): string | null =>
