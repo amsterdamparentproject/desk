@@ -170,7 +170,8 @@ export function DeskTable({
           { type: typeFilter, query, onlyProblems, today }
         ),
         sortKey,
-        sortDir
+        sortDir,
+        mode === 'newsletter' ? issueDate : undefined
       ),
     [
       rows,
@@ -184,6 +185,7 @@ export function DeskTable({
       today,
       sortKey,
       sortDir,
+      issueDate,
     ]
   )
 
@@ -220,10 +222,6 @@ export function DeskTable({
             <span className="text-[11px] font-bold text-blue-700">
               {nextCount === 1 ? 'item' : 'items'} selected
               {issueDate ? ` for ${issueDate}` : ''}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-              <span className="h-2.5 w-2.5 rounded-sm bg-emerald-300" />
-              green = potential
             </span>
             <div className="ml-auto flex items-center gap-1.5">
               <div className="inline-flex rounded-lg bg-white p-0.5 border border-blue-100">
@@ -455,6 +453,7 @@ export function DeskTable({
                   onOpen={onOpen}
                   mode={mode}
                   potential={isPotential(a)}
+                  issueDate={issueDate}
                   onDoneRefining={onDoneRefining}
                   onToggleNextIssue={onToggleNextIssue}
                   onRestore={onRestore}
@@ -504,6 +503,7 @@ function Row({
   onOpen,
   mode,
   potential,
+  issueDate,
   onDoneRefining,
   onToggleNextIssue,
   onRestore,
@@ -517,6 +517,7 @@ function Row({
   onOpen: (a: DeskActivity) => void
   mode: 'triage' | 'newsletter' | 'post' | 'done'
   potential?: boolean
+  issueDate?: string
   onRestore?: (id: string) => void
   onDelete?: (id: string, type: 'event' | 'resource') => void
   onDoneRefining?: (id: string) => void
@@ -530,7 +531,11 @@ function Row({
   // Newsletter rows that could still be added to the next issue.
   const eligible = mode === 'newsletter' && potential
   const past = isPastEvent(a, today)
-  const start = effectiveStart(a, today)
+  const start = effectiveStart(
+    a,
+    today,
+    mode === 'newsletter' ? issueDate : undefined
+  )
   const services = a.services ?? []
   const stop = (e: React.MouseEvent) => e.stopPropagation()
   const group = doneGroup(a)

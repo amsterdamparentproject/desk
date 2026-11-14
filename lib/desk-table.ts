@@ -2,6 +2,7 @@
 import type { DeskActivity } from '@/app/types/activity'
 import type { ListId } from '@/app/types/list'
 import { computeNextDate, parseRrule } from '@/app/utils/rrule'
+import { addDays } from '@/lib/issue-date'
 
 // The Triage table shows everything still in the inbox: captured, parsed,
 // waiting until its date is relevant.
@@ -30,14 +31,35 @@ export function isPastEvent(
   return !!last && last < today
 }
 
+// First occurrence of a recurring series on or after `from` (YYYY-MM-DD), or
+// null if the series has ended or can't be computed. Biweekly steps in 14-day
+// strides from the series start so it keeps its phase.
+function occurrenceOnOrAfter(
+  rrule: string,
+  startDate: string | null | undefined,
+  from: string
+): string | null {
+  const { frequency, days, untilDate } = parseRrule(rrule)
+  if (!frequency) return null
+  if (frequency === 'biweekly' && startDate) {
+    let current = startDate
+    while (current < from) current = addDays(current, 14)
+    return untilDate && current > untilDate ? null : current
+  }
+  return computeNextDate(frequency, days, untilDate, addDays(from, -1))
+}
+
 // The date a row sorts and displays by: the next occurrence for recurring
-// events, otherwise the start date. Resources have none.
+// events, otherwise the start date. Resources have none. When `from` is a
+// future date (e.g. the next issue's publish date), recurring events show their
+// first occurrence on or after it instead of the next one from today.
 export function effectiveStart(
   a: Pick<
     DeskActivity,
     'type' | 'start_date' | 'repeat_next_date' | 'repeat_rrule'
   >,
-  today?: string
+  today?: string,
+  from?: string
 ): string | null {
   if (a.type === 'resource') return null
   const stored = a.repeat_next_date?.slice(0, 10) || null
@@ -45,6 +67,12 @@ export function effectiveStart(
     // The stored next date can be missing or stale (the refresh cron hasn't
     // run yet), so recompute rather than fall back to the original date.
     const ref = today ?? new Date().toLocaleDateString('en-CA')
+    if (from && from > ref) {
+      if (a.start_date && a.start_date >= from) return a.start_date
+      if (stored && stored >= from) return stored
+      const occ = occurrenceOnOrAfter(a.repeat_rrule, a.start_date, from)
+      if (occ) return occ
+    }
     if (stored && stored >= ref) return stored
     const { frequency, days, untilDate } = parseRrule(a.repeat_rrule)
     const next = computeNextDate(frequency, days, untilDate, a.start_date)
@@ -56,7 +84,8 @@ export function effectiveStart(
 export function sortRows(
   rows: DeskActivity[],
   key: SortKey,
-  dir: SortDir
+  dir: SortDir,
+  from?: string
 ): DeskActivity[] {
   const sign = dir === 'asc' ? 1 : -1
   return [...rows].sort((a, b) => {
@@ -69,8 +98,8 @@ export function sortRows(
       )
     }
     if (key === 'start') {
-      const sa = effectiveStart(a)
-      const sb = effectiveStart(b)
+      const sa = effectiveStart(a, undefined, from)
+      const sb = effectiveStart(b, undefined, from)
       // Rows without a date (resources) always sit at the bottom, whatever the
       // direction, so sorting by date never buries the dated rows.
       if (!sa && !sb) return a.created_at < b.created_at ? 1 : -1
@@ -181,13 +210,8 @@ export function inIssueWindow(
 ): boolean {
   if (a.type === 'resource') return true
   if (a.repeat_rrule) {
-    const next = effectiveStart(a, today)
-    if (!next || next > windowEnd) return false
-    if (next >= windowStart) return true
-    // The next occurrence comes before the window opens; weekly-or-faster
-    // series still recur inside it, monthly ones may not.
-    const { frequency } = parseRrule(a.repeat_rrule)
-    return ['daily', 'weekly', 'biweekly'].includes(frequency ?? '')
+    const next = effectiveStart(a, today, windowStart)
+    return !!next && next >= windowStart && next <= windowEnd
   }
   if (!a.start_date) return false
   const end = a.end_date ?? a.start_date

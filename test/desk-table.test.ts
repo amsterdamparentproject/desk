@@ -219,6 +219,26 @@ describe('inIssueWindow', () => {
   })
 })
 
+describe('effectiveStart with an issue date', () => {
+  it('shows the first occurrence on or after the issue date', () => {
+    const r = row({
+      start_date: '2026-01-05',
+      repeat_rrule: 'FREQ=WEEKLY;BYDAY=MO',
+      repeat_next_date: '2026-11-16',
+    })
+    expect(effectiveStart(r, '2026-11-14', '2026-11-18')).toBe('2026-11-23')
+    expect(effectiveStart(r, '2026-11-14', '2026-11-16')).toBe('2026-11-16')
+  })
+  it('keeps biweekly phase', () => {
+    const r = row({
+      start_date: '2026-01-14',
+      repeat_rrule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=WE',
+      repeat_next_date: '2026-11-18',
+    })
+    expect(effectiveStart(r, '2026-11-14', '2026-11-19')).toBe('2026-12-02')
+  })
+})
+
 describe('isPostEligible', () => {
   it('accepts refined events with the Post service, not held ones', () => {
     expect(isPostEligible(row({}))).toBe(false)
