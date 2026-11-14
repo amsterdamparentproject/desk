@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { addDays } from '@/lib/issue-date'
 import { GooPill, LavaSpinner } from './Lava'
+import { AREA_FIRST, AREA_LAST, AREA_PENULTIMATE } from './NewsletterDrawer'
 import { formatOccurrenceDates } from '@/lib/occurrences'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
 import { ParseNotice } from './card/ParseNotice'
@@ -190,6 +191,25 @@ export function DeskTable({
       issueDate,
     ]
   )
+
+  // "Selected" on the Newsletter tab mirrors the issue itself: rows split by
+  // area, highlights first, Everywhere and Online last. The chosen sort still
+  // orders the rows inside each area.
+  const groups = useMemo(() => {
+    if (mode !== 'newsletter' || stage !== 'selected') return null
+    const byArea: Record<string, typeof visible> = { [AREA_FIRST]: [] }
+    for (const a of visible) {
+      const area = a.area || 'Other'
+      const key = a.newsletter_highlight ? AREA_FIRST : area
+      ;(byArea[key] ??= []).push(a)
+    }
+    const middle = Object.keys(byArea).filter(
+      (k) => k !== AREA_FIRST && k !== AREA_PENULTIMATE && k !== AREA_LAST
+    )
+    return [AREA_FIRST, ...middle, AREA_PENULTIMATE, AREA_LAST]
+      .filter((k) => byArea[k]?.length)
+      .map((k) => [k, byArea[k]] as const)
+  }, [mode, stage, visible])
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) {
@@ -441,6 +461,47 @@ export function DeskTable({
                       : 'Nothing held yet. Capture something above 🌬️'
                 : 'No rows match these filters'}
             </div>
+          ) : groups ? (
+            <div className="space-y-4 p-2">
+              {groups.map(([area, items], gi) => (
+                <section key={area}>
+                  <div className="px-1 pb-2">
+                    <GooPill
+                      label={area}
+                      count={items.length}
+                      color={area === AREA_FIRST ? '#ffbf00' : '#449dd1'}
+                      blob="#e32dd4"
+                      tilt={gi % 2 === 0 ? -1.5 : 1.2}
+                    />
+                  </div>
+                  <ul className="space-y-2">
+                    {items.map((a) => (
+                      <Row
+                        key={a.id}
+                        activity={a}
+                        today={today}
+                        fresh={
+                          now !== null &&
+                          now - new Date(a.created_at).getTime() <
+                            10 * 60 * 1000
+                        }
+                        onOpen={onOpen}
+                        mode={mode}
+                        potential={isPotential(a)}
+                        selectedView={stage === 'selected'}
+                        issueDate={issueDate}
+                        onDoneRefining={onDoneRefining}
+                        onToggleNextIssue={onToggleNextIssue}
+                        onRestore={onRestore}
+                        onDelete={onDelete}
+                        onArchive={onArchive}
+                        onToggleService={onToggleService}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
           ) : (
             <ul className="space-y-2 p-2">
               {visible.map((a) => (
@@ -455,6 +516,7 @@ export function DeskTable({
                   onOpen={onOpen}
                   mode={mode}
                   potential={isPotential(a)}
+                  selectedView={stage === 'selected'}
                   issueDate={issueDate}
                   onDoneRefining={onDoneRefining}
                   onToggleNextIssue={onToggleNextIssue}
@@ -505,6 +567,7 @@ function Row({
   onOpen,
   mode,
   potential,
+  selectedView,
   issueDate,
   onDoneRefining,
   onToggleNextIssue,
@@ -519,6 +582,8 @@ function Row({
   onOpen: (a: DeskActivity) => void
   mode: 'triage' | 'newsletter' | 'post' | 'done'
   potential?: boolean
+  /** Every row is selected here, so skip the per-row selected outline. */
+  selectedView?: boolean
   issueDate?: string
   onRestore?: (id: string) => void
   onDelete?: (id: string, type: 'event' | 'resource') => void
@@ -562,8 +627,8 @@ function Row({
           ? 'border-red-500 shadow-[0_0_22px_rgba(255,59,79,0.2)]'
           : processing
             ? 'border-app-gold shadow-[0_0_22px_rgba(255,191,0,0.2)]'
-            : inNext
-              ? 'border-blue-400 bg-blue-50/70'
+            : inNext && !selectedView
+              ? 'border-app-gold shadow-[0_0_18px_rgba(255,191,0,0.25)]'
               : 'border-slate-200'
       } ${fresh && !failed && !processing ? 'bg-amber-50/70' : ''}`}
     >
@@ -574,16 +639,18 @@ function Row({
           <img
             src={a.file_url}
             alt=""
-            className={`h-10 w-10 rounded-md object-cover bg-slate-100 ${eligible ? 'ring-2 ring-green-400' : ''}`}
+            className={`h-10 w-10 rounded-md object-cover bg-slate-100 ${inNext ? 'ring-2 ring-app-gold' : eligible ? 'ring-2 ring-green-400' : ''}`}
           />
         ) : (
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-xl text-ink ${
-              eligible
-                ? 'bg-green-400 shadow-[0_0_14px_rgba(74,222,128,0.5)]'
-                : a.type === 'event'
-                  ? 'bg-blue-400 shadow-[0_0_14px_rgba(68,157,209,0.45)]'
-                  : 'bg-violet-500 shadow-[0_0_14px_rgba(227,45,212,0.45)]'
+              inNext
+                ? 'bg-app-gold shadow-[0_0_14px_rgba(255,191,0,0.55)]'
+                : eligible
+                  ? 'bg-green-400 shadow-[0_0_14px_rgba(74,222,128,0.5)]'
+                  : a.type === 'event'
+                    ? 'bg-blue-400 shadow-[0_0_14px_rgba(68,157,209,0.45)]'
+                    : 'bg-violet-500 shadow-[0_0_14px_rgba(227,45,212,0.45)]'
             }`}
             title={`${a.type === 'event' ? 'Event' : 'Resource'}${eligible ? ' — can go in the next issue' : ''}`}
           >
@@ -610,7 +677,7 @@ function Row({
             {a.title || '(untitled)'}
           </span>
           {inNext && (
-            <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-black uppercase text-white">
+            <span className="shrink-0 rounded-full bg-app-gold px-1.5 py-0.5 text-[9px] font-black uppercase text-ink">
               Next issue
             </span>
           )}

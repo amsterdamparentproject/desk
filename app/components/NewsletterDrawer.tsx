@@ -185,9 +185,9 @@ function escHtml(s: string): string {
 
 // ─── Grouping helper ──────────────────────────────────────────────────────────
 
-const AREA_FIRST = 'APP & Friends'
-const AREA_PENULTIMATE = 'Everywhere'
-const AREA_LAST = 'Online'
+export const AREA_FIRST = 'APP & Friends'
+export const AREA_PENULTIMATE = 'Everywhere'
+export const AREA_LAST = 'Online'
 
 function groupAndOrder(
   activities: DeskActivity[],
