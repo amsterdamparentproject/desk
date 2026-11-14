@@ -2,7 +2,7 @@ import { CaptureDataProps, DeskActivity, Service } from './activity'
 import { ListId } from './list'
 
 export type TriageStatus =
-  'new' | 'processing' | 'processed' | 'accepted' | 'published' | 'archived'
+  'new' | 'processing' | 'processed' | 'failed' | 'published' | 'archived'
 
 // Base card component props
 export interface CardProps {
@@ -14,7 +14,7 @@ export interface CardProps {
   onToggleService?: (id: string, service: Service, enabled: boolean) => void
   showApproveButton?: boolean
   // Post-tab-only footer action: drops 'postpartum_post' from services via
-  // onToggleService (moving to 'gone' if nothing else remains, status
+  // onToggleService (moving to 'done' if nothing else remains, status
   // untouched) instead of the generic Archive action, which would also
   // reject the item from Newsletter — not what "not in Post" means.
   showNotInPost?: boolean

@@ -19,7 +19,6 @@ import {
   X,
 } from 'lucide-react'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
-import type { ListId } from '../types/list'
 import { ParseNotice } from './card/ParseNotice'
 import {
   filterRows,
@@ -63,13 +62,13 @@ type StageFilter = 'all' | 'next' | 'candidates'
 interface DeskTableProps {
   // 'triage' = held rows + capture bar + Done refining.
   // 'newsletter' = refined rows tagged Newsletter, with "Next newsletter"
-  // (list_id next_newsletter) highlighted and an Add to next / Remove action.
+  // (in_next_issue) highlighted and an Add to next / Remove action.
   mode?: 'triage' | 'newsletter'
   rows: DeskActivity[]
   onOpen: (activity: DeskActivity) => void
   onAdd?: (data: CaptureDataProps) => void
   onDoneRefining?: (id: string) => void
-  onMoveList?: (id: string, target: ListId) => void
+  onToggleNextIssue?: (id: string, inNext: boolean) => void
   onArchive: (id: string) => void
   onToggleService: (id: string, service: Service, enabled: boolean) => void
 }
@@ -80,7 +79,7 @@ export function DeskTable({
   onOpen,
   onAdd,
   onDoneRefining,
-  onMoveList,
+  onToggleNextIssue,
   onArchive,
   onToggleService,
 }: DeskTableProps) {
@@ -108,16 +107,14 @@ export function DeskTable({
   const today = todayInAmsterdam()
   const problemCount = rows.filter((a) => needsAttention(a, today)).length
 
-  const nextCount = rows.filter((a) => a.list_id === 'next_newsletter').length
+  const nextCount = rows.filter((a) => a.in_next_issue).length
 
   const visible = useMemo(
     () =>
       sortRows(
         filterRows(
           rows.filter(
-            (a) =>
-              stage === 'all' ||
-              (stage === 'next') === (a.list_id === 'next_newsletter')
+            (a) => stage === 'all' || (stage === 'next') === a.in_next_issue
           ),
           { type: typeFilter, query, onlyProblems, today }
         ),
@@ -307,7 +304,7 @@ export function DeskTable({
                   onOpen={onOpen}
                   mode={mode}
                   onDoneRefining={onDoneRefining}
-                  onMoveList={onMoveList}
+                  onToggleNextIssue={onToggleNextIssue}
                   onArchive={onArchive}
                   onToggleService={onToggleService}
                 />
@@ -353,7 +350,7 @@ function Row({
   onOpen,
   mode,
   onDoneRefining,
-  onMoveList,
+  onToggleNextIssue,
   onArchive,
   onToggleService,
 }: {
@@ -363,13 +360,13 @@ function Row({
   onOpen: (a: DeskActivity) => void
   mode: 'triage' | 'newsletter'
   onDoneRefining?: (id: string) => void
-  onMoveList?: (id: string, target: ListId) => void
+  onToggleNextIssue?: (id: string, inNext: boolean) => void
   onArchive: (id: string) => void
   onToggleService: (id: string, service: Service, enabled: boolean) => void
 }) {
   const processing = a.status === 'processing'
-  const failed = a.list_id === 'error'
-  const inNext = mode === 'newsletter' && a.list_id === 'next_newsletter'
+  const failed = a.status === 'failed'
+  const inNext = mode === 'newsletter' && a.in_next_issue
   const past = isPastEvent(a, today)
   const start = effectiveStart(a, today)
   const services = a.services ?? []
@@ -530,21 +527,12 @@ function Row({
         onClick={stop}
       >
         {mode === 'newsletter' &&
-          onMoveList &&
+          onToggleNextIssue &&
           !processing &&
           (inNext || !past) && (
             <button
               type="button"
-              onClick={() =>
-                onMoveList(
-                  a.id,
-                  inNext
-                    ? a.type === 'event'
-                      ? 'upcoming_events'
-                      : 'new_resources'
-                    : 'next_newsletter'
-                )
-              }
+              onClick={() => onToggleNextIssue(a.id, !inNext)}
               title={
                 inNext
                   ? 'Take out of the next newsletter'
@@ -650,7 +638,7 @@ function CaptureBar({ onAdd }: { onAdd: (data: CaptureDataProps) => void }) {
   const canSubmit = !!description.trim() || !!file
   const submit = () => {
     if (!canSubmit) return
-    onAdd({ description, file, list_id: 'ideas', use_ai: useAi, type })
+    onAdd({ description, file, list_id: 'inbox', use_ai: useAi, type })
     setDescription('')
     setFile(null)
     if (fileRef.current) fileRef.current.value = ''

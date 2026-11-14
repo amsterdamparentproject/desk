@@ -2,7 +2,7 @@
  * Derives the next newsletter publish date from activity data.
  *
  * Rules:
- * - Only archived records are considered — cards staged in next_newsletter also
+ * - Only archived records are considered — cards flagged in_next_issue also
  *   carry newsletter_last (set when they were moved there) and must not inflate
  *   the result before the issue has actually been sent.
  * - The computed date is always in the future: if max(newsletter_last) + 14

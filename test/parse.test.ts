@@ -27,7 +27,7 @@ describe('validateParsed', () => {
         repeat_rrule: 'FREQ=WEEKLY;BYDAY=FR',
         age_range: 'N/A',
         file_url: 'https://example.com/hallucinated.png',
-        list_id: 'gone',
+        list_id: 'done',
         status: 'published',
         services: [],
       },
@@ -180,12 +180,8 @@ describe('childActivityId', () => {
 })
 
 describe('failurePatch / staleCutoffIso', () => {
-  it('moves fresh cards to Error but never yanks promoted cards back', () => {
-    expect(failurePatch('ideas')).toEqual({ list_id: 'error', status: 'new' })
-    expect(failurePatch('error')).toEqual({ list_id: 'error', status: 'new' })
-    expect(failurePatch('refine')).toEqual({ status: 'processed' })
-    expect(failurePatch('upcoming_events')).toEqual({ status: 'accepted' })
-    expect(failurePatch('gone')).toEqual({})
+  it('only marks the card failed and never changes its stage', () => {
+    expect(failurePatch()).toEqual({ status: 'failed' })
   })
 
   it('computes the stuck cutoff', () => {

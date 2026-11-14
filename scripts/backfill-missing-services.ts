@@ -6,11 +6,10 @@
  * accepted and sitting in Upcoming.
  *
  * Scope:
- *   - events: every list_id except 'gone' (Capture/Review/Refine included,
- *     not just Upcoming/Next newsletter) + services = '{}' + start_date >= today
- *   - resources: every list_id except 'gone' + services = '{}' — no date
+ *   - events: every list_id except 'done' (Inbox and Refined) + services = '{}' + start_date >= today
+ *   - resources: every list_id except 'done' + services = '{}' — no date
  *     filter, since resources have no start_date column
- *   - 'gone' is excluded on purpose — those items already exited the
+ *   - 'done' is excluded on purpose — those items already exited the
  *     pipeline (rejected or aged out) and shouldn't be reactivated by this
  *
  * Sets:
@@ -42,21 +41,12 @@ const supabase = createClient(
   { db: { schema: 'activities' } }
 )
 
-// Every list_id except 'gone' — the unified resting place for anything that
+// Every list_id except 'done' — the unified resting place for anything that
 // has exited the active pipeline (rejected at triage, dropped from an
 // issue, or published). Not every list_id applies to both tables (e.g.
 // resources never use 'upcoming_events'), which is harmless here — the
 // filter just won't match rows that can't exist with that combination.
-const NON_GONE_LISTS = [
-  'ideas',
-  'capture',
-  'review',
-  'error',
-  'refine',
-  'upcoming_events',
-  'new_resources',
-  'next_newsletter',
-]
+const NON_DONE_LISTS = ['inbox', 'refined']
 
 async function backfillEvents(today: string) {
   console.log(`--- events (start_date >= ${today}) ---`)
@@ -65,7 +55,7 @@ async function backfillEvents(today: string) {
     .from('events')
     .select('id, title, start_date, list_id, status')
     .filter('services', 'eq', '{}')
-    .in('list_id', NON_GONE_LISTS)
+    .in('list_id', NON_DONE_LISTS)
     .gte('start_date', today)
     .order('start_date', { ascending: true })
 
@@ -120,7 +110,7 @@ async function backfillResources() {
     .from('resources')
     .select('id, title, list_id, status')
     .filter('services', 'eq', '{}')
-    .in('list_id', NON_GONE_LISTS)
+    .in('list_id', NON_DONE_LISTS)
     .order('title', { ascending: true })
 
   if (error) {

@@ -46,7 +46,8 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
     id: 'act-1',
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-01T00:00:00Z',
-    list_id: 'review',
+    list_id: 'inbox',
+    in_next_issue: false,
     status: 'processed',
     source: 'app_desk',
     title: 'Test Event',
@@ -121,7 +122,7 @@ describe('capture via AI', () => {
       expect(createActivity).toHaveBeenCalledWith(
         expect.any(String),
         type,
-        expect.objectContaining({ list_id: 'ideas', status: 'processing' })
+        expect.objectContaining({ list_id: 'inbox', status: 'processing' })
       )
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(
@@ -186,7 +187,7 @@ describe('capture via AI', () => {
     expect(createActivity).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ list_id: 'ideas', status: 'processing' })
+      expect.objectContaining({ list_id: 'inbox', status: 'processing' })
     )
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -218,7 +219,7 @@ describe('card actions', () => {
 })
 
 describe('desk table', () => {
-  it('moves a held row with services to upcoming events on Done refining', async () => {
+  it('moves an inbox row with services to Refined on Done refining', async () => {
     const user = userEvent.setup()
     render(
       <Board
@@ -236,20 +237,25 @@ describe('desk table', () => {
         'act-1',
         'event',
         expect.objectContaining({
-          list_id: 'upcoming_events',
-          status: 'accepted',
+          list_id: 'refined',
+          status: 'processed',
         })
       )
     )
   })
 
-  it('shows refine, review and error rows in one table', async () => {
+  it('shows inbox and failed rows in the triage table, not refined rows', async () => {
     render(
       <Board
         initialActivities={[
-          activity({ id: 'a', title: 'Alpha', list_id: 'refine' }),
-          activity({ id: 'b', title: 'Bravo', list_id: 'error' }),
-          activity({ id: 'c', title: 'Charlie', list_id: 'next_newsletter' }),
+          activity({ id: 'a', title: 'Alpha', list_id: 'inbox' }),
+          activity({
+            id: 'b',
+            title: 'Bravo',
+            list_id: 'inbox',
+            status: 'failed',
+          }),
+          activity({ id: 'c', title: 'Charlie', list_id: 'refined' }),
         ]}
       />
     )

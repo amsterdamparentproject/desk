@@ -13,7 +13,11 @@ import { parseRrule, computeNextDate } from '@/app/utils/rrule'
 import { postDesk } from '@/lib/PostToWebhook'
 import { geocodeAddress } from '@/app/utils/geocode'
 import { safeFileName } from '@/lib/parse/files'
-import { tableFor, updateWithParseColumns } from '@/lib/parse/server'
+import {
+  sweepStuckCards,
+  tableFor,
+  updateWithParseColumns,
+} from '@/lib/parse/server'
 import { convertRow } from '@/lib/convert'
 import { todayInAmsterdam } from '@/lib/parse/schema'
 
@@ -49,7 +53,7 @@ export async function captureFromShare(data: {
   const now = new Date().toISOString()
   const today = now.split('T')[0]
   const id = data.id ?? crypto.randomUUID()
-  const list_id: ListId = data.use_ai ? 'ideas' : 'review'
+  const list_id: ListId = 'inbox'
   const status = data.use_ai ? 'processing' : 'new'
   const table = data.type === 'event' ? 'events' : 'resources'
 
@@ -137,6 +141,7 @@ export async function createActivity(
 const EVENT_FIELDS = [
   'list_id',
   'status',
+  'in_next_issue',
   'source',
   'snooze_until',
   'last_triaged_at',
@@ -176,6 +181,7 @@ const EVENT_FIELDS = [
 const RESOURCE_FIELDS = [
   'list_id',
   'status',
+  'in_next_issue',
   'source',
   'snooze_until',
   'last_triaged_at',
@@ -419,7 +425,8 @@ export async function archiveActivity(id: string, type: 'event' | 'resource') {
     .from(table)
     .update({
       status: 'archived',
-      list_id: 'gone',
+      list_id: 'done',
+      in_next_issue: false,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -513,49 +520,23 @@ export async function saveActivity(
   }
 }
 
-// Stages an item is considered still "fresh" in — a callback landing on one of
-// these is safe to route into review/processed. Anything already promoted past
-// this (upcoming_events, new_resources, next_newsletter, gone) must NOT be
-// silently reset — a stray re-processing callback (e.g. "Send to AI" on an
-// already-triaged card) would otherwise yank it back to Triage.
-const TRIAGE_STAGE_LISTS = new Set<ListId>([
-  'ideas',
-  'capture',
-  'review',
-  'error',
-])
-
 // Used by the n8n callback route when enrichment finishes for the *first* item
-// in a payload (the seed record the user actually captured/resent). Only forces
-// list_id: 'review', status: 'processed' if the record hasn't already advanced
-// past Triage — otherwise it just updates content fields in place.
+// in a payload (the seed record the user actually captured/resent). Updates the
+// content fields and clears "processing". The stage (list_id) is never touched:
+// a stray re-processing callback on an already-refined card must not yank it
+// back to Triage.
 export async function saveEnrichedCallback(
   id: string,
   type: 'event' | 'resource',
   data: Partial<DeskActivity>
 ) {
-  const supabase = createAdminClient()
-  const table = type === 'event' ? 'events' : 'resources'
-  const { data: existing } = await supabase
-    .from(table)
-    .select('list_id')
-    .eq('id', id)
-    .single()
-  const isFreshCapture =
-    !existing || TRIAGE_STAGE_LISTS.has(existing.list_id as ListId)
-
-  await saveActivity(id, type, {
-    ...data,
-    ...(isFreshCapture
-      ? { list_id: 'review' as ListId, status: 'processed' as const }
-      : {}),
-  })
+  await saveActivity(id, type, { ...data, status: 'processed' as const })
 }
 
 // Drops a single service from an activity's services tag (e.g. "not this
 // newsletter issue", without touching status — it wasn't published or
 // rejected, just no longer a candidate for that service). Only moves to
-// 'gone' once no services remain; postpartum_post stays synced throughout.
+// 'done' once no services remain; postpartum_post stays synced throughout.
 export async function dropService(
   id: string,
   type: 'event' | 'resource',
@@ -577,7 +558,10 @@ export async function dropService(
     postpartum_post: nextServices.includes('postpartum_post'),
     updated_at: new Date().toISOString(),
   }
-  if (becameEmpty) update.list_id = 'gone'
+  if (becameEmpty) {
+    update.list_id = 'done'
+    update.in_next_issue = false
+  }
   const { error } = await supabase.from(table).update(update).eq('id', id)
   if (error) throw new Error(error.message)
 }
@@ -590,16 +574,10 @@ export async function finishNewsletterIssue(
   const supabase = createAdminClient()
   const now = new Date().toISOString()
 
-  // A service's edition running an item drops it from services (like any
-  // other service exit) — status: 'published' always gets stamped since it
-  // *did* go out. If no services remain, list_id moves to 'gone'. If it's
-  // still tagged postpartum_post, list_id moves back to the Upcoming stage
-  // (upcoming_events/new_resources) rather than staying at 'next_newsletter'
-  // — otherwise it's still "relevant for Post" by services/status alone but
-  // invisible everywhere, since Post's Match/Upcoming panels require
-  // list_id === 'upcoming_events'.
-  const upcomingListFor = (table: 'events' | 'resources') =>
-    table === 'events' ? 'upcoming_events' : 'new_resources'
+  // A service's edition running an item drops 'newsletter' from services (like
+  // any other service exit) — status: 'published' always gets stamped since it
+  // *did* go out, and it leaves the next issue. If no services remain, list_id
+  // moves to 'done'; otherwise it stays 'refined' (still alive for Post).
   const applyToTable = async (table: 'events' | 'resources', ids: string[]) => {
     if (!ids.length) return
     const { data: rows } = await supabase
@@ -619,7 +597,8 @@ export async function finishNewsletterIssue(
             status: 'published',
             services: nextServices,
             postpartum_post: nextServices.includes('postpartum_post'),
-            list_id: becameEmpty ? 'gone' : upcomingListFor(table),
+            in_next_issue: false,
+            list_id: becameEmpty ? 'done' : 'refined',
             updated_at: now,
           })
           .eq('id', row.id)
@@ -633,11 +612,11 @@ export async function finishNewsletterIssue(
   ])
 }
 
-// Non-recurring events left sitting in 'upcoming_events' whose date has already
-// passed by the time an issue is finished — they were never promoted to
-// next_newsletter and the event already happened. Drops 'newsletter' from
+// Non-recurring refined events whose date has already passed by the time an
+// issue is finished — they were never queued for the issue and the event
+// already happened. Drops 'newsletter' from
 // services (status untouched — they weren't rejected or published, just aged
-// out); only moves to 'gone' if no services remain.
+// out); only moves to 'done' if no services remain.
 export async function sweepStaleUpcoming(ids: string[]) {
   if (!ids.length) return
   const supabase = createAdminClient()
@@ -656,7 +635,7 @@ export async function sweepStaleUpcoming(ids: string[]) {
         .update({
           services: nextServices,
           postpartum_post: nextServices.includes('postpartum_post'),
-          ...(becameEmpty ? { list_id: 'gone' } : {}),
+          ...(becameEmpty ? { list_id: 'done', in_next_issue: false } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq('id', row.id)
@@ -686,6 +665,11 @@ export async function pollForUpdates(
 ): Promise<DeskActivity[]> {
   if (processing.length === 0) return []
   const supabase = createAdminClient()
+  // Same rescue as page load: a card stuck in processing is marked failed with
+  // a reason, so the poll below picks up the new state.
+  await sweepStuckCards(5, supabase).catch((err) =>
+    console.error('Stuck-card sweep failed:', err)
+  )
 
   const eventIds = processing.filter((p) => p.type === 'event').map((p) => p.id)
   const resourceIds = processing
@@ -707,12 +691,12 @@ export async function pollForUpdates(
       supabase
         .from('events')
         .select('*')
-        .eq('list_id', 'review')
+        .eq('list_id', 'inbox')
         .gte('created_at', since),
       supabase
         .from('resources')
         .select('*')
-        .eq('list_id', 'review')
+        .eq('list_id', 'inbox')
         .gte('created_at', since),
     ])
 
@@ -778,7 +762,7 @@ export async function createLocation(data: {
     .insert({
       ...data,
       ...(coords ?? {}),
-      list_id: 'review',
+      list_id: 'inbox',
       status: 'new',
       postpartum_post: true,
     })
@@ -803,20 +787,10 @@ export async function updateLocation(
 // Locations have their own, simpler lifecycle than events/resources — no
 // 'services' array, no expiry, and no archived state at all: a location is
 // either accepted (settled, one way or the other) or hard-deleted.
-//   Review -> Refine -> Gone (postpartum_post true = "In Post", false = "Not in Post")
+//   Inbox -> Refined (in Post) or Done (not in Post)
 
-// Review -> Refine: confirmed good, still needs data polishing.
-export async function advanceLocation(id: string): Promise<void> {
-  const supabase = createAdminClient()
-  const { error } = await supabase
-    .from('locations')
-    .update({ list_id: 'refine', updated_at: new Date().toISOString() })
-    .eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-// Refine -> Gone: the postpartum_post boolean itself is what splits "In Post"
-// from "Not in Post" within Gone — list_id is the same either way.
+// Inbox -> Refined (in Post) or Done (not in Post): the one decision a
+// location needs.
 export async function decideLocationPost(
   id: string,
   inPost: boolean
@@ -825,8 +799,8 @@ export async function decideLocationPost(
   const { error } = await supabase
     .from('locations')
     .update({
-      list_id: 'gone',
-      status: 'accepted',
+      list_id: inPost ? 'refined' : 'done',
+      status: 'processed',
       postpartum_post: inPost,
       updated_at: new Date().toISOString(),
     })

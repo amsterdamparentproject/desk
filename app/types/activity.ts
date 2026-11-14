@@ -45,6 +45,8 @@ export interface BaseActivity {
   // Workflow & state (APP Desk)
   list_id: ListId
   status: TriageStatus
+  // Queued for the next newsletter issue (replaces the old next_newsletter list).
+  in_next_issue: boolean
   source: CaptureSource
   snooze_until: string | null
   last_triaged_at: string | null
@@ -162,8 +164,9 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   created_at: '',
   updated_at: '',
   type: 'event',
-  list_id: 'capture',
+  list_id: 'inbox',
   status: 'new',
+  in_next_issue: false,
   source: 'manual',
   snooze_until: '',
   last_triaged_at: '',

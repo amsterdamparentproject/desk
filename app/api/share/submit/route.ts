@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
   const now = new Date().toISOString()
   const today = now.split('T')[0]
   const id = preloadedId ?? crypto.randomUUID()
-  const list_id: ListId = use_ai ? 'ideas' : 'review'
+  const list_id: ListId = 'inbox'
   const status = use_ai ? 'processing' : 'new'
   const table = type === 'event' ? 'events' : 'resources'
 

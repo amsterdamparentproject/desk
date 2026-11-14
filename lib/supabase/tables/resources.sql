@@ -5,7 +5,9 @@ CREATE TABLE activities.resources (
   updated_at timestamptz DEFAULT now(),
   
   -- Workflow & State (APP Desk)
-  list_id activities.desk_list NOT NULL DEFAULT 'ideas',
+  list_id activities.desk_list NOT NULL DEFAULT 'inbox',
+  -- Queued for the next newsletter issue (replaces the next_newsletter list).
+  in_next_issue boolean NOT NULL DEFAULT false,
   status activities.triage_status NOT NULL DEFAULT 'new',
   source activities.capture_source NOT NULL DEFAULT 'manual',
   snooze_until timestamptz,

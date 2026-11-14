@@ -112,7 +112,7 @@ const TRIAGE_STATUSES: TriageStatus[] = [
   'new',
   'processing',
   'processed',
-  'accepted',
+  'failed',
   'published',
   'archived',
 ]
@@ -121,7 +121,7 @@ const STATUS_COLORS: Record<TriageStatus, string> = {
   new: 'bg-blue-600 text-white',
   processing: 'bg-amber-500 text-white',
   processed: 'bg-purple-600 text-white',
-  accepted: 'bg-green-600 text-white',
+  failed: 'bg-red-600 text-white',
   published: 'bg-teal-600 text-white',
   archived: 'bg-red-500 text-white',
 }
@@ -435,8 +435,9 @@ export function ActivityDrawer({
                 const next = {
                   ...latestFormData.current,
                   newsletter_last: null,
-                  status: 'accepted' as const,
-                  list_id: 'review' as import('../types/list').ListId,
+                  status: 'processed' as const,
+                  in_next_issue: false,
+                  list_id: 'inbox' as import('../types/list').ListId,
                 }
                 setFormData(next)
                 onSaveDraft(next)
@@ -1287,15 +1288,11 @@ export function ActivityDrawer({
                 <button
                   onClick={() => onFinishEditing(formData)}
                   disabled={
-                    formData.list_id !== 'upcoming_events' &&
-                    formData.list_id !== 'new_resources' &&
-                    formData.list_id !== 'next_newsletter' &&
+                    formData.list_id === 'inbox' &&
                     (formData.services ?? []).length === 0
                   }
                   title={
-                    formData.list_id !== 'upcoming_events' &&
-                    formData.list_id !== 'new_resources' &&
-                    formData.list_id !== 'next_newsletter' &&
+                    formData.list_id === 'inbox' &&
                     (formData.services ?? []).length === 0
                       ? 'Choose Newsletter and/or Post first'
                       : undefined

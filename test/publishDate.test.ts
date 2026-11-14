@@ -9,9 +9,9 @@ const published = (newsletter_last: string) => ({
   newsletter_last,
 })
 const staged = (newsletter_last: string) => ({
-  status: 'accepted',
+  status: 'processed',
   newsletter_last,
-}) // in next_newsletter, not yet published
+}) // in-next-issue, not yet published
 
 describe('computePublishDate', () => {
   it('returns today + 7 when no newsletters have ever been sent', () => {
@@ -21,7 +21,7 @@ describe('computePublishDate', () => {
   it('returns today + 7 when all rows lack newsletter_last', () => {
     const rows = [
       { status: 'archived', newsletter_last: null },
-      { status: 'accepted', newsletter_last: null },
+      { status: 'processed', newsletter_last: null },
     ]
     expect(computePublishDate(rows, TODAY)).toBe('2026-06-10')
   })
@@ -40,9 +40,9 @@ describe('computePublishDate', () => {
     expect(computePublishDate(rows, TODAY)).toBe('2026-06-15')
   })
 
-  // Regression: this was the bug — staged cards in next_newsletter carry
+  // Regression: this was the bug — staged cards in-next-issue carry
   // newsletter_last equal to the current publishDate and must not be counted.
-  it('ignores newsletter_last from non-published (next_newsletter) cards', () => {
+  it('ignores newsletter_last from non-published (in_next_issue) cards', () => {
     const rows = [
       published('2026-06-01'), // last sent issue
       staged('2026-06-15'), // staged for upcoming issue — must NOT inflate result

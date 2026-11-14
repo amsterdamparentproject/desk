@@ -12,7 +12,12 @@ CREATE TYPE activities.desk_list AS ENUM (
   'next_newsletter',
   'upcoming_events',
   'new_resources',
-  'gone'
+  'gone',
+  -- Stage-only model (016_stage_status_schema.sql): inbox -> refined -> done.
+  -- The old values above stay in the type until a later cleanup.
+  'inbox',
+  'refined',
+  'done'
 );
 
 -- 2. Triage Status: The "Health/Phase" of the record
@@ -26,7 +31,9 @@ CREATE TYPE activities.triage_status AS ENUM (
   'accepted',
   'published',
   'archived',
-  'snoozed'
+  'snoozed',
+  -- 'failed' replaces the 'error' list (016_stage_status_schema.sql).
+  'failed'
 );
 
 -- 3. Capture Source: Where did this come from?

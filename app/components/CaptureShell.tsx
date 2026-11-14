@@ -63,7 +63,7 @@ export function CaptureShell() {
               </div>
 
               <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent">
-                {col.id === 'ideas' ? (
+                {col.id === 'inbox' ? (
                   <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
                     <ShareCaptureForm onAdd={handleAdd} />
                   </div>
@@ -122,7 +122,7 @@ function ShareCaptureForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!description.trim() && !file) return
-    onAdd({ description, file, list_id: 'ideas', use_ai: useAi, type })
+    onAdd({ description, file, list_id: 'inbox', use_ai: useAi, type })
     setDescription('')
     setFile(null)
   }

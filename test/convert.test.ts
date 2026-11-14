@@ -4,7 +4,7 @@ import { convertRow, describeSchedule } from '../lib/convert'
 const event = {
   id: 'a',
   title: 'Book on Lap',
-  list_id: 'upcoming_events',
+  list_id: 'refined',
   services: ['newsletter', 'postpartum_post'],
   postpartum_post: true,
   triage_notes: null,
@@ -51,11 +51,11 @@ describe('convertRow', () => {
 
   it('leaves other lists alone', () => {
     const { patch } = convertRow(
-      { ...event, list_id: 'review' },
+      { ...event, list_id: 'inbox' },
       'resource',
       '2026-11-13'
     )
-    expect(patch.list_id).toBe('review')
+    expect(patch.list_id).toBe('inbox')
   })
 
   it('resource -> event sets a placeholder date and moves list', () => {
@@ -72,7 +72,7 @@ describe('convertRow', () => {
       '2026-11-13'
     )
     expect(insert.start_date).toBe('2026-11-13')
-    expect(patch.list_id).toBe('upcoming_events')
+    expect(patch.list_id).toBe('refined')
     expect(insert.services).toEqual(['newsletter'])
     expect(insert.parse_warnings).toEqual([
       'Converted from a resource. Set the real date and time.',
@@ -81,7 +81,7 @@ describe('convertRow', () => {
 
   it('does not add warnings when the diagnostics column is absent', () => {
     const { insert } = convertRow(
-      { id: 'b', title: 'Guide', list_id: 'review', services: [] },
+      { id: 'b', title: 'Guide', list_id: 'inbox', services: [] },
       'event',
       '2026-11-13'
     )

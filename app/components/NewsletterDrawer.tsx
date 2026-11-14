@@ -310,7 +310,8 @@ export function NewsletterDrawer({
 
   const nextActivities = activities.filter(
     (a) =>
-      a.list_id === 'next_newsletter' &&
+      a.list_id === 'refined' &&
+      a.in_next_issue &&
       a.status !== 'archived' &&
       a.status !== 'published' &&
       a.services.includes('newsletter')

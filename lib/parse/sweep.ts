@@ -4,30 +4,15 @@
  * in the same place.
  */
 
-// Lists a card is still "fresh" in. A failed parse here moves the card to the
-// Error list. (Mirrors TRIAGE_STAGE_LISTS in app/actions/activities.ts.)
-const TRIAGE_LISTS = new Set(['ideas', 'capture', 'review', 'error'])
-
-export type FailurePatch = {
-  list_id?: 'error'
-  status?: 'new' | 'processed' | 'accepted'
-}
+export type FailurePatch = { status: 'failed' }
 
 /**
- * Where a card should land after a failed or timed-out parse.
- * - Still in triage: move to Error and reset to `new`, matching what the
- *   browser-side timeout already does.
- * - Already promoted (someone hit "Send to AI" on a Refine/Upcoming card):
- *   leave it where it is and just clear the stuck `processing` status, so the
- *   failure never yanks a triaged card back to Triage.
+ * A failed or timed-out parse only changes the card's health: its stage
+ * (list_id) is left alone, so a failure on an already-refined card never
+ * yanks it back to Triage.
  */
-export function failurePatch(listId: string | null | undefined): FailurePatch {
-  if (!listId || TRIAGE_LISTS.has(listId)) {
-    return { list_id: 'error', status: 'new' }
-  }
-  if (listId === 'refine') return { status: 'processed' }
-  if (listId === 'gone') return {}
-  return { status: 'accepted' }
+export function failurePatch(): FailurePatch {
+  return { status: 'failed' }
 }
 
 /** ISO timestamp before which a `processing` card counts as stuck. */

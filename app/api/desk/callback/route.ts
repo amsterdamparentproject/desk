@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     await upsertEnrichedActivity(id, type, {
       ...validated.data,
       description: validated.data.description ?? validated.data.title ?? '',
-      list_id: 'review',
+      list_id: 'inbox',
       status: 'processed',
     })
     warnings.push(
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         description: v.data.description ?? v.data.title ?? '',
         // Same flyer/screenshot as the parent capture.
         ...(found?.file_url ? { file_url: found.file_url } : {}),
-        list_id: 'review',
+        list_id: 'inbox',
         status: 'processed',
       })) ?? { inserted: true }
       if (!inserted) {

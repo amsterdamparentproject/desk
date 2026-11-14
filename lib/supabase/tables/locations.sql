@@ -22,7 +22,7 @@ CREATE TABLE activities.locations (
   longitude numeric(9, 6),
 
   -- Triage workflow
-  list_id activities.desk_list NOT NULL DEFAULT 'ideas',
+  list_id activities.desk_list NOT NULL DEFAULT 'inbox',
   status activities.triage_status NOT NULL DEFAULT 'new',
   triage_notes text,
 

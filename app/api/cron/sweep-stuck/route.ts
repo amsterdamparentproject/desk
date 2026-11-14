@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/app/utils/supabase/server'
 import { authorizeN8nRequest } from '@/lib/auth/n8n-auth'
-import { failurePatch, staleCutoffIso } from '@/lib/parse/sweep'
-import { updateWithParseColumns } from '@/lib/parse/server'
+import { sweepStuckCards } from '@/lib/parse/server'
 
 const DEFAULT_MINUTES = 5
 
@@ -12,8 +10,9 @@ const DEFAULT_MINUTES = 5
  * the Error list (or just clears the status if already past triage) with a
  * reason on the card.
  *
- * Trigger it on a schedule (an n8n Schedule node every ~5 minutes works, same
- * as refresh-recurrence):
+ * Desk already runs this sweep whenever it loads or polls (see app/page.tsx
+ * and pollForUpdates), so no schedule is needed. This route stays for manual
+ * or optional scheduled calls:
  *   POST /api/cron/sweep-stuck            signed headers (lib/auth/n8n-auth.ts)
  *   POST /api/cron/sweep-stuck?minutes=10 to change the threshold
  */
@@ -26,42 +25,20 @@ export async function POST(req: NextRequest) {
   const requested = Number(req.nextUrl.searchParams.get('minutes'))
   const minutes =
     Number.isFinite(requested) && requested >= 1 ? requested : DEFAULT_MINUTES
-  const cutoff = staleCutoffIso(new Date(), minutes)
-
-  const supabase = createAdminClient()
-  const swept: { table: string; id: string; title: string }[] = []
-  const failed: { table: string; id: string; error: string }[] = []
-
-  for (const table of ['events', 'resources'] as const) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('id, title, list_id')
-      .eq('status', 'processing')
-      .lt('updated_at', cutoff)
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-    for (const row of data ?? []) {
-      try {
-        await updateWithParseColumns(table, row.id, failurePatch(row.list_id), {
-          error: `No response from the AI after ${minutes} minutes — try "Send to AI" again or enter details by hand`,
-          warnings: [],
-        })
-        swept.push({ table, id: row.id, title: row.title })
-      } catch (err) {
-        failed.push({
-          table,
-          id: row.id,
-          error: err instanceof Error ? err.message : 'unknown',
-        })
-      }
-    }
+  let result
+  try {
+    result = await sweepStuckCards(minutes)
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'sweep failed' },
+      { status: 500 }
+    )
   }
 
   return NextResponse.json({
-    minutes,
-    swept: swept.length,
-    items: swept,
-    failed,
+    minutes: result.minutes,
+    swept: result.swept.length,
+    items: result.swept,
+    failed: result.failed,
   })
 }

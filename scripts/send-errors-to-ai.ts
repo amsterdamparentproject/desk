@@ -1,10 +1,10 @@
 /**
- * Re-send every card sitting in the Error list to the n8n AI workflow — the
+ * Re-send every failed card to the n8n AI workflow — the
  * same thing the drawer's "Send to AI" button does, for all of them at once.
  *
- * For each events/resources row with list_id = 'error' it:
- *   1. sets status = 'processing' (list_id stays 'error'; the n8n callback
- *      moves the card out when enrichment lands, exactly like the UI path)
+ * For each events/resources row with status = 'failed' it:
+ *   1. sets status = 'processing' (list_id stays 'inbox'; the n8n callback
+ *      sets 'processed' when enrichment lands, exactly like the UI path)
  *   2. POSTs { ...row, type, action: 'update', use_ai: true, file: null } to
  *      N8N_DESK_WEBHOOK_URL with the X-N8N-WEBHOOK-SECRET header (same payload
  *      and auth as lib/PostToWebhook.tsx)
@@ -16,8 +16,8 @@
  * project NEXT_PUBLIC_SUPABASE_URL points at, and the PRODUCTION webhook.
  *
  * With --triage-events it instead re-sends every EVENT held in the Triage
- * table (list_id ideas / capture / review / error / refine; skips archived and
- * rows already processing), to refresh stale details before a newsletter pass.
+ * table (list_id inbox; skips archived and rows already
+ * processing), to refresh stale details before a newsletter pass.
  * Same payload as the drawer's "Send to AI", so it re-parses exactly like that
  * button does.
  *
@@ -92,9 +92,9 @@ async function main() {
     let query = supabase.from(table).select('*')
     query = TRIAGE_EVENTS
       ? query
-          .in('list_id', ['ideas', 'capture', 'review', 'error', 'refine'])
+          .eq('list_id', 'inbox')
           .not('status', 'in', '(processing,archived)')
-      : query.eq('list_id', 'error')
+      : query.eq('status', 'failed')
     const { data, error } = await query.order('created_at', {
       ascending: true,
     })
@@ -103,7 +103,7 @@ async function main() {
   }
 
   console.log(
-    `${cards.length} card(s) in ${TRIAGE_EVENTS ? 'the Triage table (events)' : 'the Error list'} ` +
+    `${cards.length} card(s) in ${TRIAGE_EVENTS ? 'the Triage table (events)' : 'the failed list'} ` +
       `(${APPLY ? 'SENDING' : 'dry run — pass --apply to send'}):\n`
   )
 

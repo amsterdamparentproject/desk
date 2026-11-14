@@ -15,7 +15,7 @@ const row = (o: Partial<DeskActivity>): DeskActivity =>
     id: 'x',
     title: 'T',
     type: 'event',
-    list_id: 'review',
+    list_id: 'inbox',
     status: 'processed',
     services: ['newsletter', 'postpartum_post'],
     created_at: '2026-11-01T10:00:00Z',
@@ -116,7 +116,7 @@ describe('filterRows / isHeld', () => {
       id: 'x',
       type: 'resource',
       title: 'Guide',
-      list_id: 'error',
+      status: 'failed',
       parse_error: 'boom',
     })
     const none = { type: 'all', query: '', onlyProblems: false } as const
@@ -130,22 +130,23 @@ describe('filterRows / isHeld', () => {
       filterRows([e, x], { ...none, onlyProblems: true }).map((r) => r.id)
     ).toEqual(['x'])
   })
-  it('holds triage lists but not newsletter or gone', () => {
-    expect(isHeld(row({ list_id: 'refine' }))).toBe(true)
-    expect(isHeld(row({ list_id: 'next_newsletter' }))).toBe(false)
-    expect(isHeld(row({ list_id: 'review', status: 'archived' }))).toBe(false)
+  it('holds the inbox but not refined or done', () => {
+    expect(isHeld(row({ list_id: 'inbox' }))).toBe(true)
+    expect(isHeld(row({ list_id: 'refined' }))).toBe(false)
+    expect(isHeld(row({ list_id: 'inbox', status: 'archived' }))).toBe(false)
   })
 })
 
 describe('isPostEligible', () => {
   it('accepts refined events with the Post service, not held ones', () => {
     expect(isPostEligible(row({}))).toBe(false)
-    expect(isPostEligible(row({ list_id: 'upcoming_events' }))).toBe(true)
-    expect(isPostEligible(row({ list_id: 'next_newsletter' }))).toBe(true)
+    expect(isPostEligible(row({ list_id: 'refined' }))).toBe(true)
   })
   it('rejects resources, failures, processing and opted-out rows', () => {
     expect(isPostEligible(row({ type: 'resource' }))).toBe(false)
-    expect(isPostEligible(row({ list_id: 'error' }))).toBe(false)
+    expect(isPostEligible(row({ list_id: 'refined', status: 'failed' }))).toBe(
+      false
+    )
     expect(isPostEligible(row({ status: 'processing' }))).toBe(false)
     expect(isPostEligible(row({ services: ['newsletter'] }))).toBe(false)
   })
@@ -168,7 +169,7 @@ describe('effectiveStart for recurring events', () => {
 
 describe('needsAttention', () => {
   it('flags failed parses and past one-off events', () => {
-    expect(needsAttention(row({ list_id: 'error' }), '2026-11-13')).toBe(true)
+    expect(needsAttention(row({ status: 'failed' }), '2026-11-13')).toBe(true)
     expect(
       needsAttention(row({ start_date: '2026-11-01' }), '2026-11-13')
     ).toBe(true)

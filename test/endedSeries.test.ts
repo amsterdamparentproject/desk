@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { endedSeriesPatch } from '../app/utils/endedSeries'
 
 const base = {
-  status: 'accepted',
-  list_id: 'upcoming_events',
+  status: 'processed',
+  list_id: 'refined',
   services: ['newsletter'],
   repeat_next_date: '2026-10-30',
 }
@@ -14,7 +14,7 @@ describe('endedSeriesPatch', () => {
       repeat_next_date: null,
       services: [],
       postpartum_post: false,
-      list_id: 'gone',
+      list_id: 'done',
     })
   })
 
@@ -33,29 +33,29 @@ describe('endedSeriesPatch', () => {
   it('never touches status, including for published events', () => {
     const patch = endedSeriesPatch({ ...base, status: 'published' })
     expect(patch).not.toHaveProperty('status')
-    expect(patch).toHaveProperty('list_id', 'gone')
+    expect(patch).toHaveProperty('list_id', 'done')
   })
 
-  it('only clears the date for untriaged events', () => {
+  it('only clears the date for inbox events', () => {
     expect(
-      endedSeriesPatch({ ...base, status: 'processed', list_id: 'review' })
+      endedSeriesPatch({ ...base, status: 'processed', list_id: 'inbox' })
     ).toEqual({ repeat_next_date: null })
   })
 
   it('returns null for an already-settled row', () => {
     expect(
       endedSeriesPatch({
-        status: 'accepted',
-        list_id: 'gone',
+        status: 'processed',
+        list_id: 'done',
         services: [],
         repeat_next_date: null,
       })
     ).toBeNull()
   })
 
-  it('moves an already-empty-services row to gone', () => {
+  it('moves an already-empty-services row to done', () => {
     expect(
       endedSeriesPatch({ ...base, services: null, repeat_next_date: null })
-    ).toEqual({ list_id: 'gone' })
+    ).toEqual({ list_id: 'done' })
   })
 })

@@ -7,16 +7,12 @@ export type Tab =
   | 'included'
   | 'archived'
 
-export type ListId =
-  | 'ideas'
-  | 'capture'
-  | 'review'
-  | 'error'
-  | 'refine'
-  | 'next_newsletter'
-  | 'upcoming_events'
-  | 'new_resources'
-  | 'gone'
+// Stage only (where a row is in the process); health lives in `status`.
+//   inbox   - captured, still in Desk triage
+//   refined - marked "Done refining"; shown in the Newsletter / Post tabs by service
+//   done    - out of the pipeline: archived, rejected, or published with no services left
+// See __claude__/list-refactor-plan.md.
+export type ListId = 'inbox' | 'refined' | 'done'
 
 export interface ListProps {
   id: ListId
@@ -25,91 +21,35 @@ export interface ListProps {
   finishTarget?: (type: 'event' | 'resource') => ListId
 }
 
-// 'capture' kept here so it appears in the "In list" drawer dropdown for legacy records
-export const CAPTURE_LISTS: ListProps[] = [
-  {
-    id: 'capture',
-    label: 'Capture',
-    finishLabel: 'Accept',
-    finishTarget: () => 'review',
-  },
-]
-
-// Triage is shared by both services — Refine lives here now (not under Newsletter),
-// since "is it good for APP at all" is a decision made before either service's
-// own Upcoming/Match queue.
 export const TRIAGE_LISTS: ListProps[] = [
   {
-    id: 'ideas',
-    label: 'Capture',
+    id: 'inbox',
+    label: 'Inbox',
     finishLabel: 'Done refining',
-    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
-  },
-  {
-    id: 'review',
-    label: 'To review',
-    finishLabel: 'Done refining',
-    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
-  },
-  {
-    id: 'error',
-    label: 'Errors',
-    finishLabel: 'Done refining',
-    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
-  },
-  {
-    id: 'refine',
-    label: 'Refine',
-    finishLabel: 'Done refining',
-    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
+    finishTarget: () => 'refined',
   },
 ]
 
+// Which of the Newsletter / Post tabs a refined row appears in is decided by
+// its services, and whether it is in the next issue by `in_next_issue`.
 export const NEWSLETTER_LISTS: ListProps[] = [
-  {
-    id: 'upcoming_events',
-    label: 'Upcoming events',
-    finishLabel: 'Add',
-    finishTarget: () => 'next_newsletter',
-  },
-  {
-    id: 'new_resources',
-    label: 'New resources',
-    finishLabel: 'Add',
-    finishTarget: () => 'next_newsletter',
-  },
-  { id: 'next_newsletter', label: 'Next newsletter' },
+  { id: 'refined', label: 'Refined' },
 ]
 
-// Post tab has no ListProps entry of its own — it's events-only (Post never
-// takes resources; the Postpartum Post matcher only queries events,
-// locations, and playgrounds) and its three sections (Upcoming events,
-// Recurring Events, Match) are all computed splits of the same
-// upcoming_events rows filtered by services.includes('postpartum_post'),
-// rendered as bespoke browse/QA lists directly in Board.tsx rather than
-// through the generic Column component. No finishLabel/finishTarget —
-// nothing to promote into.
-
-// 'gone' is the unified resting place for anything that has exited the active
-// pipeline — rejected at triage (archived), rejected for a newsletter issue but
-// still fine for Post (status unchanged), or published in an issue (published).
-// It only ever appears in the Published/Included/Archived tabs, never as a working column.
-export const GONE_LISTS: ListProps[] = [{ id: 'gone', label: 'Gone' }]
+// 'done' is the unified resting place for anything that has exited the active
+// pipeline: archived, rejected, or published with no services left.
+// It only ever appears in the Published/Included/Archived tabs.
+export const GONE_LISTS: ListProps[] = [{ id: 'done', label: 'Done' }]
 
 export const ALL_LISTS: ListProps[] = [
-  ...CAPTURE_LISTS,
   ...TRIAGE_LISTS,
   ...NEWSLETTER_LISTS,
   ...GONE_LISTS,
 ]
 
 export function getListTab(listId: ListId): Tab {
-  if (TRIAGE_LISTS.some((list) => list.id === listId) || listId === 'capture') {
-    return 'triage'
-  }
-  if (NEWSLETTER_LISTS.some((list) => list.id === listId)) {
-    return 'newsletter'
-  }
-  // 'gone' (and any other terminal state) belongs in Published/Included/Archived, never Triage.
+  if (listId === 'inbox') return 'triage'
+  if (listId === 'refined') return 'newsletter'
+  // 'done' belongs in Published/Included/Archived, never Triage.
   return 'archived'
 }

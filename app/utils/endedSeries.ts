@@ -4,9 +4,9 @@
 // Mirrors sweepStaleUpcoming (app/actions/activities.ts): an aged-out event is
 // NOT archived — status is left alone ('archived' means explicitly rejected,
 // 'published' means it went out in an issue). 'newsletter' is dropped from
-// services, and list_id only moves to 'gone' once no services remain.
-// Untriaged events (new/processing/processed) just get repeat_next_date cleared;
-// they still need a human decision.
+// services, and list_id only moves to 'done' once no services remain.
+// Events still in the inbox just get repeat_next_date cleared; they still need
+// a human decision.
 //
 // Returns the columns to update, or null when the row is already settled so the
 // cron can skip it instead of rewriting null -> null on every run.
@@ -25,7 +25,7 @@ export function endedSeriesPatch(
 
   if (event.repeat_next_date != null) patch.repeat_next_date = null
 
-  const triaged = event.status === 'accepted' || event.status === 'published'
+  const triaged = event.list_id === 'refined'
   if (triaged) {
     const current = event.services ?? []
     const next = current.filter((s) => s !== 'newsletter')
@@ -33,7 +33,10 @@ export function endedSeriesPatch(
       patch.services = next
       patch.postpartum_post = next.includes('postpartum_post')
     }
-    if (next.length === 0 && event.list_id !== 'gone') patch.list_id = 'gone'
+    if (next.length === 0) {
+      patch.list_id = 'done'
+      patch.in_next_issue = false
+    }
   }
 
   return Object.keys(patch).length > 0 ? patch : null

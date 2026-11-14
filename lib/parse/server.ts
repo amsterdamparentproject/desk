@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/app/utils/supabase/server'
-import { failurePatch } from './sweep'
+import { failurePatch, staleCutoffIso } from './sweep'
 import type { ActivityType } from './schema'
 
 // Server-only helpers for recording how an AI parse went. Deliberately NOT a
@@ -93,12 +93,64 @@ export async function recordParseFailure(
   message: string,
   raw?: unknown
 ): Promise<void> {
-  await updateWithParseColumns(
-    tableFor(found.type),
-    id,
-    failurePatch(found.list_id),
-    { error: message, warnings: [], raw }
-  )
+  await updateWithParseColumns(tableFor(found.type), id, failurePatch(), {
+    error: message,
+    warnings: [],
+    raw,
+  })
+}
+
+export interface SweepResult {
+  minutes: number
+  swept: { table: string; id: string; title: string }[]
+  failed: { table: string; id: string; error: string }[]
+}
+
+/**
+ * Rescues cards stuck in "processing" (n8n died before calling back, or the
+ * browser tab that owned the timeout was closed): moves each one out of
+ * "processing" with a reason on the card. Cheap enough to run whenever Desk
+ * loads or polls, so no scheduled job is needed. Also used by the
+ * /api/cron/sweep-stuck route for manual calls.
+ */
+export async function sweepStuckCards(
+  minutes = 5,
+  supabase: AnyClient = createAdminClient()
+): Promise<SweepResult> {
+  const cutoff = staleCutoffIso(new Date(), minutes)
+  const swept: SweepResult['swept'] = []
+  const failed: SweepResult['failed'] = []
+
+  for (const table of ['events', 'resources'] as const) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('id, title, list_id')
+      .eq('status', 'processing')
+      .lt('updated_at', cutoff)
+    if (error) throw new Error(error.message)
+    for (const row of data ?? []) {
+      try {
+        await updateWithParseColumns(
+          table,
+          row.id,
+          failurePatch(),
+          {
+            error: `No response from the AI after ${minutes} minutes — try "Send to AI" again or enter details by hand`,
+            warnings: [],
+          },
+          supabase
+        )
+        swept.push({ table, id: row.id, title: row.title })
+      } catch (err) {
+        failed.push({
+          table,
+          id: row.id,
+          error: err instanceof Error ? err.message : 'unknown',
+        })
+      }
+    }
+  }
+  return { minutes, swept, failed }
 }
 
 interface DupKey {

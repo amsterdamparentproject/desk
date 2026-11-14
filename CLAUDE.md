@@ -27,17 +27,17 @@ npx vitest run --reporter=verbose -t "creates event"
 
 Two Supabase tables in the `activities` schema: `events` and `resources`. Both share a `DeskActivity` union type (`app/types/activity.ts`). The `type` discriminator (`'event' | 'resource'`) is added client-side — it is not stored in the DB.
 
-Key status lifecycle: `new` → `processing` (AI in-flight) → `processed` → `edited` → archived. The `list_id` field (type `ListId`) drives which kanban column the card appears in.
+Stage and health are separate fields. `list_id` (`ListId`) is the stage: `inbox` (triage) → `refined` (ready for Newsletter/Post) → `done` (exited the pipeline). `status` is health only: `new` → `processing` (AI in-flight) → `processed`, or `failed` (parse error / stuck sweep), plus `published` and `archived`. `in_next_issue` flags refined items queued for the next newsletter issue; `newsletter_last` records the issue an item was published in. Locations and playgrounds use the same stages.
 
 ### Triage tab: Desk table
 
-The Triage tab is a single sortable table (`app/components/DeskTable.tsx`, logic in `lib/desk-table.ts`), not kanban columns. It shows every "held" row (`list_id` in ideas / capture / review / error / refine; the database lists are unchanged, only the UI merges them). Capture is one bar at the top; rows sort by Added, Date (resources always last) or Title. Refinement happens in the table: the "Use for" column toggles Newsletter / Post, and "Done refining" (shown only once at least one service is selected) moves the row to `upcoming_events` / `new_resources` with status `accepted`. Newsletter and Post tabs therefore only hold refined items; `isPostEligible` excludes held rows. The Date column shows the next occurrence for recurring events (`effectiveStart` recomputes it when the stored `repeat_next_date` is missing or stale). The Newsletter tab uses the same component in `mode="newsletter"`: rows are refined items tagged Newsletter (`upcoming_events` / `new_resources` / `next_newsletter`), rows in `next_newsletter` are highlighted with a "Next issue" badge, and the row action "Add to next" / "Remove" moves them in and out (`handleMoveList` in Board). The Post tab is not yet a table.
+The Triage tab is a single sortable table (`app/components/DeskTable.tsx`, logic in `lib/desk-table.ts`), not kanban columns. It shows every `inbox` row. Capture is one bar at the top; rows sort by Added, Date (resources always last) or Title. Refinement happens in the table: the "Use for" column toggles Newsletter / Post, and "Done refining" (shown only once at least one service is selected) moves the row to `list_id: 'refined'`. Newsletter and Post tabs therefore only hold refined items; `isPostEligible` excludes inbox rows. The Date column shows the next occurrence for recurring events (`effectiveStart` recomputes it when the stored `repeat_next_date` is missing or stale). The Newsletter tab uses the same component in `mode="newsletter"`: rows are refined items tagged Newsletter, rows with `in_next_issue` are highlighted with a "Next issue" badge, and the row action "Add to next" / "Remove" toggles it (`handleToggleNextIssue` in Board). The Post tab is not yet a table.
 
-### Page → Board → Column → Card
+### Page → Board → Card
 
 `app/page.tsx` is a server component that verifies the `app_desk_session` cookie (checked against `DESK_PASSWORD` env var, see Auth below), fetches all activities from Supabase using the admin client, and passes them to `<Board>` as `initialActivities`.
 
-`Board.tsx` owns all client state (`activities`, `selectedActivity`) and all mutation handlers. It passes callbacks down to `Column` and renders `ActivityDrawer` as a slide-over when `selectedActivity` is set.
+The Triage and Newsletter tabs are `DeskTable` tables. `Board.tsx` owns all client state (`activities`, `selectedActivity`) and all mutation handlers. It renders `ActivityDrawer` as a slide-over when `selectedActivity` is set.
 
 ### Server actions (`app/actions/activities.ts`)
 

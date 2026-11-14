@@ -46,8 +46,6 @@ export function convertRow(
   today: string,
   now: string = new Date().toISOString()
 ): { insert: Row; patch: Row } {
-  const listId = row.list_id as string
-
   if (to === 'resource') {
     const services = (
       Array.isArray(row.services) ? (row.services as string[]) : []
@@ -55,7 +53,6 @@ export function convertRow(
     const note = describeSchedule(row)
     const existingNotes = asString(row.triage_notes)
     const patch: Row = {
-      list_id: listId === 'upcoming_events' ? 'new_resources' : listId,
       // Post never takes resources (013_resources_never_in_post.sql).
       services: services.length > 0 ? services : ['newsletter'],
       postpartum_post: false,
@@ -68,7 +65,6 @@ export function convertRow(
   }
 
   const patch: Row = {
-    list_id: listId === 'new_resources' ? 'upcoming_events' : listId,
     // Placeholder so the NOT NULL column is satisfied; the card is flagged so
     // the real date gets set.
     start_date: today,

@@ -3,16 +3,9 @@ import type { DeskActivity } from '@/app/types/activity'
 import type { ListId } from '@/app/types/list'
 import { computeNextDate, parseRrule } from '@/app/utils/rrule'
 
-// Everything that used to be split across Capture / To review / Refine /
-// Errors is one "held" pool now: captured, parsed, waiting until its date is
-// relevant. list_ids stay as they are in the database; only the UI merges them.
-export const HELD_LISTS: readonly ListId[] = [
-  'ideas',
-  'capture',
-  'review',
-  'error',
-  'refine',
-]
+// The Triage table shows everything still in the inbox: captured, parsed,
+// waiting until its date is relevant.
+export const HELD_LISTS: readonly ListId[] = ['inbox']
 
 export type SortKey = 'created' | 'start' | 'title'
 export type SortDir = 'asc' | 'desc'
@@ -94,7 +87,7 @@ export function sortRows(
 // Anything that needs a look: a failed parse, or an event whose date has passed.
 export function needsAttention(a: DeskActivity, today?: string): boolean {
   return (
-    a.list_id === 'error' ||
+    a.status === 'failed' ||
     !!a.parse_error ||
     (today !== undefined && isPastEvent(a, today))
   )
@@ -120,13 +113,13 @@ export function filterRows(
   })
 }
 
-// Post matches events only. Held events count as soon as they are parsed
-// (not still processing, not failed), so nothing has to be "promoted" first.
+// Post matches events only. Only refined events reach Post; inbox rows stay in
+// Desk until "Done refining".
 export function isPostEligible(a: DeskActivity): boolean {
-  if (a.type !== 'event' || !a.services.includes('postpartum_post')) {
-    return false
-  }
-  if (a.status === 'archived') return false
-  // Only refined events reach Post. Held rows stay in Desk until "Done refining".
-  return a.list_id === 'upcoming_events' || a.list_id === 'next_newsletter'
+  return (
+    a.type === 'event' &&
+    a.services.includes('postpartum_post') &&
+    a.list_id === 'refined' &&
+    a.status !== 'archived'
+  )
 }

@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Column, LocationCard } from './Column'
+import { LocationCard } from './Column'
 import { DeskTable } from './DeskTable'
 import { isHeld, isPostEligible } from '@/lib/desk-table'
 import { ActivityCard } from './card'
@@ -19,18 +19,11 @@ import {
   Location,
   Service,
 } from '../types/activity'
-import {
-  ALL_LISTS,
-  NEWSLETTER_LISTS,
-  TRIAGE_LISTS,
-  ListId,
-  Tab,
-} from '../types/list'
+import { ListId, Tab } from '../types/list'
 import { ActivityDrawer } from './ActivityDrawer'
 import { LocationDrawer } from './LocationDrawer'
 import { LocationForm } from './card'
 import {
-  advanceLocation,
   archiveActivity,
   convertActivityType,
   createActivity,
@@ -40,7 +33,6 @@ import {
   deleteLocation,
   finishNewsletterIssue,
   flagParseError,
-  moveActivity,
   pollForUpdates,
   saveActivity,
   sweepStaleUpcoming,
@@ -283,10 +275,6 @@ export default function Board({
       processingTimeouts.current.delete(id)
     }
   }, [])
-  const [openCols, setOpenCols] = useState<Set<ListId>>(() => {
-    const allIds = [...TRIAGE_LISTS, ...NEWSLETTER_LISTS].map((col) => col.id)
-    return new Set(allIds)
-  })
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set()
   )
@@ -298,32 +286,15 @@ export default function Board({
       return next
     })
 
-  // Returns the newsletter_last value to write when a card moves between lists.
-  // undefined = no change needed; null = clear it; string = set it.
-  const newsletterLastDelta = (
-    fromList: string,
-    toList: string,
-    currentNewsletterLast: string | null | undefined
-  ): string | null | undefined => {
-    if (fromList === 'next_newsletter' && currentNewsletterLast === publishDate)
-      return null
-    return undefined
-  }
-
   const handleSaveDraft = async (updated: DeskActivity) => {
     const original = activities.find((e) => e.id === updated.id)
-    const delta = newsletterLastDelta(
-      original?.list_id ?? updated.list_id,
-      updated.list_id,
-      updated.newsletter_last
-    )
     const withStatus = {
       ...updated,
       // Preserve the current activities state value for postpartum_post to prevent a stale
       // drawer blur-save from overwriting a recent inline Post button toggle.
       postpartum_post: original?.postpartum_post ?? updated.postpartum_post,
-      status: 'accepted' as const,
-      ...(delta !== undefined ? { newsletter_last: delta } : {}),
+      status:
+        updated.status === 'new' ? ('processed' as const) : updated.status,
     }
     setActivities((prev) =>
       prev.map((e) => (e.id === updated.id ? withStatus : e))
@@ -336,35 +307,25 @@ export default function Board({
   }
 
   const handleFinishEditing = async (updated: DeskActivity) => {
-    const list = ALL_LISTS.find((l) => l.id === updated.list_id)
-    const targetList: ListId =
-      list?.finishTarget?.(updated.type) ??
-      (updated.type === 'event' ? 'upcoming_events' : 'new_resources')
-
     const today = new Date().toISOString().split('T')[0]
-    const isTriageApproval =
-      updated.list_id === 'review' || updated.list_id === 'error'
     const isPastEvent =
       updated.type === 'event' &&
       !updated.repeat_frequency &&
       updated.start_date &&
       updated.start_date < today
-    const shouldArchive = isTriageApproval && isPastEvent
+    const shouldArchive = updated.list_id === 'inbox' && isPastEvent
 
-    const delta = !shouldArchive
-      ? newsletterLastDelta(
-          updated.list_id,
-          targetList,
-          updated.newsletter_last
-        )
-      : undefined
     const withListAndStatus = shouldArchive
-      ? { ...updated, status: 'archived' as const, list_id: 'gone' as ListId }
+      ? {
+          ...updated,
+          status: 'archived' as const,
+          list_id: 'done' as ListId,
+          in_next_issue: false,
+        }
       : {
           ...updated,
-          list_id: targetList,
-          status: 'accepted' as const,
-          ...(delta !== undefined ? { newsletter_last: delta } : {}),
+          list_id: 'refined' as ListId,
+          status: 'processed' as const,
         }
     setActivities((prev) =>
       prev.map((e) => (e.id === updated.id ? withListAndStatus : e))
@@ -381,61 +342,32 @@ export default function Board({
     }
   }
 
-  // Table action "Done refining": the held row leaves Desk for the refined
-  // pipeline (Upcoming events / New resources). Newsletter and Post tabs then
-  // pick it up from its services, so they only ever hold refined items.
-  // Newsletter table action: move a refined row in/out of "Next newsletter".
-  const handleMoveList = async (id: string, target: ListId) => {
+  // Newsletter table action: flag a refined row for (or remove it from) the
+  // next issue. Stage stays 'refined'; only in_next_issue changes.
+  const handleToggleNextIssue = async (id: string, inNext: boolean) => {
     const activity = activities.find((e) => e.id === id)
     if (!activity) return
-    const delta = newsletterLastDelta(
-      activity.list_id,
-      target,
-      activity.newsletter_last
-    )
-    const patch = {
-      list_id: target,
-      status: 'accepted' as const,
-      ...(delta !== undefined ? { newsletter_last: delta } : {}),
-    }
+    const patch = { in_next_issue: inNext }
     setActivities((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...patch } : e))
     )
     try {
       await saveActivity(id, activity.type, patch)
     } catch (err) {
-      console.error('Move failed:', err)
+      console.error('Toggle next issue failed:', err)
       setActivities((prev) => prev.map((e) => (e.id === id ? activity : e)))
     }
   }
 
+  // Table action "Done refining": the inbox row graduates to Refined. Newsletter
+  // and Post tabs then pick it up from its services.
   const handleDoneRefining = async (id: string) => {
     const activity = activities.find((e) => e.id === id)
     if (!activity) return
     if (activity.services.length === 0) return
-    const services: Service[] = activity.services
-    const target: ListId =
-      activity.type === 'event' ? 'upcoming_events' : 'new_resources'
-    const delta = newsletterLastDelta(
-      activity.list_id,
-      target,
-      activity.newsletter_last
-    )
-    const patch = {
-      list_id: target,
-      status: 'accepted' as const,
-      ...(delta !== undefined ? { newsletter_last: delta } : {}),
-    }
+    const patch = { list_id: 'refined' as ListId, status: 'processed' as const }
     setActivities((prev) =>
-      prev.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              ...patch,
-              postpartum_post: services.includes('postpartum_post'),
-            }
-          : e
-      )
+      prev.map((e) => (e.id === id ? { ...e, ...patch } : e))
     )
     try {
       await saveActivity(id, activity.type, patch)
@@ -445,63 +377,10 @@ export default function Board({
     }
   }
 
-  const handleMoveEvent = async (id: string, targetList: ListId) => {
-    const activity = activities.find((e) => e.id === id)
-    if (!activity) return
-    const delta = newsletterLastDelta(
-      activity.list_id,
-      targetList,
-      activity.newsletter_last
-    )
-
-    // Refine -> Upcoming is where "is it good for newsletter/post" gets decided.
-    // Default both services on (editable via toggle afterward), and stamp
-    // 'accepted' — the status that reflects "confirmed, in the active pipeline".
-    const isPromotionToUpcoming =
-      activity.list_id === 'refine' &&
-      (targetList === 'upcoming_events' || targetList === 'new_resources')
-    const nextServices: Service[] =
-      isPromotionToUpcoming && activity.services.length === 0
-        ? ['newsletter', 'postpartum_post']
-        : activity.services
-    const newStatus =
-      targetList === 'capture'
-        ? ('processing' as const)
-        : isPromotionToUpcoming
-          ? ('accepted' as const)
-          : activity.status
-
-    const updated: DeskActivity = {
-      ...activity,
-      list_id: targetList,
-      status: newStatus,
-      services: nextServices,
-      postpartum_post: nextServices.includes('postpartum_post'),
-      ...(delta !== undefined ? { newsletter_last: delta } : {}),
-    }
-    setActivities((prev) => prev.map((e) => (e.id === id ? updated : e)))
-    try {
-      if (isPromotionToUpcoming) {
-        await saveActivity(id, activity.type, updated)
-      } else {
-        await moveActivity(
-          id,
-          activity.type,
-          targetList,
-          targetList === 'capture' ? 'processing' : undefined,
-          delta
-        )
-      }
-    } catch (err) {
-      console.error('Move failed:', err)
-      setActivities((prev) => prev.map((e) => (e.id === id ? activity : e)))
-    }
-  }
-
   // Card-front Newsletter/Post toggle — two-way, replaces the old one-way
   // "Skip issue"/"Skip match" buttons and works from any tab/stage. Dropping
   // the last remaining service on an item already in the Upcoming/Next
-  // pipeline moves it to 'gone'; picking one back up never needs to move it
+  // pipeline moves it to 'done'; picking one back up never needs to move it
   // (services only get seeded once a card is actually promoted to Upcoming).
   const handleToggleService = async (
     id: string,
@@ -513,20 +392,23 @@ export default function Board({
     const nextServices = enabled
       ? Array.from(new Set([...activity.services, service]))
       : activity.services.filter((s) => s !== service)
-    const inServiceStage =
-      activity.list_id === 'upcoming_events' ||
-      activity.list_id === 'new_resources' ||
-      activity.list_id === 'next_newsletter'
-    const becameEmpty = inServiceStage && nextServices.length === 0
+    const becameEmpty =
+      activity.list_id === 'refined' && nextServices.length === 0
     const updated: DeskActivity = {
       ...activity,
       services: nextServices,
       postpartum_post: nextServices.includes('postpartum_post'),
-      ...(becameEmpty ? { list_id: 'gone' as ListId } : {}),
+      ...(becameEmpty
+        ? { list_id: 'done' as ListId, in_next_issue: false }
+        : {}),
     }
     setActivities((prev) => prev.map((e) => (e.id === id ? updated : e)))
     try {
-      await saveActivity(id, activity.type, { services: nextServices })
+      await saveActivity(id, activity.type, {
+        services: nextServices,
+        postpartum_post: nextServices.includes('postpartum_post'),
+        ...(becameEmpty ? { list_id: 'done', in_next_issue: false } : {}),
+      } as Partial<DeskActivity>)
     } catch (err) {
       console.error('Toggle service failed:', err)
       setActivities((prev) => prev.map((e) => (e.id === id ? activity : e)))
@@ -539,7 +421,12 @@ export default function Board({
     setActivities((prev) =>
       prev.map((e) =>
         e.id === id
-          ? { ...e, status: 'archived' as const, list_id: 'gone' as ListId }
+          ? {
+              ...e,
+              status: 'archived' as const,
+              list_id: 'done' as ListId,
+              in_next_issue: false,
+            }
           : e
       )
     )
@@ -635,12 +522,13 @@ export default function Board({
   const handleRestoreEvent = async (id: string) => {
     const activity = activities.find((e) => e.id === id)
     if (!activity) return
-    // Restoring out of 'gone' needs a real landing spot — send it back to review
-    // for a fresh look, and clear the issue stamp so it doesn't still read as published.
+    // Restoring out of 'done' sends it back to the inbox for a fresh look, and
+    // clears the issue stamp so it doesn't still read as published.
     const restored = {
       ...activity,
-      status: 'accepted' as const,
-      list_id: 'review' as ListId,
+      status: 'processed' as const,
+      list_id: 'inbox' as ListId,
+      in_next_issue: false,
       newsletter_last: null,
     }
     setActivities((prev) => prev.map((e) => (e.id === id ? restored : e)))
@@ -683,20 +571,6 @@ export default function Board({
     }
   }
 
-  const handleAdvanceLocation = async (id: string) => {
-    const loc = locations.find((l) => l.id === id)
-    if (!loc) return
-    setLocations((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, list_id: 'refine' as ListId } : l))
-    )
-    try {
-      await advanceLocation(id)
-    } catch (err) {
-      console.error('advanceLocation failed:', err)
-      setLocations((prev) => prev.map((l) => (l.id === id ? loc : l)))
-    }
-  }
-
   const handleDecideLocationPost = async (id: string, inPost: boolean) => {
     const loc = locations.find((l) => l.id === id)
     if (!loc) return
@@ -705,8 +579,8 @@ export default function Board({
         l.id === id
           ? {
               ...l,
-              list_id: 'gone' as ListId,
-              status: 'accepted' as const,
+              list_id: (inPost ? 'refined' : 'done') as ListId,
+              status: 'processed' as const,
               postpartum_post: inPost,
             }
           : l
@@ -743,8 +617,8 @@ export default function Board({
         e.id === id
           ? {
               ...e,
-              list_id: 'error' as ListId,
-              status: 'new' as const,
+              list_id: 'inbox' as ListId,
+              status: 'failed' as const,
               title: description,
               ...(reason ? { parse_error: reason } : {}),
             }
@@ -753,14 +627,14 @@ export default function Board({
     )
     if (seedCreated) {
       await saveActivity(id, type, {
-        list_id: 'error',
-        status: 'new',
+        list_id: 'inbox',
+        status: 'failed',
         title: description,
       } as Partial<DeskActivity>).catch(() => {})
     } else {
       await createActivity(id, type, {
-        list_id: 'error',
-        status: 'new',
+        list_id: 'inbox',
+        status: 'failed',
         description,
       }).catch(() => {})
     }
@@ -773,7 +647,7 @@ export default function Board({
     const preview_url = captureData.file
       ? URL.createObjectURL(captureData.file)
       : null
-    const listId = captureData.list_id || 'capture'
+    const listId = captureData.list_id || 'inbox'
     // Every new activity defaults to both services (Newsletter + Post) — or
     // just Newsletter for resources, which are never eligible for Post (the
     // Postpartum Post matcher only queries events, locations, and
@@ -879,7 +753,7 @@ export default function Board({
         id,
         type,
         title: description,
-        list_id: 'review',
+        list_id: 'inbox',
         status: 'new',
         services: seedServices,
         file: captureData.file,
@@ -906,7 +780,7 @@ export default function Board({
       try {
         await createActivity(id, type, {
           description,
-          list_id: 'review',
+          list_id: 'inbox',
           status: 'new',
           services: seedServices,
           file_url,
@@ -1057,18 +931,12 @@ export default function Board({
   // Post has no ListProps entry — its three sections (Upcoming events,
   // Recurring Events, Match) are computed splits rendered as bespoke lists
   // further down, not through the generic Column component.
-  const currentColumns =
-    activeTab === 'triage'
-      ? TRIAGE_LISTS.filter((l) => l.id !== 'error')
-      : activeTab === 'newsletter'
-        ? NEWSLETTER_LISTS
-        : []
   const byUpdatedDesc = (a: DeskActivity, b: DeskActivity) =>
     new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
 
   // Published = actually sent in a newsletter issue (status independent of list_id —
   // a dual-tagged item can be 'published' for newsletter while list_id stays put
-  // because it's still alive for Post). Archived = fully exited (list_id 'gone')
+  // because it's still alive for Post). Archived = fully exited (list_id 'done')
   // and never published — this bucket mixes explicit triage rejects (status:
   // archived) with items that just aged out without ever being rejected (status:
   // accepted); the ArchivedCard badge distinguishes the two.
@@ -1076,7 +944,7 @@ export default function Board({
     .filter((e) => e.status === 'published')
     .sort(byUpdatedDesc)
   const archivedActivities = activities
-    .filter((e) => e.list_id === 'gone' && e.status !== 'published')
+    .filter((e) => e.list_id === 'done' && e.status !== 'published')
     .sort(byUpdatedDesc)
   const activeTabItems =
     activeTab === 'published'
@@ -1100,7 +968,7 @@ export default function Board({
   // pipeline stage — status accepted or published. Just two flat groups,
   // most recently modified first.
   const includedActivities = activities.filter(
-    (a) => a.status === 'accepted' || a.status === 'published'
+    (a) => a.list_id === 'refined' || a.status === 'published'
   )
   const includedEvents = includedActivities
     .filter((a) => a.type === 'event')
@@ -1117,8 +985,8 @@ export default function Board({
   // newsletter-cycle concept, not a Post one, so it must NOT exclude items.
   // A recurring (or even single) event tagged postpartum_post stays eligible
   // for Post regardless of its newsletter status; only an explicit archive
-  // (rejected) or leaving upcoming_events (aged out via sweepStaleUpcoming,
-  // or moved to 'gone') removes it.
+  // (rejected) or leaving 'refined' (aged out via sweepStaleUpcoming,
+  // or moved to 'done') removes it.
   const postEffectiveDate = (a: DeskActivity) =>
     a.repeat_next_date ?? a.start_date ?? null
   const byPostDate = (a: DeskActivity, b: DeskActivity) =>
@@ -1165,9 +1033,10 @@ export default function Board({
     .sort(byPostDate)
 
   // Locations tab groups
-  const reviewLocations = locations.filter((l) => l.list_id === 'review')
-  const refineLocations = locations.filter((l) => l.list_id === 'refine')
-  const goneLocations = locations.filter((l) => l.list_id === 'gone')
+  const inboxLocations = locations.filter((l) => l.list_id === 'inbox')
+  const goneLocations = locations.filter(
+    (l) => l.list_id === 'refined' || l.list_id === 'done'
+  )
   const inPostLocations = goneLocations.filter((l) => l.postpartum_post)
   const notInPostLocations = goneLocations.filter((l) => !l.postpartum_post)
 
@@ -1436,15 +1305,15 @@ export default function Board({
         </div>
       ) : activeTab === 'locations' ? (
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
-          {/* Review */}
+          {/* Inbox */}
           <div className="w-full md:flex-1 md:basis-0 min-w-0">
             <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
               <div className="p-4 bg-violet-600 flex items-center justify-between">
                 <h2 className="text-[10px] font-black uppercase tracking-widest text-white">
-                  Review
+                  Inbox
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">
-                  {reviewLocations.length}
+                  {inboxLocations.length}
                 </span>
               </div>
               <div className="p-3 space-y-3 bg-slate-100">
@@ -1452,42 +1321,12 @@ export default function Board({
                   onAddLocation={handleAddLocation}
                   locations={locations}
                 />
-                {reviewLocations.length === 0 ? (
+                {inboxLocations.length === 0 ? (
                   <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
                     Nothing to see here 🌬️
                   </div>
                 ) : (
-                  reviewLocations.map((loc) => (
-                    <LocationCard
-                      key={loc.id}
-                      location={loc}
-                      onDetails={openLocation}
-                      onAdvance={handleAdvanceLocation}
-                    />
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
-
-          {/* Refine */}
-          <div className="w-full md:flex-1 md:basis-0 min-w-0">
-            <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
-              <div className="p-4 bg-violet-600 flex items-center justify-between">
-                <h2 className="text-[10px] font-black uppercase tracking-widest text-white">
-                  Refine
-                </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">
-                  {refineLocations.length}
-                </span>
-              </div>
-              <div className="p-3 space-y-3 bg-slate-100">
-                {refineLocations.length === 0 ? (
-                  <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
-                    Nothing to see here 🌬️
-                  </div>
-                ) : (
-                  refineLocations.map((loc) => (
+                  inboxLocations.map((loc) => (
                     <LocationCard
                       key={loc.id}
                       location={loc}
@@ -1577,137 +1416,17 @@ export default function Board({
           rows={activities.filter(
             (e) =>
               e.services.includes('newsletter') &&
-              (
-                [
-                  'upcoming_events',
-                  'new_resources',
-                  'next_newsletter',
-                ] as ListId[]
-              ).includes(e.list_id) &&
+              e.list_id === 'refined' &&
               e.status !== 'archived' &&
               e.status !== 'published'
           )}
           onOpen={openActivity}
-          onMoveList={handleMoveList}
+          onToggleNextIssue={handleToggleNextIssue}
           onArchive={handleArchiveEvent}
           onToggleService={handleToggleService}
         />
       ) : (
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
-          {currentColumns.map((col) => (
-            <div key={col.id} className="w-full md:flex-1 md:basis-0 min-w-0">
-              <Column
-                list={col}
-                isOpen={
-                  typeof window !== 'undefined' && window.innerWidth >= 768
-                    ? true
-                    : openCols.has(col.id)
-                }
-                onToggle={() => {
-                  setOpenCols((prev) => {
-                    const newSet = new Set(prev)
-                    if (newSet.has(col.id)) newSet.delete(col.id)
-                    else newSet.add(col.id)
-                    return newSet
-                  })
-                }}
-                activities={activities
-                  .filter(
-                    (e) =>
-                      e.list_id === col.id &&
-                      e.status !== 'archived' &&
-                      e.status !== 'published'
-                  )
-                  .filter(
-                    (e) =>
-                      col.id !== 'review' ||
-                      e.type !== 'event' ||
-                      !(e.end_date
-                        ? e.end_date < publishDate
-                        : !!e.start_date &&
-                          !e.repeat_rrule &&
-                          e.start_date < publishDate)
-                  )
-                  .sort((a, b) => {
-                    if (col.id === 'upcoming_events') {
-                      const today = new Date().toISOString().split('T')[0]
-                      const aInWindow = !!(
-                        a.repeat_next_date &&
-                        a.repeat_next_date >= today &&
-                        a.repeat_next_date <= publishDate
-                      )
-                      const bInWindow = !!(
-                        b.repeat_next_date &&
-                        b.repeat_next_date >= today &&
-                        b.repeat_next_date <= publishDate
-                      )
-                      if (aInWindow !== bInWindow) return aInWindow ? -1 : 1
-                      if (aInWindow && bInWindow)
-                        return a.repeat_next_date!.localeCompare(
-                          b.repeat_next_date!
-                        )
-                    }
-                    if (!a.start_date && !b.start_date) return 0
-                    if (!a.start_date) return 1
-                    if (!b.start_date) return -1
-                    return a.start_date.localeCompare(b.start_date)
-                  })}
-                onDetails={openActivity}
-                onMove={handleMoveEvent}
-                onAddEvent={handleAddEvent}
-                pastEvents={
-                  col.id === 'review'
-                    ? activities.filter(
-                        (a) =>
-                          a.type === 'event' &&
-                          a.list_id === 'review' &&
-                          a.status !== 'archived' &&
-                          a.status !== 'published' &&
-                          (a.end_date
-                            ? a.end_date < publishDate
-                            : !!a.start_date &&
-                              !a.repeat_rrule &&
-                              a.start_date < publishDate)
-                      )
-                    : undefined
-                }
-                // 'Errors' (list_id: error) and 'New' (list_id: capture — a rare
-                // legacy fallback) are folded under Capture as collapsible
-                // sections instead of their own top-level columns.
-                extraGroups={
-                  col.id === 'ideas'
-                    ? [
-                        {
-                          key: 'error',
-                          label: 'Errors',
-                          activities: activities.filter(
-                            (a) =>
-                              a.list_id === 'error' &&
-                              a.status !== 'archived' &&
-                              a.status !== 'published'
-                          ),
-                        },
-                        {
-                          key: 'capture-new',
-                          label: 'New',
-                          activities: activities.filter(
-                            (a) =>
-                              a.list_id === 'capture' &&
-                              a.status !== 'archived' &&
-                              a.status !== 'published'
-                          ),
-                        },
-                      ]
-                    : undefined
-                }
-                onArchive={handleArchiveEvent}
-                onToggleService={handleToggleService}
-                publishDate={publishDate}
-                color="orange"
-              />
-            </div>
-          ))}
-
           {activeTab === 'post' && (
             <>
               {(
@@ -1774,7 +1493,8 @@ export default function Board({
           onFinishIssue={async () => {
             const next = activities.filter(
               (a) =>
-                a.list_id === 'next_newsletter' &&
+                a.list_id === 'refined' &&
+                a.in_next_issue &&
                 a.status !== 'archived' &&
                 a.status !== 'published' &&
                 a.services.includes('newsletter')
@@ -1786,7 +1506,8 @@ export default function Board({
             const staleUpcoming = activities.filter(
               (a) =>
                 a.type === 'event' &&
-                a.list_id === 'upcoming_events' &&
+                a.list_id === 'refined' &&
+                !a.in_next_issue &&
                 !a.repeat_rrule &&
                 a.status !== 'archived' &&
                 a.status !== 'published' &&
@@ -1823,11 +1544,8 @@ export default function Board({
                     status: 'published' as const,
                     services: nextServices,
                     postpartum_post: nextServices.includes('postpartum_post'),
-                    list_id: (becameEmpty
-                      ? 'gone'
-                      : a.type === 'event'
-                        ? 'upcoming_events'
-                        : 'new_resources') as ListId,
+                    in_next_issue: false,
+                    list_id: (becameEmpty ? 'done' : 'refined') as ListId,
                   }
                 }
                 if (staleUpcoming.some((s) => s.id === a.id)) {
@@ -1839,7 +1557,7 @@ export default function Board({
                     services: nextServices,
                     postpartum_post: nextServices.includes('postpartum_post'),
                     ...(nextServices.length === 0
-                      ? { list_id: 'gone' as ListId }
+                      ? { list_id: 'done' as ListId, in_next_issue: false }
                       : {}),
                   }
                 }

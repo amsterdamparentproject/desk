@@ -7,37 +7,30 @@ import { CaptureShell } from './components/CaptureShell'
 import { verifyDeskSession } from './utils/auth-gate'
 import { createAdminClient } from './utils/supabase/server'
 import { getLocations } from './actions/activities'
+import { sweepStuckCards } from '@/lib/parse/server'
 
 async function BoardWithData() {
   const supabase = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
   const now = new Date().toISOString()
-  // eslint-disable-next-line react-hooks/purity -- async Server Component: runs once per request, so reading the clock here is intended
-  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString()
 
   // Run cleanup in parallel with data fetch — previously these were sequential,
   // adding a full Supabase round-trip before the selects could start.
   const cleanupPromise = Promise.all([
+    // Rescue cards stuck in processing (with a reason on the card).
+    sweepStuckCards().catch((err) =>
+      console.error('Stuck-card sweep failed:', err)
+    ),
     supabase
       .from('events')
-      .update({ list_id: 'error', status: 'new', updated_at: now })
-      .eq('status', 'processing')
-      .lt('updated_at', staleThreshold),
-    supabase
-      .from('resources')
-      .update({ list_id: 'error', status: 'new', updated_at: now })
-      .eq('status', 'processing')
-      .lt('updated_at', staleThreshold),
-    supabase
-      .from('events')
-      .update({ status: 'published', updated_at: now })
-      .eq('list_id', 'next_newsletter')
+      .update({ status: 'published', in_next_issue: false, updated_at: now })
+      .eq('in_next_issue', true)
       .not('newsletter_last', 'is', null)
       .lt('newsletter_last', today),
     supabase
       .from('resources')
-      .update({ status: 'published', updated_at: now })
-      .eq('list_id', 'next_newsletter')
+      .update({ status: 'published', in_next_issue: false, updated_at: now })
+      .eq('in_next_issue', true)
       .not('newsletter_last', 'is', null)
       .lt('newsletter_last', today),
   ])
@@ -68,19 +61,10 @@ async function BoardWithData() {
   }
 
   // Events are fetched unconditionally, regardless of date — same as
-  // resources below, which have never had date-based gating. status/list_id
-  // fully describe relevance in this pipeline model now; a past-dated,
-  // non-recurring event sitting in 'upcoming_events' (status: 'accepted')
-  // doesn't get moved to 'gone' until sweepStaleUpcoming runs (which only
-  // happens when a newsletter issue is finished), so a date-based fetch gate
-  // here repeatedly caused activities to silently vanish before ever
-  // reaching the client — first for aged-out 'gone' items (fixed by adding a
-  // 'gone' bypass), then again for any 'upcoming_events' item caught between
-  // its date passing and the next sweep. Removing the gate entirely instead
-  // of chasing more bypasses. Staleness/grouping by date is handled
-  // client-side in Board.tsx (pastEvents, sweepStaleUpcoming, the Match
-  // panel's month buckets) — the server fetch doesn't need its own parallel
-  // notion of "current."
+  // resources below. list_id/status fully describe relevance in this pipeline
+  // model; staleness/grouping by date is handled client-side in Board.tsx
+  // (pastEvents, sweepStaleUpcoming, the Match panel's month buckets), so the
+  // server fetch doesn't need its own notion of "current."
   const events = (eventsResult.data ?? []).map((e) => ({
     ...e,
     type: 'event' as const,
