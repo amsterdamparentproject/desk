@@ -24,7 +24,7 @@ export function ParseNotice({
   return (
     <div className="space-y-1" data-testid="parse-notice">
       {activity.parse_error && (
-        <div className="flex items-start gap-1.5 text-red-700 bg-red-50 rounded px-1.5 py-1">
+        <div className="flex items-start gap-1.5 text-red-300 bg-red-50 rounded px-1.5 py-1">
           <XCircle size={12} className="mt-0.5 shrink-0" />
           <span className="text-[10px] font-bold leading-snug">
             {activity.parse_error}
@@ -41,7 +41,7 @@ export function ParseNotice({
         </button>
       )}
       {visible.length > 0 && (
-        <div className="flex items-start gap-1.5 text-amber-800 bg-amber-50 rounded px-1.5 py-1">
+        <div className="flex items-start gap-1.5 text-amber-300 bg-amber-50 rounded px-1.5 py-1">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" />
           <ul className="text-[10px] font-bold leading-snug space-y-0.5">
             {visible.map((w, i) => (

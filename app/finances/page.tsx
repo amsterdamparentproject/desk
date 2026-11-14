@@ -111,7 +111,7 @@ export default function FinancesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header */}
-      <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-slate-200 bg-surface/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">
@@ -144,7 +144,7 @@ export default function FinancesPage() {
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Upload Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
+        <div className="bg-surface rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-2">
               Import ING Statement
@@ -174,13 +174,13 @@ export default function FinancesPage() {
             <button
               onClick={handleUpload}
               disabled={!file || loading}
-              className="w-full bg-slate-900 text-white py-3 rounded-lg font-medium hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-app-gold text-ink py-3 rounded-lg font-medium hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Parsing...' : 'Parse CSV & Calculate'}
             </button>
           </div>
           {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -216,7 +216,7 @@ export default function FinancesPage() {
             </div>
 
             {/* P&L Statement */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <div className="bg-surface rounded-xl shadow-sm border border-slate-200 p-8">
               <h3 className="text-lg font-semibold text-slate-900 mb-6">
                 Profit & Loss Statement
               </h3>
@@ -224,7 +224,7 @@ export default function FinancesPage() {
             </div>
 
             {/* Transactions Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <div className="bg-surface rounded-xl shadow-sm border border-slate-200 p-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">
                   Transactions ({transactions.length})
@@ -290,7 +290,7 @@ export default function FinancesPage() {
                         </td>
                         <td className="py-3 px-2">
                           <span
-                            className={`text-xs font-medium px-2 py-1 rounded ${tx.isIncome ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                            className={`text-xs font-medium px-2 py-1 rounded ${tx.isIncome ? 'bg-green-100 text-green-300' : 'bg-red-100 text-red-300'}`}
                           >
                             {tx.isIncome ? 'Income' : 'Expense'}
                           </span>
@@ -311,7 +311,7 @@ export default function FinancesPage() {
 
             {/* VAT Info */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-              <p className="text-sm text-amber-900">
+              <p className="text-sm text-amber-300">
                 <strong>VAT Filing:</strong> Your final VAT return is due by end
                 of July 2025 (for April–June quarter). After 1 July, KOR exempts
                 you from VAT registration.
@@ -456,7 +456,7 @@ function Row({
 }) {
   return (
     <div
-      className={`flex justify-between ${bold ? 'font-semibold text-slate-900' : secondary ? 'text-slate-600' : 'text-slate-700'} ${highlight ? 'text-blue-900' : ''}`}
+      className={`flex justify-between ${bold ? 'font-semibold text-slate-900' : secondary ? 'text-slate-600' : 'text-slate-700'} ${highlight ? 'text-blue-300' : ''}`}
     >
       <span>{label}</span>
       <span>{formatCurrency(value)}</span>
@@ -466,11 +466,11 @@ function Row({
 
 function getCategoryColor(category?: string): string {
   const colors: Record<string, string> = {
-    'Personal Contribution': 'bg-teal-100 text-teal-800',
-    Events: 'bg-purple-100 text-purple-800',
-    Programs: 'bg-blue-100 text-blue-800',
-    'Program Operations': 'bg-green-100 text-green-800',
-    Technology: 'bg-orange-100 text-orange-800',
+    'Personal Contribution': 'bg-teal-100 text-teal-300',
+    Events: 'bg-purple-100 text-purple-300',
+    Programs: 'bg-blue-100 text-blue-300',
+    'Program Operations': 'bg-green-100 text-green-300',
+    Technology: 'bg-orange-100 text-orange-300',
     'Business Admin': 'bg-slate-100 text-slate-800',
     Other: 'bg-gray-100 text-gray-800',
   }

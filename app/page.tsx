@@ -56,7 +56,7 @@ async function BoardWithData() {
       eventsResult.error?.message ?? resourcesResult.error?.message
     console.error('Database Fetch Error:', message)
     return (
-      <div className="p-6 text-sm bg-red-50 text-red-700 border border-red-200 rounded-xl">
+      <div className="p-6 text-sm bg-red-50 text-red-300 border border-red-200 rounded-xl">
         <span className="font-semibold">Database Schema Error:</span> {message}
       </div>
     )

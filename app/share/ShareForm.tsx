@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Send, Sparkles, ImagePlus, X } from 'lucide-react'
+import { LavaSpinner } from '@/app/components/Lava'
 
 interface ShareFormProps {
   initialDescription: string
@@ -111,7 +112,7 @@ export function ShareForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm"
+      className="bg-surface border border-slate-200 rounded-xl p-3 shadow-sm"
     >
       <textarea
         autoFocus
@@ -155,7 +156,7 @@ export function ShareForm({
             onClick={() => setUseAi((v) => !v)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
               useAi
-                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                ? 'bg-blue-50 text-blue-300 hover:bg-blue-100'
                 : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
             }`}
           >
@@ -171,8 +172,8 @@ export function ShareForm({
               onClick={() => setType('event')}
               className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
                 type === 'event'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'bg-white text-slate-400 hover:bg-slate-50'
+                  ? 'bg-blue-50 text-blue-300'
+                  : 'bg-surface text-slate-400 hover:bg-slate-50'
               }`}
             >
               Event
@@ -182,8 +183,8 @@ export function ShareForm({
               onClick={() => setType('resource')}
               className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
                 type === 'resource'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'bg-white text-slate-400 hover:bg-slate-50'
+                  ? 'bg-blue-50 text-blue-300'
+                  : 'bg-surface text-slate-400 hover:bg-slate-50'
               }`}
             >
               Resource
@@ -195,7 +196,7 @@ export function ShareForm({
             onClick={() => fileInputRef.current?.click()}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${
               displayImageUrl
-                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                ? 'bg-blue-50 text-blue-300 hover:bg-blue-100'
                 : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
             }`}
           >
@@ -209,7 +210,7 @@ export function ShareForm({
           className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-300 transition-all shadow-md active:scale-95"
         >
           {submitting ? (
-            <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+            <LavaSpinner color="#fff8eb" width={30} height={15} label="Sending" />
           ) : (
             <Send size={16} strokeWidth={3} />
           )}

@@ -145,11 +145,11 @@ export function OccurrencePicker({
   }
 
   const timeStyle =
-    'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'
+    'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-surface'
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="rounded-xl border border-slate-200 bg-surface p-3">
         <div className="mb-2 flex items-center justify-between">
           <button
             type="button"
@@ -195,7 +195,7 @@ export function OccurrencePicker({
                   on
                     ? 'bg-blue-600 text-white'
                     : date === today
-                      ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      ? 'bg-amber-50 text-amber-300 hover:bg-amber-100'
                       : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
@@ -213,7 +213,7 @@ export function OccurrencePicker({
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-widest text-green-600">
+            <span className="text-[9px] font-black uppercase tracking-widest text-green-300">
               {days.length} {days.length === 1 ? 'date' : 'dates'}
             </span>
             {days.length > 1 && (
@@ -268,7 +268,7 @@ export function OccurrencePicker({
                           ? `Remove time ${n + 1} on ${label(date)}`
                           : `Remove ${label(date)}`
                       }
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-300"
                     >
                       <X size={14} />
                     </button>

@@ -5,12 +5,10 @@ import {
   MapPin,
   ExternalLink,
   Clock,
-  Star,
   NotebookPen,
   Edit,
   Check,
   ImageIcon,
-  SkipForward,
   RefreshCw,
   Calendar,
   Settings,
@@ -41,24 +39,18 @@ import {
 import { upsertLocation, dismissParseNotice } from '../actions/activities'
 import { ParseNotice } from './card/ParseNotice'
 import { OccurrencePicker } from './OccurrencePicker'
+import { AreaPills } from './AreaPills'
+import { Pill } from './Pills'
+import { HighlightToggle } from './HighlightToggle'
+import { LavaSpinner } from './Lava'
 import {
   occurrencesFromRange,
   rangeFromOccurrences,
   type Occurrence,
 } from '@/lib/occurrences'
 
-const AREAS = [
-  'West',
-  'East',
-  'North',
-  'Center',
-  'South',
-  'Everywhere',
-  'Online',
-]
-
 const baseInputStyle =
-  'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-white'
+  'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 transition-colors bg-surface'
 const inputStyle = `${baseInputStyle} px-3`
 const selectStyle = `${baseInputStyle} pl-3 pr-8 cursor-pointer`
 
@@ -275,6 +267,43 @@ export function ActivityDrawer({
     }))
   }
 
+  const changeFrequency = (next: string) => {
+    setRepeatFrequency(next)
+    // Recurring events anchor on one start date; one-off
+    // events use the date picker.
+    {
+      const cur = latestFormData.current
+      if (next && (cur.occurrences?.length ?? 0) > 0) {
+        setOccurrences([], true)
+      } else if (!next && cur.start_date) {
+        setOccurrences(occurrencesFromRange(cur), true)
+      }
+    }
+    if (next !== 'weekly' && next !== 'biweekly') {
+      setRepeatDays([])
+    } else if (formData.start_date) {
+      const [wy, wm, wd] = formData.start_date.split('-').map(Number)
+      setRepeatDays([DOW_TO_ABBR[new Date(wy, wm - 1, wd).getDay()]])
+    }
+    if (next !== 'monthly') {
+      setRepeatMonthlyPos('')
+      setRepeatMonthlyDay('')
+    } else if (formData.start_date) {
+      const [sy, sm, sd] = formData.start_date.split('-').map(Number)
+      const d = new Date(sy, sm - 1, sd)
+      const abbr = DOW_TO_ABBR[d.getDay()]
+      const dom = d.getDate()
+      const daysInMonth = new Date(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        0
+      ).getDate()
+      const pos = dom + 7 > daysInMonth ? -1 : Math.ceil(dom / 7)
+      setRepeatMonthlyPos(String(pos))
+      setRepeatMonthlyDay(abbr)
+    }
+  }
+
   const toggleRepeatDay = (abbr: string) => {
     setRepeatDays((prev) =>
       prev.includes(abbr) ? prev.filter((d) => d !== abbr) : [...prev, abbr]
@@ -395,20 +424,20 @@ export function ActivityDrawer({
 
   const displayImageUrl = formData.preview_url || formData.file_url
   const descriptionStyle =
-    'w-full text-sm leading-relaxed text-black border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none overflow-hidden bg-blue-50/60 rounded-lg transition-colors'
+    'w-full text-sm leading-relaxed text-slate-900 border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none overflow-hidden bg-blue-50/60 rounded-lg transition-colors'
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end"
+      className="fixed inset-0 bg-ink/70 backdrop-blur-sm z-50 flex justify-end"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+        className="relative w-full max-w-4xl bg-surface h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {activity.status === 'processing' && (
-          <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-30">
-            <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin" />
+          <div className="absolute inset-0 bg-surface/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-30">
+            <LavaSpinner width={54} height={26} label="Processing" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Processing
             </span>
@@ -487,27 +516,15 @@ export function ActivityDrawer({
                 }))
               }}
             />
-            {onConvertType && !readOnly && (
-              <button
-                type="button"
-                onClick={handleConvert}
-                disabled={converting}
-                className="text-[11px] font-black uppercase tracking-wide text-slate-500 hover:text-slate-900 underline-offset-2 hover:underline disabled:opacity-50"
-              >
-                {converting
-                  ? 'Converting…'
-                  : formData.type === 'event'
-                    ? 'This is a resource, not an event →'
-                    : 'This is an event, not a resource →'}
-              </button>
-            )}
             <Field label="Title">
-              <input
-                className="w-full text-2xl font-black tracking-tight border-none p-0 focus:ring-0 focus:outline-none text-slate-900"
-                value={formData.title}
-                onChange={(e) => handleChange('title', e.target.value)}
-                onBlur={handleBlurSave}
-              />
+              <div className="title-underline">
+                <input
+                  className="w-full border-none p-0 pb-1 font-display text-xl font-bold leading-tight tracking-tight text-slate-900 focus:outline-none focus:ring-0 md:text-2xl"
+                  value={formData.title}
+                  onChange={(e) => handleChange('title', e.target.value)}
+                  onBlur={handleBlurSave}
+                />
+              </div>
             </Field>
 
             <Field label="Source URL">
@@ -517,16 +534,21 @@ export function ActivityDrawer({
                   onChange={(e) => handleChange('url', e.target.value)}
                   onBlur={handleBlurSave}
                   placeholder="https://example.com/activity-details"
-                  className={inputStyle + ' font-mono text-blue-600'}
+                  className={inputStyle + ' font-mono text-blue-300'}
                 />
                 {formData.url && (
                   <a
                     href={formData.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-black whitespace-nowrap"
+                    className="group flex items-center gap-1.5 whitespace-nowrap rounded-xl border-2 border-app-gold bg-app-gold px-3.5 py-2 font-display text-xs font-bold text-ink shadow-[3px_3px_0_rgba(227,45,212,0.85)] transition-all duration-200 hover:-translate-y-0.5 hover:-rotate-2 hover:shadow-[5px_5px_0_rgba(227,45,212,0.85),0_0_18px_rgba(255,191,0,0.55)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none motion-reduce:transition-none"
                   >
-                    <ExternalLink size={13} /> Visit source
+                    Check it out
+                    <ExternalLink
+                      size={14}
+                      strokeWidth={3}
+                      className="transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-1 group-hover:scale-125 motion-reduce:transform-none"
+                    />
                   </a>
                 )}
               </div>
@@ -557,18 +579,7 @@ export function ActivityDrawer({
             </Field>
 
             <div className="flex gap-4">
-              <Toggle
-                label="Highlight in newsletter"
-                icon={
-                  <Star
-                    size={14}
-                    className={
-                      formData.newsletter_highlight
-                        ? 'fill-current text-amber-500'
-                        : 'text-slate-400'
-                    }
-                  />
-                }
+              <HighlightToggle
                 checked={!!formData.newsletter_highlight}
                 onChange={(v) => {
                   handleChange('newsletter_highlight', v)
@@ -579,57 +590,49 @@ export function ActivityDrawer({
 
             <div>
               <div className="flex flex-row items-center gap-2 mb-2">
-                <Newspaper size={18} className="text-green-600" />
-                <h2 className="text-green-600 text-base md:text-xl font-black whitespace-nowrap">
+                <Newspaper size={18} className="text-green-300" />
+                <h2 className="text-green-300 text-base md:text-xl font-black whitespace-nowrap">
                   Services
                 </h2>
               </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
+              <div className="flex flex-wrap gap-3">
+                <Pill
+                  role="checkbox"
+                  color="blue"
+                  index={0}
+                  active={activityServices.includes('newsletter')}
                   onClick={() =>
                     handleToggleService(
                       'newsletter',
                       !activityServices.includes('newsletter')
                     )
                   }
-                  title={
-                    activityServices.includes('newsletter')
-                      ? 'In newsletter — click to remove'
-                      : 'Not in newsletter — click to add'
-                  }
-                  className={`flex items-center justify-center w-14 h-14 rounded-xl transition-colors ${
-                    activityServices.includes('newsletter')
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
-                  }`}
                 >
-                  <Newspaper size={24} />
-                </button>
+                  <span className="flex items-center gap-2">
+                    <Newspaper size={16} />
+                    Newsletter
+                  </span>
+                </Pill>
                 {/* Post never takes resources — the Postpartum Post matcher only
                     queries events, locations, and playgrounds. */}
                 {formData.type === 'event' && (
-                  <button
-                    type="button"
+                  <Pill
+                    role="checkbox"
+                    color="magenta"
+                    index={1}
+                    active={activityServices.includes('postpartum_post')}
                     onClick={() =>
                       handleToggleService(
                         'postpartum_post',
                         !activityServices.includes('postpartum_post')
                       )
                     }
-                    title={
-                      activityServices.includes('postpartum_post')
-                        ? 'In Post — click to remove'
-                        : 'Not in Post — click to add'
-                    }
-                    className={`flex items-center justify-center w-14 h-14 rounded-xl transition-colors ${
-                      activityServices.includes('postpartum_post')
-                        ? 'bg-violet-600 text-white'
-                        : 'bg-slate-100 text-slate-300 hover:bg-slate-200 hover:text-slate-400'
-                    }`}
                   >
-                    <Mail size={24} />
-                  </button>
+                    <span className="flex items-center gap-2">
+                      <Mail size={16} />
+                      Postpartum Post
+                    </span>
+                  </Pill>
                 )}
               </div>
             </div>
@@ -691,24 +694,6 @@ export function ActivityDrawer({
                   </div>
                 </>
               )}
-              <Toggle
-                label="Skip calendar"
-                icon={
-                  <SkipForward
-                    size={14}
-                    className={
-                      formData.calendar_skip
-                        ? 'text-orange-500'
-                        : 'text-slate-400'
-                    }
-                  />
-                }
-                checked={!!formData.calendar_skip}
-                onChange={(v) => {
-                  handleChange('calendar_skip', v)
-                  onSaveDraft({ ...formData, calendar_skip: v })
-                }}
-              />
             </section>
           )}
 
@@ -721,118 +706,107 @@ export function ActivityDrawer({
                   Repeat
                 </h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4">
-                <Field label="Frequency">
-                  <select
-                    value={repeatFrequency}
-                    onChange={(e) => {
-                      const next = e.target.value
-                      setRepeatFrequency(next)
-                      // Recurring events anchor on one start date; one-off
-                      // events use the date picker.
-                      {
-                        const cur = latestFormData.current
-                        if (next && (cur.occurrences?.length ?? 0) > 0) {
-                          setOccurrences([], true)
-                        } else if (!next && cur.start_date) {
-                          setOccurrences(occurrencesFromRange(cur), true)
-                        }
-                      }
-                      if (next !== 'weekly' && next !== 'biweekly') {
-                        setRepeatDays([])
-                      } else if (formData.start_date) {
-                        const [wy, wm, wd] = formData.start_date
-                          .split('-')
-                          .map(Number)
-                        setRepeatDays([
-                          DOW_TO_ABBR[new Date(wy, wm - 1, wd).getDay()],
-                        ])
-                      }
-                      if (next !== 'monthly') {
-                        setRepeatMonthlyPos('')
-                        setRepeatMonthlyDay('')
-                      } else if (formData.start_date) {
-                        const [sy, sm, sd] = formData.start_date
-                          .split('-')
-                          .map(Number)
-                        const d = new Date(sy, sm - 1, sd)
-                        const abbr = DOW_TO_ABBR[d.getDay()]
-                        const dom = d.getDate()
-                        const daysInMonth = new Date(
-                          d.getFullYear(),
-                          d.getMonth() + 1,
-                          0
-                        ).getDate()
-                        const pos =
-                          dom + 7 > daysInMonth ? -1 : Math.ceil(dom / 7)
-                        setRepeatMonthlyPos(String(pos))
-                        setRepeatMonthlyDay(abbr)
-                      }
-                    }}
-                    onBlur={handleBlurSave}
-                    className={selectStyle}
+              <div className="grid grid-cols-1 gap-2 md:gap-4">
+                <Field label="Repeats">
+                  <div
+                    role="radiogroup"
+                    aria-label="Repeat"
+                    className="flex flex-wrap gap-2"
                   >
-                    <option value="">None</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Every 2 weeks</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
+                    {[
+                      ['', "Doesn't repeat"],
+                      ['daily', 'Daily'],
+                      ['weekly', 'Weekly'],
+                      ['biweekly', 'Every 2 weeks'],
+                      ['monthly', 'Monthly'],
+                    ].map(([value, label], i) => (
+                      <Pill
+                        key={value || 'none'}
+                        role="radio"
+                        color="amber"
+                        index={i}
+                        active={repeatFrequency === value}
+                        onClick={() => {
+                          changeFrequency(value)
+                          setTimeout(handleBlurSave, 0)
+                        }}
+                      >
+                        {label}
+                      </Pill>
+                    ))}
+                  </div>
                 </Field>
               </div>
               {repeatFrequency === 'monthly' && (
-                <Field label="On">
-                  <div className="flex gap-2">
-                    <select
-                      value={repeatMonthlyPos}
-                      onChange={(e) => setRepeatMonthlyPos(e.target.value)}
-                      onBlur={handleBlurSave}
-                      className={selectStyle}
-                    >
-                      <option value="">Day of month</option>
-                      <option value="1">1st</option>
-                      <option value="2">2nd</option>
-                      <option value="3">3rd</option>
-                      <option value="4">4th</option>
-                      <option value="-1">Last</option>
-                    </select>
-                    {repeatMonthlyPos && (
-                      <select
-                        value={repeatMonthlyDay}
-                        onChange={(e) => setRepeatMonthlyDay(e.target.value)}
-                        onBlur={handleBlurSave}
-                        className={selectStyle}
-                      >
-                        <option value="">Weekday</option>
-                        {WEEKDAYS.map(({ label, abbr }) => (
-                          <option key={abbr} value={abbr}>
+                <div className="reveal space-y-3">
+                  <Field label="On the">
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        ['1', '1st'],
+                        ['2', '2nd'],
+                        ['3', '3rd'],
+                        ['4', '4th'],
+                        ['-1', 'Last'],
+                      ].map(([value, label], i) => (
+                        <Pill
+                          key={value}
+                          role="radio"
+                          color="amber"
+                          index={i}
+                          size="sm"
+                          active={repeatMonthlyPos === value}
+                          onClick={() => {
+                            setRepeatMonthlyPos(value)
+                            setTimeout(handleBlurSave, 0)
+                          }}
+                        >
+                          {label}
+                        </Pill>
+                      ))}
+                    </div>
+                  </Field>
+                  {repeatMonthlyPos && (
+                    <Field label="Weekday">
+                      <div className="reveal flex flex-wrap gap-2">
+                        {WEEKDAYS.map(({ label, abbr }, i) => (
+                          <Pill
+                            key={abbr}
+                            role="radio"
+                            color="amber"
+                            index={i}
+                            size="sm"
+                            active={repeatMonthlyDay === abbr}
+                            onClick={() => {
+                              setRepeatMonthlyDay(abbr)
+                              setTimeout(handleBlurSave, 0)
+                            }}
+                          >
                             {label}
-                          </option>
+                          </Pill>
                         ))}
-                      </select>
-                    )}
-                  </div>
-                </Field>
+                      </div>
+                    </Field>
+                  )}
+                </div>
               )}
 
               {(repeatFrequency === 'weekly' ||
                 repeatFrequency === 'biweekly') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 items-end">
+                <div className="reveal grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 items-end">
                   <Field label="Days of week">
-                    <div className="flex gap-1.5 flex-wrap">
-                      {WEEKDAYS.map(({ label, abbr }) => (
-                        <button
+                    <div className="flex flex-wrap gap-2">
+                      {WEEKDAYS.map(({ label, abbr }, i) => (
+                        <Pill
                           key={abbr}
-                          type="button"
+                          role="checkbox"
+                          color="amber"
+                          index={i}
+                          size="sm"
+                          active={repeatDays.includes(abbr)}
                           onClick={() => toggleRepeatDay(abbr)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
-                            repeatDays.includes(abbr)
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                          }`}
                         >
                           {label}
-                        </button>
+                        </Pill>
                       ))}
                     </div>
                   </Field>
@@ -849,18 +823,20 @@ export function ActivityDrawer({
               {repeatFrequency &&
                 repeatFrequency !== 'weekly' &&
                 repeatFrequency !== 'biweekly' && (
-                  <Field label="Last repeat (inclusive)">
-                    <DateInput
-                      value={repeatUntil}
-                      onChange={setRepeatUntil}
-                      onBlur={handleBlurSave}
-                    />
-                  </Field>
+                  <div className="reveal">
+                    <Field label="Last repeat (inclusive)">
+                      <DateInput
+                        value={repeatUntil}
+                        onChange={setRepeatUntil}
+                        onBlur={handleBlurSave}
+                      />
+                    </Field>
+                  </div>
                 )}
 
               {rrulePreview && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-[9px] text-green-600 font-black uppercase tracking-widest">
+                  <span className="text-[9px] text-green-300 font-black uppercase tracking-widest">
                     RRULE
                   </span>
                   <code className="text-xs text-slate-400 bg-slate-50 px-3 py-2 rounded-lg font-mono break-all">
@@ -950,24 +926,16 @@ export function ActivityDrawer({
               />
             )}
 
-            <div className="grid grid-cols-2 gap-2 md:gap-4">
-              <Field label="Area">
-                <select
-                  value={formData.area ?? ''}
-                  onChange={(e) => handleChange('area', e.target.value)}
-                  onBlur={handleBlurSave}
-                  className={selectStyle}
-                >
-                  <option value="" disabled>
-                    Select area
-                  </option>
-                  {AREAS.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+            <Field label="Area">
+              <AreaPills
+                value={formData.area}
+                onChange={(area) => {
+                  handleChange('area', area)
+                  setTimeout(handleBlurSave, 0)
+                }}
+              />
+            </Field>
+            <div className="grid gap-2 md:gap-4">
               <Field label="Neighborhood">
                 <input
                   value={formData.neighborhood ?? ''}
@@ -994,7 +962,7 @@ export function ActivityDrawer({
                 onClick={handleSaveToLocations}
                 disabled={locationSaveState === 'saving'}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-black uppercase tracking-wide rounded-lg transition-colors disabled:opacity-50
-                  bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
+                  bg-slate-100 text-slate-500 hover:bg-blue-50 hover:text-blue-300"
               >
                 {locationSaveState === 'saved' ? (
                   <>
@@ -1017,23 +985,25 @@ export function ActivityDrawer({
                 Details
               </h2>
             </div>
-            <Field label="Target Age Range">
-              <input
-                value={formData.age_range ?? ''}
-                onChange={(e) => handleChange('age_range', e.target.value)}
-                onBlur={handleBlurSave}
-                className={inputStyle}
-              />
-            </Field>
-            <Field label="Age Categories">
-              <AgeCategorySelector
-                selected={formData.age_categories ?? []}
-                onChange={(cats) => {
-                  handleChange('age_categories', cats)
-                }}
-                onBlur={handleBlurSave}
-              />
-            </Field>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_7fr]">
+              <Field label="Target Age Range">
+                <input
+                  value={formData.age_range ?? ''}
+                  onChange={(e) => handleChange('age_range', e.target.value)}
+                  onBlur={handleBlurSave}
+                  className={inputStyle}
+                />
+              </Field>
+              <Field label="Age Categories">
+                <AgeCategorySelector
+                  selected={formData.age_categories ?? []}
+                  onChange={(cats) => {
+                    handleChange('age_categories', cats)
+                  }}
+                  onBlur={handleBlurSave}
+                />
+              </Field>
+            </div>
             <Field label="Description">
               <textarea
                 ref={rawDescRef}
@@ -1092,91 +1062,84 @@ export function ActivityDrawer({
               </h2>
             </div>
 
-            <Field label="Status">
-              <select
-                value={formData.status}
-                onChange={(e) => {
-                  const s = e.target.value as TriageStatus
-                  const next = { ...latestFormData.current, status: s }
-                  setFormData(next)
-                  onSaveDraft(next)
-                }}
-                className={`w-full rounded-lg py-2 px-3 text-sm font-black uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors border-0 ${STATUS_COLORS[formData.status as TriageStatus] ?? 'bg-slate-100 text-slate-500'}`}
-              >
-                {TRIAGE_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <div className="flex flex-row items-center gap-2 mb-2">
-              <Field label="Record id">
-                <div
-                  className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200`}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              <Field label="Status">
+                <select
+                  value={formData.status}
+                  onChange={(e) => {
+                    const s = e.target.value as TriageStatus
+                    const next = { ...latestFormData.current, status: s }
+                    setFormData(next)
+                    onSaveDraft(next)
+                  }}
+                  className={`w-full rounded-lg py-2 px-3 text-sm font-black uppercase tracking-wide cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 transition-colors border-0 ${STATUS_COLORS[formData.status as TriageStatus] ?? 'bg-slate-100 text-slate-500'}`}
                 >
-                  {formData.id ?? 'No id'}
+                  {TRIAGE_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Source">
+                <select
+                  value={formData.source}
+                  onChange={(e) => handleChange('source', e.target.value)}
+                  onBlur={handleBlurSave}
+                  className={selectStyle}
+                >
+                  <option value="app_desk">APP Desk</option>
+                  <option value="app_website">APP Website</option>
+                  <option value="manual">Manual</option>
+                  <option value="luma">Luma</option>
+                </select>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              <Field label="In list">
+                <div
+                  role="radiogroup"
+                  aria-label="In list"
+                  className="flex flex-wrap gap-2"
+                >
+                  {ALL_LISTS.map((l, i) => (
+                    <Pill
+                      key={l.id}
+                      role="radio"
+                      color="blue"
+                      size="sm"
+                      index={i}
+                      active={formData.list_id === l.id}
+                      onClick={() => {
+                        const next = {
+                          ...latestFormData.current,
+                          list_id: l.id as ListId,
+                        }
+                        setFormData(next)
+                        onSaveDraft(next)
+                      }}
+                    >
+                      {l.label}
+                    </Pill>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Newsletter last">
+                <div
+                  className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}
+                >
+                  {formData.newsletter_last
+                    ? new Date(
+                        formData.newsletter_last + 'T00:00:00'
+                      ).toLocaleDateString('en-GB')
+                    : '—'}
                 </div>
               </Field>
             </div>
 
-            <Field label="Source">
-              <select
-                value={formData.source}
-                onChange={(e) => handleChange('source', e.target.value)}
-                onBlur={handleBlurSave}
-                className={selectStyle}
-              >
-                <option value="app_desk">APP Desk</option>
-                <option value="app_website">APP Website</option>
-                <option value="manual">Manual</option>
-                <option value="luma">Luma</option>
-              </select>
-            </Field>
-
-            <Field label="In list">
-              <div className="flex flex-wrap gap-1.5">
-                {ALL_LISTS.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    onClick={() => {
-                      const next = {
-                        ...latestFormData.current,
-                        list_id: l.id as ListId,
-                      }
-                      setFormData(next)
-                      onSaveDraft(next)
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${
-                      formData.list_id === l.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </Field>
-
-            {/* Read-only — set automatically by Finish issue (or the stale-date
-                cleanup in page.tsx), never hand-edited. Leaves a gap in the
-                record for anything that was never actually sent, which is fine. */}
-            <Field label="Newsletter last">
-              <div
-                className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}
-              >
-                {formData.newsletter_last
-                  ? new Date(
-                      formData.newsletter_last + 'T00:00:00'
-                    ).toLocaleDateString('en-GB')
-                  : '—'}
-              </div>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-2 md:gap-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
               <Field label="Created">
                 <div
                   className={`${inputStyle} bg-slate-50 text-slate-400 text-xs`}
@@ -1195,67 +1158,80 @@ export function ActivityDrawer({
                     : '—'}
                 </div>
               </Field>
-            </div>
-
-            {formData.type === 'event' && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-500">Added to calendar</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-semibold ${formData.calendar_sent ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}
+              <Field label="Record id">
+                <div
+                  title={formData.id ?? 'No id'}
+                  className={`${inputStyle} truncate bg-amber-50 font-mono text-xs text-amber-300 border-amber-200`}
                 >
-                  {formData.calendar_sent ? 'Yes' : 'No'}
-                </span>
-              </div>
-            )}
+                  {formData.id ?? 'No id'}
+                </div>
+              </Field>
+            </div>
 
             <textarea
               ref={notesRef}
               value={formData.triage_notes || ''}
               onChange={(e) => handleChange('triage_notes', e.target.value)}
               onBlur={handleBlurSave}
-              className="w-full text-sm leading-relaxed text-black border border-amber-200 p-3 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none overflow-hidden bg-amber-50/80 rounded-lg transition-colors"
+              className="w-full text-sm leading-relaxed text-slate-900 border border-amber-200 p-3 focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none overflow-hidden bg-amber-50/80 rounded-lg transition-colors"
               placeholder="Add administrative context notes here..."
             />
 
-            {onDelete &&
-              (confirmDelete ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-red-600">
-                    Are you sure?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onDelete(formData.id, formData.type)
-                      onClose()
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={13} /> Yes, delete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    className="px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              {onConvertType && !readOnly && !confirmDelete && (
                 <button
                   type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                  onClick={handleConvert}
+                  disabled={converting}
+                  className="flex items-center gap-2 rounded-lg border-2 border-slate-300 px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-600 transition-colors hover:border-blue-400 hover:text-blue-300 disabled:opacity-50"
                 >
-                  <Trash2 size={13} /> Delete record permanently
+                  {converting
+                    ? 'Converting…'
+                    : formData.type === 'event'
+                      ? 'Convert to resource →'
+                      : 'Convert to event →'}
                 </button>
-              ))}
+              )}
+              {onDelete &&
+                (confirmDelete ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-widest text-red-300">
+                      Are you sure?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDelete(formData.id, formData.type)
+                        onClose()
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={13} /> Yes, delete
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-2 px-3 py-2 text-xs font-black uppercase tracking-widest text-red-300 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                  >
+                    <Trash2 size={13} /> Delete record permanently
+                  </button>
+                ))}
+            </div>
           </section>
         </div>
 
         {/* Footer actions */}
         {readOnly ? (
-          <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-3">
+          <div className="sticky bottom-0 bg-surface border-t border-slate-100 p-6 z-20 flex gap-3">
             {onRestore && (
               <button
                 onClick={() => {
@@ -1289,7 +1265,7 @@ export function ActivityDrawer({
               ) : (
                 <button
                   onClick={() => setConfirmDelete(true)}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-2xl transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest text-red-300 bg-red-50 hover:bg-red-600 hover:text-white rounded-2xl transition-colors"
                 >
                   <Trash2 size={18} strokeWidth={3} /> Delete forever
                 </button>
@@ -1299,7 +1275,7 @@ export function ActivityDrawer({
           ((onSendToAI && getListTab(formData.list_id) === 'triage') ||
             !!ALL_LISTS.find((l) => l.id === formData.list_id)
               ?.finishLabel) && (
-            <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-4">
+            <div className="sticky bottom-0 bg-surface border-t border-slate-100 p-6 z-20 flex gap-4">
               {onSendToAI && getListTab(formData.list_id) === 'triage' && (
                 <button
                   onClick={() => onSendToAI(formData)}
@@ -1417,7 +1393,7 @@ function OverwriteConfirm({
 }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm">
-      <span className="text-amber-800 font-bold flex-1">
+      <span className="text-amber-300 font-bold flex-1">
         {label ?? (
           <>
             Overwrite existing location with{' '}
@@ -1487,7 +1463,7 @@ function PlaceCombobox({
         className={inputStyle}
       />
       {open && filtered.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-52 overflow-y-auto">
+        <ul className="absolute z-50 mt-1 w-full bg-surface border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-52 overflow-y-auto">
           {filtered.map((loc) => (
             <li key={loc.id}>
               <button
@@ -1516,7 +1492,7 @@ function PlaceCombobox({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[9px] text-green-600 font-black uppercase tracking-widest">
+      <label className="text-[9px] text-green-300 font-black uppercase tracking-widest">
         {label}
       </label>
       {children}
@@ -1525,11 +1501,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const AGE_CATEGORY_OPTIONS = [
+  'all ages',
   'expecting',
   'newborn',
   'baby',
   'toddler',
-  'all ages',
 ]
 
 function AgeCategorySelector({
@@ -1549,67 +1525,19 @@ function AgeCategorySelector({
     setTimeout(() => onBlur?.(), 0)
   }
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {AGE_CATEGORY_OPTIONS.map((cat) => {
-        const active = selected.includes(cat)
-        return (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => toggle(cat)}
-            className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors border ${
-              active
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-600'
-            }`}
-          >
-            {cat}
-          </button>
-        )
-      })}
+    <div className="flex flex-wrap gap-2">
+      {AGE_CATEGORY_OPTIONS.map((cat, i) => (
+        <Pill
+          key={cat}
+          role="checkbox"
+          color="blue"
+          index={i}
+          active={selected.includes(cat)}
+          onClick={() => toggle(cat)}
+        >
+          {cat}
+        </Pill>
+      ))}
     </div>
-  )
-}
-
-function Toggle({
-  label,
-  icon,
-  checked,
-  onChange,
-}: {
-  label: string
-  icon?: ReactNode
-  checked: boolean
-  onChange: (value: boolean) => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="flex items-center gap-3 px-1 py-0.5"
-    >
-      <div
-        className={`relative inline-flex h-6 w-16 items-center rounded-full transition-colors ${checked ? 'bg-amber-400' : 'bg-slate-200'}`}
-      >
-        <span
-          className={`absolute text-[9px] font-black uppercase tracking-wider transition-all ${checked ? 'left-2 text-white' : 'right-2 text-slate-400'}`}
-        >
-          {checked ? 'YES' : 'NO'}
-        </span>
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-10' : 'translate-x-1'}`}
-        />
-      </div>
-      <div
-        className={`flex items-center gap-2 transition-colors ${checked ? 'text-amber-500' : 'text-slate-400'}`}
-      >
-        {icon}
-        <span
-          className={`text-xs md:text-sm font-bold whitespace-nowrap transition-colors ${checked ? 'text-amber-500' : 'text-slate-500'}`}
-        >
-          {label}
-        </span>
-      </div>
-    </button>
   )
 }

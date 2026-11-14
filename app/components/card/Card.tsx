@@ -1,12 +1,9 @@
-import { useState, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { formatDayTimes, formatOccurrenceDates } from '@/lib/occurrences'
 import {
   Edit,
   MapPin,
   Clock,
   NotepadText,
-  CalendarCheck,
   RefreshCw,
   Globe,
   Newspaper,
@@ -14,6 +11,7 @@ import {
 } from 'lucide-react'
 import { CardProps } from '../../types/card'
 import { ParseNotice } from './ParseNotice'
+import { LavaSpinner } from '../Lava'
 
 // Helper function placed outside the component to prevent re-instantiation on every render
 const formatDate = (dateStr: string | null | undefined): string => {
@@ -30,12 +28,6 @@ export function Card({
   onToggleService,
   children,
 }: CardProps) {
-  const calIconRef = useRef<HTMLDivElement>(null)
-  const [calTooltipPos, setCalTooltipPos] = useState<{
-    top: number
-    left: number
-  } | null>(null)
-
   // 1. Derivations & Status Flag Checks
   const isNewActivity = activity.status === 'processing'
   const hasDate = Boolean(activity.start_date)
@@ -61,13 +53,13 @@ export function Card({
 
   return (
     <div
-      className={`relative bg-white rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}
+      className={`relative bg-surface rounded-xl border-2 shadow-sm overflow-hidden flex flex-col transition-all ${activity.type === 'resource' ? 'border-orange-200 hover:border-orange-400' : 'border-blue-200 hover:border-blue-400'}`}
     >
       <div className="p-3 space-y-2">
         {/* Header: Date Badge & Action Buttons */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-black bg-slate-900 text-white px-1.5 py-0.5 rounded tracking-wider">
+            <span className="text-xs font-black bg-app-gold text-ink px-1.5 py-0.5 rounded tracking-wider">
               {displayDate}
             </span>
             {!isNewActivity &&
@@ -133,40 +125,9 @@ export function Card({
               })()}
             {activity.source === 'app_website' && (
               <span title="Submitted via website">
-                <Globe size={12} className="text-green-500 shrink-0" />
+                <Globe size={12} className="text-green-300 shrink-0" />
               </span>
             )}
-            <div
-              ref={calIconRef}
-              onMouseEnter={() => {
-                const rect = calIconRef.current?.getBoundingClientRect()
-                if (rect)
-                  setCalTooltipPos({
-                    top: rect.top - 6,
-                    left: rect.left + rect.width / 2,
-                  })
-              }}
-              onMouseLeave={() => setCalTooltipPos(null)}
-            >
-              <CalendarCheck
-                size={12}
-                className={
-                  activity.calendar_sent ? 'text-green-500' : 'text-slate-300'
-                }
-              />
-            </div>
-            {calTooltipPos &&
-              createPortal(
-                <div
-                  className="fixed -translate-x-1/2 -translate-y-full -mt-1.5 whitespace-nowrap bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none z-[200]"
-                  style={{ top: calTooltipPos.top, left: calTooltipPos.left }}
-                >
-                  {activity.calendar_sent
-                    ? 'Added to calendar'
-                    : 'Not yet added to calendar'}
-                </div>,
-                document.body
-              )}
           </div>
 
           <div className="flex flex-row gap-3">
@@ -174,7 +135,7 @@ export function Card({
               (onDetails && !isNewActivity && (
                 <button
                   onClick={() => onDetails(activity)}
-                  className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+                  className="text-xs font-black hover:text-blue-300 text-blue-400 uppercase flex items-center gap-1"
                 >
                   <Edit size={12} /> Edit
                 </button>
@@ -187,7 +148,7 @@ export function Card({
           onClick={
             onDetails && !isNewActivity ? () => onDetails(activity) : undefined
           }
-          className={`font-black text-slate-900 text-sm leading-tight uppercase tracking-tight ${onDetails && !isNewActivity ? 'cursor-pointer hover:text-blue-600 transition-colors' : ''}`}
+          className={`font-black text-slate-900 text-sm leading-tight uppercase tracking-tight ${onDetails && !isNewActivity ? 'cursor-pointer hover:text-blue-300 transition-colors' : ''}`}
         >
           {activity.title}
         </h3>
@@ -246,8 +207,8 @@ export function Card({
       {children}
 
       {isNewActivity && (
-        <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-10">
-          <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin" />
+        <div className="absolute inset-0 bg-surface/90 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2 z-10">
+          <LavaSpinner width={54} height={26} label="Processing" />
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
             Processing
           </span>

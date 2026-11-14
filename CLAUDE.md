@@ -79,6 +79,12 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 
 `GET /api/post/activities?from=&to=[&member1_days=&member2_days=&available_only=true]` feeds Postpartum Post's match page. Auth is a bearer token, `POST_DESK_SECRET` (`lib/auth/post-auth.ts`). Desk owns eligibility (event, `refined`, `postpartum_post`, status not new/processing/failed/archived, not past) and `lib/post-feed.ts` expands recurring and multi-date events into one row per occurrence (`date`, `weekday`, times, `both_available`). Locations are included. Post caches the response for ~5 minutes and serves the last good copy if Desk is down.
 
+### Theme (Arcade)
+
+Dark charcoal base with neon-lit surfaces and a lava lamp motif. The theme lives in `app/globals.css`: the standard Tailwind palettes (`slate`, `blue`, `green`, `red`, `violet`, `orange`, `amber`) are remapped, so existing utility classes pick it up. Convention: `50-200` are dark tints, `300` is the light accent used for **text** (use `text-*-300`, never `text-*-600`), `400-500` vivid, `600-700` deep fills that carry cream `text-white` labels. Extra tokens: `bg-base` (page), `bg-surface` (cards), `text-ink` (dark text on bright fills), `bg-lamp-glow` (magenta). Fonts: `font-display` (Unbounded, headings/buttons/tabs), DM Sans body, DM Mono (`font-mono`).
+
+`app/components/Lava.tsx` holds the motif, all pure SVG/SMIL (no JS timers; `.lamp-anim` in globals.css disables it under `prefers-reduced-motion`): `LavaLamp` (nav logo), `LavaSpinner` (processing rows, drawers, buttons), `LavaLoader` (route loading, fades in after 1s via `app/loading.tsx`), `GooPill` (tab banners). Capture has an AI toggle: AI on = magenta lit form + "Capture with AI", off = grey + "Add as typed".
+
 ### Database schema source files
 
 `lib/supabase/` contains the canonical schema definitions and migrations. Schema changes go in `lib/supabase/migrations/` as `YYYYMMDD_description.sql` files and are run manually in the Supabase SQL editor. Update the relevant `.sql` definition file alongside any migration.

@@ -13,31 +13,23 @@ import {
 } from 'lucide-react'
 import { Location } from '../types/activity'
 import { updateLocation } from '../actions/activities'
-
-const AREAS = [
-  'West',
-  'East',
-  'North',
-  'Center',
-  'South',
-  'Everywhere',
-  'Online',
-]
+import { LavaSpinner } from './Lava'
+import { AreaPills } from './AreaPills'
+import { Pill } from './Pills'
 
 const AGE_CATEGORY_OPTIONS = [
+  'all ages',
   'expecting',
   'newborn',
   'baby',
   'toddler',
-  'all ages',
 ]
 
 const baseInputStyle =
-  'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400 transition-colors bg-white'
+  'w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400 transition-colors bg-surface'
 const inputStyle = `${baseInputStyle} px-3`
-const selectStyle = `${baseInputStyle} pl-3 pr-8 cursor-pointer`
 const descriptionStyle =
-  'w-full text-sm leading-relaxed text-black border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400 resize-none overflow-hidden bg-violet-50/40 rounded-lg transition-colors'
+  'w-full text-sm leading-relaxed text-slate-900 border border-slate-200 p-3 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400 resize-none overflow-hidden bg-violet-50/40 rounded-lg transition-colors'
 
 interface LocationDrawerProps {
   location: Location
@@ -110,11 +102,11 @@ export function LocationDrawer({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end"
+      className="fixed inset-0 bg-ink/70 backdrop-blur-sm z-50 flex justify-end"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+        className="relative w-full max-w-2xl bg-surface h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -152,7 +144,7 @@ export function LocationDrawer({
                   onChange={(e) => handleChange('url', e.target.value)}
                   onBlur={handleBlurSave}
                   placeholder="https://example.com"
-                  className={inputStyle + ' font-mono text-violet-600'}
+                  className={inputStyle + ' font-mono text-violet-300'}
                 />
                 {formData.url && (
                   <a
@@ -197,22 +189,16 @@ export function LocationDrawer({
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-2 md:gap-4">
-              <Field label="Area">
-                <select
-                  value={formData.area ?? ''}
-                  onChange={(e) => handleChange('area', e.target.value || null)}
-                  onBlur={handleBlurSave}
-                  className={selectStyle}
-                >
-                  <option value="">Select area</option>
-                  {AREAS.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+            <Field label="Area">
+              <AreaPills
+                value={formData.area}
+                onChange={(area) => {
+                  handleChange('area', area)
+                  setTimeout(handleBlurSave, 0)
+                }}
+              />
+            </Field>
+            <div className="grid gap-2 md:gap-4">
               <Field label="Neighborhood">
                 <input
                   value={formData.neighborhood ?? ''}
@@ -281,13 +267,13 @@ export function LocationDrawer({
                 {formData.categories.map((cat) => (
                   <span
                     key={cat}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-violet-100 text-violet-700 rounded-full text-xs font-bold"
+                    className="flex items-center gap-1 px-2.5 py-1 bg-violet-100 text-violet-300 rounded-full text-xs font-bold"
                   >
                     {cat}
                     <button
                       type="button"
                       onClick={() => removeCategory(cat)}
-                      className="hover:text-violet-900 ml-0.5"
+                      className="hover:text-violet-300 ml-0.5"
                     >
                       ×
                     </button>
@@ -305,13 +291,16 @@ export function LocationDrawer({
                 Age Categories
               </h2>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {AGE_CATEGORY_OPTIONS.map((cat) => {
+            <div className="flex flex-wrap gap-2">
+              {AGE_CATEGORY_OPTIONS.map((cat, i) => {
                 const active = (formData.age_categories ?? []).includes(cat)
                 return (
-                  <button
+                  <Pill
                     key={cat}
-                    type="button"
+                    role="checkbox"
+                    color="magenta"
+                    index={i}
+                    active={active}
                     onClick={() => {
                       const next = active
                         ? formData.age_categories.filter((c) => c !== cat)
@@ -319,14 +308,9 @@ export function LocationDrawer({
                       handleChange('age_categories', next)
                     }}
                     onBlur={handleBlurSave}
-                    className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors border ${
-                      active
-                        ? 'bg-violet-600 text-white border-violet-600'
-                        : 'bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-600'
-                    }`}
                   >
                     {cat}
-                  </button>
+                  </Pill>
                 )
               })}
             </div>
@@ -341,7 +325,7 @@ export function LocationDrawer({
                   size={14}
                   className={
                     formData.postpartum_post
-                      ? 'text-violet-500'
+                      ? 'text-violet-300'
                       : 'text-slate-400'
                   }
                 />
@@ -363,7 +347,7 @@ export function LocationDrawer({
               Record
             </p>
             <div
-              className={`${inputStyle} bg-amber-50 text-amber-700 border-amber-200 text-xs`}
+              className={`${inputStyle} bg-amber-50 text-amber-300 border-amber-200 text-xs`}
             >
               {formData.id}
             </div>
@@ -371,7 +355,7 @@ export function LocationDrawer({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 flex gap-3">
+        <div className="sticky bottom-0 bg-surface border-t border-slate-100 p-6 z-20 flex gap-3">
           {onDelete && (
             <button
               onClick={() => {
@@ -379,7 +363,7 @@ export function LocationDrawer({
                 onClose()
               }}
               title="Delete permanently — locations have no archived state"
-              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-4 rounded-2xl border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-300 hover:border-red-200 transition-colors"
             >
               <Trash2 size={16} />
             </button>
@@ -395,7 +379,12 @@ export function LocationDrawer({
               </>
             ) : saveState === 'saving' ? (
               <>
-                <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />{' '}
+                <LavaSpinner
+                  color="#fff8eb"
+                  width={30}
+                  height={15}
+                  label="Saving"
+                />{' '}
                 Saving…
               </>
             ) : (
@@ -413,7 +402,7 @@ export function LocationDrawer({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[9px] text-violet-600 font-black uppercase tracking-widest">
+      <label className="text-[9px] text-violet-300 font-black uppercase tracking-widest">
         {label}
       </label>
       {children}
@@ -447,15 +436,15 @@ function Toggle({
           {checked ? 'YES' : 'NO'}
         </span>
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-10' : 'translate-x-1'}`}
+          className={`inline-block h-4 w-4 transform rounded-full bg-surface shadow transition-transform ${checked ? 'translate-x-10' : 'translate-x-1'}`}
         />
       </div>
       <div
-        className={`flex items-center gap-2 transition-colors ${checked ? 'text-violet-500' : 'text-slate-400'}`}
+        className={`flex items-center gap-2 transition-colors ${checked ? 'text-violet-300' : 'text-slate-400'}`}
       >
         {icon}
         <span
-          className={`text-xs md:text-sm font-bold whitespace-nowrap transition-colors ${checked ? 'text-violet-500' : 'text-slate-500'}`}
+          className={`text-xs md:text-sm font-bold whitespace-nowrap transition-colors ${checked ? 'text-violet-300' : 'text-slate-500'}`}
         >
           {label}
         </span>

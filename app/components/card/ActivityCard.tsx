@@ -37,7 +37,7 @@ export function ActivityCard({
           {showRemove && (
             <button
               onClick={() => onMove!(activity.id, 'refined')}
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-colors uppercase"
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-blue-300 bg-blue-50 hover:bg-blue-600 hover:text-white transition-colors uppercase"
             >
               <X size={12} /> Remove
             </button>
@@ -53,7 +53,7 @@ export function ActivityCard({
                   ? 'Choose Newsletter and/or Post before adding'
                   : undefined
               }
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase disabled:opacity-40 disabled:hover:bg-green-50 disabled:hover:text-green-600 disabled:cursor-not-allowed"
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-300 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase disabled:opacity-40 disabled:hover:bg-green-50 disabled:hover:text-green-300 disabled:cursor-not-allowed"
             >
               <Check size={14} strokeWidth={3} /> {list!.finishLabel}
             </button>
@@ -64,7 +64,7 @@ export function ActivityCard({
                 onToggleService!(activity.id, 'postpartum_post', false)
               }
               title="Drops postpartum_post — moves to Gone once no services remain. Status is untouched, unlike Archive."
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-600 hover:text-white transition-colors uppercase"
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-violet-300 bg-violet-50 hover:bg-violet-600 hover:text-white transition-colors uppercase"
             >
               <X size={12} /> Remove
             </button>
@@ -72,7 +72,7 @@ export function ActivityCard({
           {showArchive && (
             <button
               onClick={() => onArchive!(activity.id)}
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-colors uppercase"
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-red-300 bg-red-50 hover:bg-red-600 hover:text-white transition-colors uppercase"
             >
               <Trash2 size={12} /> Archive
             </button>

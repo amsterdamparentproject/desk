@@ -1,5 +1,6 @@
 // components/card/CaptureCardForm.tsx
 import { useState, useRef, useEffect } from 'react'
+import { AreaPills } from '../AreaPills'
 import {
   Paperclip,
   X,
@@ -11,18 +12,8 @@ import {
 import { CaptureCardProps } from '../../types/card'
 import { Location } from '../../types/activity'
 
-const AREAS = [
-  'West',
-  'East',
-  'North',
-  'Center',
-  'South',
-  'Everywhere',
-  'Online',
-]
-
 const fieldStyle = (ring: string) =>
-  `w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 ${ring} transition-colors bg-white`
+  `w-full text-sm font-bold text-slate-700 border border-slate-200 rounded-lg py-2 px-3 focus:outline-none focus:ring-1 ${ring} transition-colors bg-surface`
 
 export function CaptureCardForm({
   onAdd,
@@ -69,9 +60,9 @@ function EventForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm"
+      className="bg-surface border-2 border-blue-200 rounded-xl p-3 shadow-sm"
     >
-      <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-2">
+      <p className="text-[10px] font-black uppercase tracking-widest text-blue-300 mb-2">
         Event
       </p>
       <textarea
@@ -84,15 +75,15 @@ function EventForm({
       {file && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-lg px-2 py-1.5 mb-2">
           <div className="flex items-center gap-2 overflow-hidden">
-            <Paperclip size={12} className="text-blue-500 shrink-0" />
-            <span className="text-[10px] font-bold text-blue-700 truncate uppercase tracking-tight">
+            <Paperclip size={12} className="text-blue-300 shrink-0" />
+            <span className="text-[10px] font-bold text-blue-300 truncate uppercase tracking-tight">
               {file.name}
             </span>
           </div>
           <button
             type="button"
             onClick={() => setFile(null)}
-            className="text-blue-400 hover:text-blue-600"
+            className="text-blue-400 hover:text-blue-300"
           >
             <X size={14} />
           </button>
@@ -119,7 +110,7 @@ function EventForm({
           <button
             type="button"
             onClick={() => setUseAi((v) => !v)}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors ${useAi ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors ${useAi ? 'bg-blue-50 text-blue-300 hover:bg-blue-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
           >
             <Sparkles size={14} />
             <span className="text-[10px] font-black uppercase tracking-widest">
@@ -173,9 +164,9 @@ function ResourceForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white border-2 border-orange-200 rounded-xl p-3 shadow-sm"
+      className="bg-surface border-2 border-orange-200 rounded-xl p-3 shadow-sm"
     >
-      <p className="text-[10px] font-black uppercase tracking-widest text-orange-500 mb-2">
+      <p className="text-[10px] font-black uppercase tracking-widest text-orange-300 mb-2">
         Resource
       </p>
       <textarea
@@ -188,15 +179,15 @@ function ResourceForm({
       {file && (
         <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-lg px-2 py-1.5 mb-2">
           <div className="flex items-center gap-2 overflow-hidden">
-            <Paperclip size={12} className="text-orange-500 shrink-0" />
-            <span className="text-[10px] font-bold text-orange-700 truncate uppercase tracking-tight">
+            <Paperclip size={12} className="text-orange-300 shrink-0" />
+            <span className="text-[10px] font-bold text-orange-300 truncate uppercase tracking-tight">
               {file.name}
             </span>
           </div>
           <button
             type="button"
             onClick={() => setFile(null)}
-            className="text-orange-400 hover:text-orange-600"
+            className="text-orange-400 hover:text-orange-300"
           >
             <X size={14} />
           </button>
@@ -223,7 +214,7 @@ function ResourceForm({
           <button
             type="button"
             onClick={() => setUseAi((v) => !v)}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors ${useAi ? 'bg-orange-50 text-orange-600 hover:bg-orange-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition-colors ${useAi ? 'bg-orange-50 text-orange-300 hover:bg-orange-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
           >
             <Sparkles size={14} />
             <span className="text-[10px] font-black uppercase tracking-widest">
@@ -290,9 +281,9 @@ export function LocationForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white border-2 border-violet-200 rounded-xl p-3 shadow-sm space-y-2"
+      className="bg-surface border-2 border-violet-200 rounded-xl p-3 shadow-sm space-y-2"
     >
-      <p className="text-[10px] font-black uppercase tracking-widest text-violet-500">
+      <p className="text-[10px] font-black uppercase tracking-widest text-violet-300">
         Location
       </p>
 
@@ -309,7 +300,7 @@ export function LocationForm({
           className={f}
         />
         {open && name && filtered.length > 0 && (
-          <ul className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-44 overflow-y-auto">
+          <ul className="absolute z-50 mt-1 w-full bg-surface border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-44 overflow-y-auto">
             {filtered.map((loc) => (
               <li key={loc.id}>
                 <button
@@ -337,7 +328,7 @@ export function LocationForm({
       </div>
 
       {exactMatch && (
-        <div className="flex items-center gap-2 px-2.5 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-700">
+        <div className="flex items-center gap-2 px-2.5 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-300">
           <AlertTriangle size={12} className="shrink-0" />
           Already saved — submitting will update the existing record
         </div>
@@ -349,19 +340,12 @@ export function LocationForm({
         placeholder="Address"
         className={f}
       />
-      <div className="grid grid-cols-2 gap-2">
-        <select
-          value={area}
-          onChange={(e) => setArea(e.target.value)}
-          className={`${f} cursor-pointer`}
-        >
-          <option value="">Area…</option>
-          {AREAS.map((a) => (
-            <option key={a} value={a}>
-              {a}
-            </option>
-          ))}
-        </select>
+      <AreaPills
+        value={area || null}
+        onChange={(a) => setArea(a ?? '')}
+        compact
+      />
+      <div className="grid gap-2">
         <input
           value={neighborhood}
           onChange={(e) => setNeighborhood(e.target.value)}

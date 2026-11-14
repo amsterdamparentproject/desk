@@ -1,20 +1,27 @@
 // app/layout.tsx
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { DM_Mono, DM_Sans, Unbounded } from 'next/font/google'
 import { cookies } from 'next/headers'
 import './globals.css'
 import { DeskNav } from './components/DeskNav'
 import { ServiceWorkerRegistration } from './components/ServiceWorkerRegistration'
 import { verifyDeskSession } from './utils/auth-gate'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const dmSans = DM_Sans({
+  variable: '--font-dm-sans',
   subsets: ['latin'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const dmMono = DM_Mono({
+  variable: '--font-dm-mono',
   subsets: ['latin'],
+  weight: ['400', '500'],
+})
+
+const unbounded = Unbounded({
+  variable: '--font-unbounded',
+  subsets: ['latin'],
+  weight: ['500', '700', '800'],
 })
 
 export const metadata: Metadata = {
@@ -33,9 +40,9 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${dmMono.variable} ${unbounded.variable} h-full antialiased`}
     >
-      <body className="bg-white h-full flex flex-col">
+      <body className="bg-base h-full flex flex-col">
         <ServiceWorkerRegistration />
         <DeskNav isLoggedIn={isLoggedIn} />
         {children}

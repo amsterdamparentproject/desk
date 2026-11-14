@@ -6,20 +6,21 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronsUpDown,
+  BookOpen,
+  CalendarDays,
   Check,
-  Loader2,
   Mail,
   Newspaper,
   Paperclip,
   RefreshCw,
   Search,
-  Send,
   Sparkles,
   Trash2,
   Undo2,
   X,
 } from 'lucide-react'
 import { addDays } from '@/lib/issue-date'
+import { GooPill, LavaSpinner } from './Lava'
 import { formatOccurrenceDates } from '@/lib/occurrences'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
 import { ParseNotice } from './card/ParseNotice'
@@ -213,19 +214,18 @@ export function DeskTable({
 
         {mode === 'newsletter' && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 px-3 py-2.5">
-            <Newspaper size={16} className="text-blue-600" />
-            <span className="text-sm font-black text-blue-900">
-              Next newsletter
-            </span>
-            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-black text-white">
-              {nextCount}
-            </span>
-            <span className="text-[11px] font-bold text-blue-700">
+            <GooPill
+              label="Next newsletter"
+              count={nextCount}
+              color="#449dd1"
+              tilt={-1.5}
+            />
+            <span className="text-[11px] font-bold text-blue-300">
               {nextCount === 1 ? 'item' : 'items'} selected
               {issueDate ? ` for ${issueDate}` : ''}
             </span>
             <div className="ml-auto flex items-center gap-1.5">
-              <div className="inline-flex rounded-lg bg-white p-0.5 border border-blue-100">
+              <div className="inline-flex gap-1.5">
                 {(
                   [
                     ['potential', 'Potential', potentialCount],
@@ -236,10 +236,10 @@ export function DeskTable({
                     key={key}
                     type="button"
                     onClick={() => setStage(stage === key ? 'all' : key)}
-                    className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                    className={`px-3.5 py-1.5 rounded-full border-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                       stage === key
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-500 hover:text-slate-900'
+                        ? 'border-blue-400 bg-blue-400 text-ink shadow-[0_0_14px_rgba(68,157,209,0.45)]'
+                        : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-white'
                     }`}
                   >
                     {label} <span className="opacity-60">{n}</span>
@@ -252,7 +252,7 @@ export function DeskTable({
                   onClick={() => setStage('all')}
                   title="Clear the filter and show every refined newsletter item"
                   aria-label="Clear filter"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-blue-100 text-slate-500 hover:bg-slate-900 hover:text-white transition-colors"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-surface border border-blue-100 text-slate-500 hover:bg-app-gold hover:text-ink transition-colors"
                 >
                   <X size={14} strokeWidth={3} />
                 </button>
@@ -263,17 +263,17 @@ export function DeskTable({
 
         {mode === 'post' && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-violet-200 bg-violet-50 px-3 py-2.5">
-            <Mail size={16} className="text-violet-600" />
-            <span className="text-sm font-black text-violet-900">
-              Postpartum Post
-            </span>
-            <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-black text-white">
-              {rows.length}
-            </span>
-            <span className="text-[11px] font-bold text-violet-700">
+            <GooPill
+              label="Postpartum Post"
+              count={rows.length}
+              color="#ed45df"
+              blob="#ffbf00"
+              tilt={1.2}
+            />
+            <span className="text-[11px] font-bold text-violet-300">
               {rows.length === 1 ? 'event' : 'events'} available for matching
             </span>
-            <div className="ml-auto inline-flex rounded-lg bg-white p-0.5 border border-violet-100">
+            <div className="ml-auto inline-flex flex-wrap gap-1.5">
               {(
                 [
                   ['all', 'All', rows.length],
@@ -286,10 +286,10 @@ export function DeskTable({
                   key={key}
                   type="button"
                   onClick={() => setStage(key)}
-                  className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-full border-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                     stage === key
-                      ? 'bg-violet-600 text-white'
-                      : 'text-slate-500 hover:text-slate-900'
+                      ? 'border-violet-400 bg-violet-400 text-ink shadow-[0_0_14px_rgba(237,69,223,0.45)]'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-white'
                   }`}
                 >
                   {label} <span className="opacity-60">{n}</span>
@@ -300,10 +300,14 @@ export function DeskTable({
         )}
 
         {mode === 'done' && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5">
-            <Check size={16} className="text-green-600" />
-            <span className="text-sm font-black text-slate-900">Done</span>
-            <div className="ml-auto inline-flex rounded-lg bg-slate-100 p-0.5">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-slate-200 bg-surface px-3 py-2.5">
+            <GooPill
+              label="Done"
+              count={rows.length}
+              color="#09bc8a"
+              tilt={-1}
+            />
+            <div className="ml-auto inline-flex flex-wrap gap-1.5">
               {(
                 [
                   ['all', 'All', rows.length],
@@ -315,10 +319,10 @@ export function DeskTable({
                   key={key}
                   type="button"
                   onClick={() => setStage(key)}
-                  className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-full border-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                     stage === key
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-500 hover:text-slate-900'
+                      ? 'border-app-gold bg-app-gold text-ink shadow-[0_0_14px_rgba(255,191,0,0.45)]'
+                      : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-white'
                   }`}
                 >
                   {label} <span className="opacity-60">{n}</span>
@@ -330,46 +334,22 @@ export function DeskTable({
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg bg-white border border-slate-200 p-0.5">
+          <div className="inline-flex gap-1.5">
             {(['all', 'event', 'resource'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTypeFilter(t)}
-                className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                className={`px-3.5 py-1.5 rounded-full border-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                   typeFilter === t
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-500 hover:text-slate-900'
+                    ? 'border-app-gold bg-app-gold text-ink shadow-[0_0_14px_rgba(255,191,0,0.45)]'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-white'
                 }`}
               >
                 {t === 'all' ? 'All' : t === 'event' ? 'Events' : 'Resources'}{' '}
                 <span className="opacity-60">{counts[t]}</span>
               </button>
             ))}
-          </div>
-          <div className="flex items-center gap-1 md:hidden">
-            <select
-              aria-label="Sort by"
-              value={sortKey}
-              onChange={(e) => {
-                const key = e.target.value as SortKey
-                setSortKey(key)
-                setSortDir(key === 'created' ? 'desc' : 'asc')
-              }}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-base font-bold text-slate-700"
-            >
-              <option value="created">Added</option>
-              <option value="start">Date</option>
-              <option value="title">Title</option>
-            </select>
-            <button
-              type="button"
-              aria-label={sortDir === 'asc' ? 'Ascending' : 'Descending'}
-              onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
-              className="h-10 w-10 rounded-lg border border-slate-200 bg-white text-sm font-black text-slate-700"
-            >
-              {sortDir === 'asc' ? '↑' : '↓'}
-            </button>
           </div>
           <label className="relative flex-1 min-w-[160px] max-w-xs">
             <Search
@@ -380,17 +360,17 @@ export function DeskTable({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search title, organiser, notes…"
-              className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-2 text-base md:text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="w-full rounded-xl border-2 border-slate-200 bg-base pl-8 pr-3 py-2 text-base md:text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400"
             />
           </label>
           {problemCount > 0 && (
             <button
               type="button"
               onClick={() => setOnlyProblems((v) => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-black uppercase tracking-wide transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                 onlyProblems
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-50 text-red-600 hover:bg-red-100'
+                  ? 'border-red-500 bg-red-600 text-white shadow-[0_0_16px_rgba(255,59,79,0.45)]'
+                  : 'border-red-500/50 bg-red-50 text-red-300 hover:bg-red-100'
               }`}
             >
               <AlertTriangle size={13} /> Needs attention {problemCount}
@@ -402,7 +382,28 @@ export function DeskTable({
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl border-2 border-slate-200 bg-surface overflow-hidden">
+          <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 md:hidden">
+            <span className="text-slate-400">Sort</span>
+            <SortHeader
+              label="Title"
+              active={sortKey === 'title'}
+              dir={sortDir}
+              onClick={() => toggleSort('title')}
+            />
+            <SortHeader
+              label="Date"
+              active={sortKey === 'start'}
+              dir={sortDir}
+              onClick={() => toggleSort('start')}
+            />
+            <SortHeader
+              label="Added"
+              active={sortKey === 'created'}
+              dir={sortDir}
+              onClick={() => toggleSort('created')}
+            />
+          </div>
           <div className="hidden md:grid grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_7.5rem_5.5rem_5rem_12rem] items-center gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
             <span />
             <SortHeader
@@ -441,7 +442,7 @@ export function DeskTable({
                 : 'No rows match these filters'}
             </div>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="space-y-2 p-2">
               {visible.map((a) => (
                 <Row
                   key={a.id}
@@ -556,15 +557,15 @@ function Row({
   return (
     <li
       onClick={() => onOpen(a)}
-      className={`flex flex-wrap items-center gap-x-2 cursor-pointer px-3 py-2.5 transition-colors hover:bg-slate-50 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_7.5rem_5.5rem_5rem_12rem] md:items-center md:gap-3 ${
+      className={`flex flex-wrap items-center gap-x-2 cursor-pointer rounded-2xl border-2 px-3 py-2.5 transition-colors hover:bg-slate-100 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_5.5rem_7.5rem_5.5rem_5rem_12rem] md:items-center md:gap-3 ${
         failed
-          ? 'border-l-4 border-l-red-400'
-          : inNext
-            ? 'border-l-4 border-l-blue-500 bg-blue-50/70'
-            : eligible
-              ? 'border-l-4 border-l-emerald-400 bg-emerald-50/60'
-              : 'border-l-4 border-l-transparent'
-      } ${fresh ? 'bg-amber-50/70' : ''}`}
+          ? 'border-red-500 shadow-[0_0_22px_rgba(255,59,79,0.2)]'
+          : processing
+            ? 'border-app-gold shadow-[0_0_22px_rgba(255,191,0,0.2)]'
+            : inNext
+              ? 'border-blue-400 bg-blue-50/70'
+              : 'border-slate-200'
+      } ${fresh && !failed && !processing ? 'bg-amber-50/70' : ''}`}
     >
       {/* Thumbnail */}
       <div className="hidden md:block">
@@ -573,10 +574,25 @@ function Row({
           <img
             src={a.file_url}
             alt=""
-            className="h-10 w-10 rounded-md object-cover bg-slate-100"
+            className={`h-10 w-10 rounded-md object-cover bg-slate-100 ${eligible ? 'ring-2 ring-green-400' : ''}`}
           />
         ) : (
-          <div className="h-10 w-10 rounded-md bg-slate-100" />
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-xl text-ink ${
+              eligible
+                ? 'bg-green-400 shadow-[0_0_14px_rgba(74,222,128,0.5)]'
+                : a.type === 'event'
+                  ? 'bg-blue-400 shadow-[0_0_14px_rgba(68,157,209,0.45)]'
+                  : 'bg-violet-500 shadow-[0_0_14px_rgba(227,45,212,0.45)]'
+            }`}
+            title={`${a.type === 'event' ? 'Event' : 'Resource'}${eligible ? ' — can go in the next issue' : ''}`}
+          >
+            {a.type === 'event' ? (
+              <CalendarDays size={22} strokeWidth={2.4} aria-label="Event" />
+            ) : (
+              <BookOpen size={22} strokeWidth={2.4} aria-label="Resource" />
+            )}
+          </div>
         )}
       </div>
 
@@ -584,11 +600,7 @@ function Row({
       <div className="min-w-0 w-full md:w-auto">
         <div className="flex items-center gap-2">
           {processing && (
-            <Loader2
-              size={14}
-              className="shrink-0 animate-spin text-amber-500"
-              aria-label="Processing"
-            />
+            <LavaSpinner width={34} height={17} label="Processing" />
           )}
           <span
             className={`truncate text-sm font-black tracking-tight ${
@@ -628,8 +640,8 @@ function Row({
         <span
           className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${
             a.type === 'event'
-              ? 'bg-blue-50 text-blue-600'
-              : 'bg-orange-50 text-orange-600'
+              ? 'bg-blue-50 text-blue-300'
+              : 'bg-violet-50 text-violet-300'
           }`}
         >
           {a.type}
@@ -638,7 +650,7 @@ function Row({
 
       {/* Date */}
       <div className="hidden md:flex items-center gap-1 text-xs font-bold">
-        <span className={past ? 'text-red-500' : 'text-slate-700'}>
+        <span className={past ? 'text-red-300' : 'text-slate-700'}>
           {dateText}
         </span>
         {a.repeat_rrule && (
@@ -649,7 +661,7 @@ function Row({
           />
         )}
         {past && (
-          <span className="rounded bg-red-50 px-1 text-[9px] font-black uppercase text-red-500">
+          <span className="rounded bg-red-50 px-1 text-[9px] font-black uppercase text-red-300">
             Past
           </span>
         )}
@@ -666,8 +678,8 @@ function Row({
           <span
             className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${
               group === 'published'
-                ? 'bg-green-50 text-green-700'
-                : 'bg-red-50 text-red-600'
+                ? 'bg-green-50 text-green-300'
+                : 'bg-red-50 text-red-300'
             }`}
             title={
               group === 'published' && a.newsletter_last
@@ -736,7 +748,7 @@ function Row({
               className={`inline-flex items-center gap-1 rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 text-[11px] font-black uppercase tracking-wide transition-colors ${
                 inNext
                   ? 'bg-slate-100 text-slate-600 hover:bg-slate-600 hover:text-white'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white'
+                  : 'bg-blue-50 text-blue-300 hover:bg-blue-600 hover:text-white'
               }`}
             >
               {inNext ? (
@@ -759,7 +771,7 @@ function Row({
               type="button"
               onClick={() => onDoneRefining(a.id)}
               title="Move to the Newsletter / Post tabs as refined"
-              className="inline-flex items-center gap-1 rounded-lg bg-green-50 px-3 py-2.5 md:px-2.5 md:py-1.5 text-[11px] font-black uppercase tracking-wide text-green-700 transition-colors hover:bg-green-600 hover:text-white"
+              className="inline-flex items-center gap-1 rounded-lg bg-green-50 px-3 py-2.5 md:px-2.5 md:py-1.5 text-[11px] font-black uppercase tracking-wide text-green-300 transition-colors hover:bg-green-600 hover:text-white"
             >
               <Check size={13} strokeWidth={3} /> Done refining
             </button>
@@ -787,7 +799,7 @@ function Row({
             className={`inline-flex items-center gap-1 rounded-lg p-2.5 md:p-2 text-[11px] font-black uppercase transition-colors ${
               confirmDelete
                 ? 'bg-red-600 text-white'
-                : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
+                : 'bg-red-50 text-red-300 hover:bg-red-600 hover:text-white'
             }`}
           >
             <Trash2 size={13} />
@@ -800,7 +812,7 @@ function Row({
             onClick={() => onArchive(a.id)}
             title="Archive"
             aria-label="Archive"
-            className="inline-flex items-center rounded-lg bg-red-50 p-2.5 md:p-2 text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+            className="inline-flex items-center rounded-lg bg-red-50 p-2.5 md:p-2 text-red-300 transition-colors hover:bg-red-600 hover:text-white"
           >
             <Trash2 size={13} />
           </button>
@@ -870,18 +882,57 @@ function CaptureBar({ onAdd }: { onAdd: (data: CaptureDataProps) => void }) {
     textRef.current?.focus()
   }
 
+  const ringClass = useAi
+    ? 'border-lamp-glow shadow-[0_0_0_5px_rgba(227,45,212,0.13),0_0_52px_rgba(227,45,212,0.33)] focus-within:border-lamp-glow'
+    : 'border-slate-400 focus-within:border-slate-300'
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
         submit()
       }}
-      className="rounded-xl border-2 border-blue-200 bg-white p-3 shadow-sm focus-within:border-blue-400"
+      className={`rounded-[28px] border-[3px] bg-surface p-4 md:p-5 transition-all ${ringClass}`}
     >
+      <div className="mb-3 flex items-center gap-3">
+        <span className="font-display text-base font-extrabold text-white">
+          Capture
+        </span>
+        <span className="hidden font-mono text-xs text-slate-500 sm:inline">
+          What did you find?
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={useAi}
+          aria-label="Use AI to read this"
+          onClick={() => setUseAi((v) => !v)}
+          className="ml-auto flex items-center gap-2.5"
+        >
+          <span
+            className={`font-mono text-xs font-medium uppercase tracking-[0.12em] ${
+              useAi ? 'text-violet-500' : 'text-slate-500'
+            }`}
+          >
+            AI {useAi ? 'on' : 'off'}
+          </span>
+          <span
+            className={`relative h-[30px] w-[62px] rounded-full border-[3px] transition-colors ${
+              useAi ? 'border-white bg-lamp-glow' : 'border-slate-300 bg-base'
+            }`}
+          >
+            <span
+              className={`absolute top-1/2 h-[18px] w-[18px] -translate-y-1/2 rounded-full transition-all ${
+                useAi ? 'left-[34px] bg-app-gold' : 'left-[4px] bg-slate-300'
+              }`}
+            />
+          </span>
+        </button>
+      </div>
       <textarea
         ref={textRef}
         value={description}
-        rows={1}
+        rows={2}
         onChange={(e) => setDescription(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -899,26 +950,26 @@ function CaptureBar({ onAdd }: { onAdd: (data: CaptureDataProps) => void }) {
           }
         }}
         placeholder="Paste a link, type a title, or drop in a flyer. Enter to add."
-        className="w-full resize-none border-none p-1 text-base md:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+        className="w-full resize-none rounded-2xl border-2 border-slate-200 bg-base px-4 py-3 text-base font-medium text-white placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-0"
       />
       {file && (
-        <div className="mt-1 mb-1 flex items-center justify-between rounded-lg border border-blue-100 bg-blue-50 px-2 py-1.5">
-          <span className="flex items-center gap-2 overflow-hidden text-[10px] font-bold uppercase tracking-tight text-blue-700">
-            <Paperclip size={12} className="shrink-0 text-blue-500" />
+        <div className="mt-2 flex items-center justify-between rounded-xl border-2 border-slate-200 bg-slate-100 px-3 py-1.5">
+          <span className="flex items-center gap-2 overflow-hidden font-mono text-xs text-white">
+            <Paperclip size={12} className="shrink-0 text-slate-500" />
             <span className="truncate">{file.name}</span>
           </span>
           <button
             type="button"
             onClick={() => setFile(null)}
             aria-label="Remove attachment"
-            className="text-blue-400 hover:text-blue-600"
+            className="text-slate-500 hover:text-white"
           >
             <X size={14} />
           </button>
         </div>
       )}
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-50 pt-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <input
             ref={fileRef}
             type="file"
@@ -928,53 +979,48 @@ function CaptureBar({ onAdd }: { onAdd: (data: CaptureDataProps) => void }) {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1.5 text-slate-500 transition-colors hover:bg-slate-100"
+            className="flex items-center gap-1.5 rounded-xl border-2 border-slate-200 px-3 py-2 text-white transition-colors hover:border-slate-400"
           >
             <Paperclip size={14} />
-            <span className="hidden text-[10px] font-black uppercase tracking-widest sm:inline">
+            <span className="hidden font-display text-[10px] font-bold uppercase tracking-wider sm:inline">
               Attach
             </span>
           </button>
-          <div className="inline-flex rounded-lg bg-slate-50 p-0.5">
+          <div className="inline-flex rounded-xl border-2 border-slate-200 bg-base p-0.5">
             {(['event', 'resource'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                className={`rounded-lg px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider transition-colors ${
                   type === t
                     ? t === 'event'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-orange-500 text-white'
-                    : 'text-slate-400 hover:text-slate-600'
+                      ? 'bg-blue-400 text-ink'
+                      : 'bg-violet-500 text-ink'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {t}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setUseAi((v) => !v)}
-            className={`flex items-center gap-1 rounded-lg px-2 py-1.5 transition-colors ${
-              useAi
-                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-            }`}
-          >
-            <Sparkles size={14} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              AI
-            </span>
-          </button>
         </div>
         <button
           type="submit"
           disabled={!canSubmit}
-          aria-label="Add"
-          className="shrink-0 rounded-lg bg-blue-600 p-2.5 md:p-2 text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 disabled:bg-slate-100 disabled:text-slate-300"
+          className={`shrink-0 rounded-2xl px-5 py-3 md:px-9 md:py-4 font-display text-sm font-extrabold transition-all active:scale-95 disabled:opacity-40 ${
+            useAi
+              ? 'bg-lamp-glow text-ink shadow-[0_0_34px_rgba(227,45,212,0.6)] hover:brightness-110'
+              : 'border-2 border-white text-white hover:bg-slate-100'
+          }`}
         >
-          <Send size={15} strokeWidth={3} />
+          {useAi ? (
+            <span className="inline-flex items-center gap-2">
+              <Sparkles size={16} /> Capture with AI
+            </span>
+          ) : (
+            'Add as typed'
+          )}
         </button>
       </div>
     </form>

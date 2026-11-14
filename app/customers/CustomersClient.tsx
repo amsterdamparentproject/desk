@@ -204,7 +204,7 @@ export function CustomersClient({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header */}
-      <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-slate-200 bg-surface/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
@@ -216,7 +216,7 @@ export function CustomersClient({
           </div>
           <button
             onClick={handleExport}
-            className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-app-gold text-ink rounded-lg hover:bg-amber-300 transition-colors"
           >
             Export CSV
           </button>
@@ -261,7 +261,7 @@ export function CustomersClient({
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap gap-3 items-center">
+        <div className="bg-surface rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap gap-3 items-center">
           {/* Search */}
           <input
             type="text"
@@ -341,7 +341,7 @@ export function CustomersClient({
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-surface rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -396,7 +396,7 @@ export function CustomersClient({
                         <span className="text-slate-400 italic">—</span>
                       )}
                       {row.isTest && (
-                        <span className="ml-1.5 text-xs font-mono bg-yellow-100 text-yellow-700 px-1 rounded">
+                        <span className="ml-1.5 text-xs font-mono bg-yellow-100 text-yellow-300 px-1 rounded">
                           TEST
                         </span>
                       )}
@@ -415,7 +415,7 @@ export function CustomersClient({
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded ${
                           row.isActive
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-green-100 text-green-300'
                             : 'bg-slate-100 text-slate-600'
                         }`}
                       >
@@ -433,7 +433,7 @@ export function CustomersClient({
                         href={row.dashboardUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-blue-300 hover:underline"
                       >
                         Stripe ↗
                       </a>

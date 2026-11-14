@@ -1,33 +1,123 @@
 @import 'tailwindcss';
 
+/* Arcade theme: dark charcoal base, neon-lit surfaces, lava lamp motif.
+   The standard Tailwind palettes are remapped below, so existing utility
+   classes (bg-slate-100, text-blue-600, ...) pick the dark theme up without
+   touching every component. Scale convention for the remapped hues:
+     50-200  dark tints (fills, borders)
+     300     light accent, used for TEXT (text-* 500-900 are rewritten to 300)
+     400-500 vivid brand colour
+     600-700 deep fills that carry cream (text-white) labels */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #231f21;
+  --foreground: #fff8eb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+  --font-display: var(--font-unbounded), var(--font-dm-sans), sans-serif;
 
   /* APP brand */
-  --color-app-cream: #ede8dc;
-  --color-app-charcoal: #363b38;
-  --color-app-gold: #d4a827;
+  --color-app-cream: #fff8eb;
+  --color-app-charcoal: #3a3335;
+  --color-app-gold: #ffbf00;
+
+  /* Arcade surfaces */
+  --color-base: #231f21;
+  --color-surface: #2e292b;
+  --color-ink: #1d1a1b;
+  --color-lamp-metal: #acacac;
+  --color-lamp-graphite: #4a4e50;
+  --color-lamp-red: #ff3b4f;
+  --color-lamp-glow: #e32dd4;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-white: #fff8eb;
+
+  --color-slate-50: #262123;
+  --color-slate-100: #342e30;
+  --color-slate-200: #4a4244;
+  --color-slate-300: #5e5456;
+  --color-slate-400: #9d9183;
+  --color-slate-500: #b9ad9f;
+  --color-slate-600: #cdbfae;
+  --color-slate-700: #ddd2c2;
+  --color-slate-800: #ece3d4;
+  --color-slate-900: #fff8eb;
+  --color-gray-100: #342e30;
+  --color-gray-800: #ece3d4;
+
+  --color-blue-50: #1c3345;
+  --color-blue-100: #234259;
+  --color-blue-200: #2f5b7c;
+  --color-blue-300: #8ac4ee;
+  --color-blue-400: #449dd1;
+  --color-blue-500: #449dd1;
+  --color-blue-600: #2274a5;
+  --color-blue-700: #1b5f87;
+
+  --color-green-50: #14352b;
+  --color-green-100: #1a4638;
+  --color-green-200: #26664f;
+  --color-green-300: #6fe0b8;
+  --color-green-400: #09bc8a;
+  --color-green-500: #09bc8a;
+  --color-green-600: #1f7a58;
+  --color-green-700: #186247;
+
+  --color-red-50: #3a1f24;
+  --color-red-100: #4d2630;
+  --color-red-200: #7a3340;
+  --color-red-300: #ff8a94;
+  --color-red-400: #ff7a85;
+  --color-red-500: #ff3b4f;
+  --color-red-600: #d92a40;
+  --color-red-700: #b01f33;
+
+  --color-violet-50: #3a1838;
+  --color-violet-100: #4d1f4a;
+  --color-violet-200: #7a2f75;
+  --color-violet-300: #f08be8;
+  --color-violet-400: #ed45df;
+  --color-violet-500: #e32dd4;
+  --color-violet-600: #b01ca6;
+  --color-violet-700: #8f1488;
+  --color-purple-100: #4d1f4a;
+  --color-purple-300: #f08be8;
+  --color-fuchsia-300: #f08be8;
+  --color-fuchsia-600: #b01ca6;
+
+  --color-orange-50: #3a2a12;
+  --color-orange-100: #4d3815;
+  --color-orange-200: #7a5a1f;
+  --color-orange-300: #ffc86b;
+  --color-orange-400: #ffbf00;
+  --color-orange-500: #b86408;
+  --color-orange-600: #9a5206;
+
+  --color-amber-50: #3a3012;
+  --color-amber-100: #4d4015;
+  --color-amber-200: #7a6420;
+  --color-amber-300: #ffd75e;
+  --color-amber-400: #ffbf00;
+  --color-amber-500: #ffbf00;
+  --color-amber-600: #d99b00;
+
+  --color-yellow-50: #3a3012;
+  --color-yellow-100: #4d4015;
+  --color-yellow-200: #7a6420;
+  --color-yellow-300: #ffd75e;
+  --color-teal-300: #6fe0b8;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
 }
 
 input[type='time']::-webkit-datetime-edit-seconds-field,
@@ -39,6 +129,19 @@ button {
   cursor: pointer;
 }
 
+/* Native pickers and scrollbars follow the dark theme. */
+html {
+  color-scheme: dark;
+}
+
+/* Lava lamp motif: SVG/SMIL animation stops for people who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .lamp-anim animate,
+  .lamp-anim animateTransform {
+    display: none;
+  }
+}
+
 /* iOS Safari zooms the page when a focused field is under 16px. Keep fields
    at 16px on phones so capture and refinement don't jump around. */
 @media (max-width: 767px) {
@@ -46,5 +149,156 @@ button {
   textarea,
   select {
     font-size: 16px !important;
+  }
+}
+
+@keyframes lava-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Playful pills ─────────────────────────────────────────────────────── */
+@keyframes pill-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  35% {
+    transform: scale(1.22) rotate(-5deg);
+  }
+  65% {
+    transform: scale(0.93) rotate(2deg);
+  }
+  100% {
+    transform: scale(1) rotate(var(--tilt, -1.5deg));
+  }
+}
+
+@keyframes pill-bubble {
+  0% {
+    opacity: 0.9;
+    transform: translate(0, 0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), -26px) scale(1.1);
+  }
+}
+
+@keyframes bubble-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), var(--dy, -90px)) scale(1);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pill-on {
+  animation: pill-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform: rotate(var(--tilt, -1.5deg));
+}
+
+.pill-bubble {
+  animation: pill-bubble 0.7s ease-out both;
+}
+
+.bubble-burst {
+  animation: bubble-burst var(--dur, 1.1s) ease-out both;
+}
+
+.reveal {
+  animation: reveal 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-on {
+    animation: none;
+  }
+  .pill-bubble,
+  .bubble-burst {
+    display: none;
+  }
+  .reveal {
+    animation: none;
+  }
+}
+
+/* Dropdowns: the native arrow sits flush against the right edge, so draw our
+   own chevron with proper breathing room. */
+select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f5ecd9' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1rem;
+}
+
+/* Drawer title: a thick gold marker underline that wiggles when you start
+   editing, so it reads as the headline and as an editable field. */
+.title-underline {
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+.title-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  border-radius: 9999px;
+  background: #ffbf00;
+  transform: rotate(-0.4deg);
+  transform-origin: left center;
+  transition:
+    box-shadow 0.2s ease,
+    height 0.2s ease;
+}
+.title-underline:focus-within::after {
+  height: 8px;
+  box-shadow: 0 0 16px rgba(255, 191, 0, 0.6);
+  animation: underline-wiggle 0.5s ease-out;
+}
+
+@keyframes underline-wiggle {
+  0% {
+    transform: rotate(-0.4deg) scaleX(0.6);
+  }
+  40% {
+    transform: rotate(0.8deg) scaleX(1.02);
+  }
+  70% {
+    transform: rotate(-0.9deg) scaleX(1);
+  }
+  100% {
+    transform: rotate(-0.4deg) scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-underline:focus-within::after {
+    animation: none;
   }
 }

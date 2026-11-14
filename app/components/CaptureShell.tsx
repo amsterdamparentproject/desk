@@ -33,12 +33,12 @@ export function CaptureShell() {
   }
 
   return (
-    <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
+    <main className="flex-1 min-h-0 flex flex-col bg-base overflow-hidden">
       {/* Matches Board's header exactly */}
-      <header className="bg-white border-b border-slate-200 z-10">
+      <header className="bg-surface border-b border-slate-200 z-10">
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8">
-            <span className="py-4 text-xs sm:text-sm font-black uppercase tracking-widest text-orange-500">
+            <span className="py-4 text-xs sm:text-sm font-black uppercase tracking-widest text-orange-300">
               Triage
             </span>
             <span className="py-4 text-xs sm:text-sm font-black uppercase tracking-widest text-slate-400">
@@ -64,7 +64,7 @@ export function CaptureShell() {
 
               <div className="p-3 space-y-3 bg-slate-100 md:bg-transparent">
                 {col.id === 'inbox' ? (
-                  <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-white/80 md:backdrop-blur-sm">
+                  <div className="sticky top-0 z-10 mb-2 bg-slate-100 md:bg-surface/80 md:backdrop-blur-sm">
                     <ShareCaptureForm onAdd={handleAdd} />
                   </div>
                 ) : (
@@ -72,7 +72,7 @@ export function CaptureShell() {
                   [1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="bg-white rounded-xl border border-slate-200 h-24 animate-pulse"
+                      className="bg-surface rounded-xl border border-slate-200 h-24 animate-pulse"
                     />
                   ))
                 )}
@@ -88,15 +88,15 @@ export function CaptureShell() {
 const TYPE_STYLES = {
   event: {
     border: 'border-blue-200',
-    label: 'text-blue-500',
+    label: 'text-blue-300',
     btn: 'bg-blue-600 hover:bg-blue-700',
-    ai: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+    ai: 'bg-blue-50 text-blue-300 hover:bg-blue-100',
   },
   resource: {
     border: 'border-orange-200',
-    label: 'text-orange-500',
+    label: 'text-orange-300',
     btn: 'bg-orange-500 hover:bg-orange-600',
-    ai: 'bg-orange-50 text-orange-600 hover:bg-orange-100',
+    ai: 'bg-orange-50 text-orange-300 hover:bg-orange-100',
   },
 }
 
@@ -132,7 +132,7 @@ function ShareCaptureForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`bg-white border-2 ${s.border} rounded-xl p-3 shadow-sm`}
+      className={`bg-surface border-2 ${s.border} rounded-xl p-3 shadow-sm`}
     >
       <div className="flex items-center justify-between mb-2">
         <p
@@ -144,14 +144,14 @@ function ShareCaptureForm({
           <button
             type="button"
             onClick={() => setType('event')}
-            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-colors ${type === 'event' ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 hover:bg-slate-50'}`}
+            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-colors ${type === 'event' ? 'bg-blue-600 text-white' : 'bg-surface text-slate-400 hover:bg-slate-50'}`}
           >
             Event
           </button>
           <button
             type="button"
             onClick={() => setType('resource')}
-            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-colors ${type === 'resource' ? 'bg-orange-500 text-white' : 'bg-white text-slate-400 hover:bg-slate-50'}`}
+            className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-colors ${type === 'resource' ? 'bg-orange-500 text-white' : 'bg-surface text-slate-400 hover:bg-slate-50'}`}
           >
             Resource
           </button>

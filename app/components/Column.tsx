@@ -14,7 +14,7 @@ export function LocationCard({
   onDecide?: (id: string, inPost: boolean) => void // Refine -> Gone (In Post / Not in Post)
 }) {
   return (
-    <div className="relative bg-white rounded-xl border-2 border-violet-200 hover:border-violet-400 shadow-sm overflow-hidden flex flex-col transition-all">
+    <div className="relative bg-surface rounded-xl border-2 border-violet-200 hover:border-violet-400 shadow-sm overflow-hidden flex flex-col transition-all">
       <div className="p-3 space-y-2">
         {/* Header */}
         <div className="flex justify-between items-start">
@@ -24,7 +24,7 @@ export function LocationCard({
           {onDetails && (
             <button
               onClick={() => onDetails(location)}
-              className="text-xs font-black hover:text-blue-600 text-blue-400 uppercase flex items-center gap-1"
+              className="text-xs font-black hover:text-blue-300 text-blue-400 uppercase flex items-center gap-1"
             >
               <Edit size={12} /> Edit
             </button>
@@ -34,7 +34,7 @@ export function LocationCard({
         {/* Name */}
         <h3
           onClick={() => onDetails?.(location)}
-          className="font-black text-slate-900 text-sm leading-tight uppercase tracking-tight cursor-pointer hover:text-violet-600 transition-colors"
+          className="font-black text-slate-900 text-sm leading-tight uppercase tracking-tight cursor-pointer hover:text-violet-300 transition-colors"
         >
           {location.name}
         </h3>
@@ -80,7 +80,7 @@ export function LocationCard({
             <button
               type="button"
               onClick={() => onAdvance(location.id)}
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-600 hover:text-white transition-colors uppercase"
+              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-violet-300 bg-violet-50 hover:bg-violet-600 hover:text-white transition-colors uppercase"
             >
               <Check size={14} strokeWidth={3} /> Accept to refine
             </button>
@@ -90,7 +90,7 @@ export function LocationCard({
               <button
                 type="button"
                 onClick={() => onDecide(location.id, true)}
-                className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
+                className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-green-300 bg-green-50 hover:bg-green-600 hover:text-white transition-colors uppercase"
               >
                 <Check size={14} strokeWidth={3} /> In Post
               </button>

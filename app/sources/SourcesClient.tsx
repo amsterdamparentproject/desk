@@ -93,10 +93,10 @@ const FETCH_TYPE_LABELS: Record<FetchType, string> = {
 }
 
 const FETCH_TYPE_COLORS: Record<FetchType, string> = {
-  ical: 'bg-blue-100 text-blue-800',
-  api: 'bg-purple-100 text-purple-800',
-  scrape: 'bg-amber-100 text-amber-800',
-  rss: 'bg-green-100 text-green-800',
+  ical: 'bg-blue-100 text-blue-300',
+  api: 'bg-purple-100 text-purple-300',
+  scrape: 'bg-amber-100 text-amber-300',
+  rss: 'bg-green-100 text-green-300',
 }
 
 const EMPTY_FORM = {
@@ -232,7 +232,7 @@ export function SourcesClient({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header */}
-      <div className="border-b border-slate-200 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b border-slate-200 bg-surface/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Sources</h1>
@@ -242,7 +242,7 @@ export function SourcesClient({
           </div>
           <button
             onClick={openAdd}
-            className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 bg-app-gold text-ink text-sm font-medium rounded-lg hover:bg-amber-300 transition-colors"
           >
             + Add Source
           </button>
@@ -258,7 +258,7 @@ export function SourcesClient({
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-surface rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
@@ -306,7 +306,7 @@ export function SourcesClient({
                         href={source.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline truncate max-w-xs block"
+                        className="text-blue-300 hover:underline truncate max-w-xs block"
                       >
                         {source.url}
                       </a>
@@ -329,7 +329,7 @@ export function SourcesClient({
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${source.active ? 'bg-green-500' : 'bg-slate-200'}`}
                       >
                         <span
-                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${source.active ? 'translate-x-4.5' : 'translate-x-0.5'}`}
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface shadow transition-transform ${source.active ? 'translate-x-4.5' : 'translate-x-0.5'}`}
                         />
                       </button>
                     </td>
@@ -343,7 +343,7 @@ export function SourcesClient({
                         </button>
                         <button
                           onClick={() => handleDelete(source)}
-                          className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                          className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 transition-colors"
                         >
                           Delete
                         </button>
@@ -364,7 +364,7 @@ export function SourcesClient({
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={closeDrawer}
           />
-          <div className="relative ml-auto w-full max-w-md bg-white shadow-xl h-full overflow-y-auto flex flex-col">
+          <div className="relative ml-auto w-full max-w-md bg-surface shadow-xl h-full overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">
                 {editing ? 'Edit Source' : 'Add Source'}
@@ -404,7 +404,7 @@ export function SourcesClient({
                   className="input"
                 />
                 {detection && (
-                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 mt-1">
+                  <p className="text-xs text-green-300 bg-green-50 border border-green-200 rounded px-2 py-1 mt-1">
                     ✓ Detected: {detection.label} — fetch type and config
                     pre-filled
                   </p>
@@ -444,7 +444,7 @@ export function SourcesClient({
                   className="input font-mono text-xs"
                 />
                 {configError && (
-                  <p className="text-xs text-red-500 mt-1">{configError}</p>
+                  <p className="text-xs text-red-300 mt-1">{configError}</p>
                 )}
               </Field>
 
@@ -471,7 +471,7 @@ export function SourcesClient({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="flex-1 py-2.5 text-sm font-medium bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                  className="flex-1 py-2.5 text-sm font-medium bg-app-gold text-ink rounded-lg hover:bg-amber-300 disabled:opacity-50 transition-colors"
                 >
                   {isPending
                     ? 'Saving…'

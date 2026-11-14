@@ -781,29 +781,29 @@ export default function Board({
   const notInPostLocations = goneLocations.filter((l) => !l.postpartum_post)
 
   return (
-    <main className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden">
-      <header className="bg-white border-b border-slate-200 z-10">
-        <div className="flex px-4 gap-8 items-center justify-between">
-          <div className="flex gap-8 overflow-x-auto">
+    <main className="flex-1 min-h-0 flex flex-col bg-base overflow-hidden">
+      <header className="bg-base border-b border-slate-200 z-10">
+        <div className="flex px-4 gap-4 items-center justify-between py-3">
+          <div className="flex gap-2 overflow-x-auto">
             {(
               ['triage', 'newsletter', 'post', 'locations', 'done'] as Tab[]
             ).map((tab) => {
-              const activeColor =
+              const activeClass =
                 tab === 'done'
-                  ? 'text-green-600'
+                  ? 'border-green-400 bg-green-400 text-ink shadow-[0_0_20px_rgba(9,188,138,0.4)]'
                   : tab === 'locations'
-                    ? 'text-fuchsia-600'
+                    ? 'border-violet-400 bg-violet-400 text-ink shadow-[0_0_20px_rgba(237,69,223,0.4)]'
                     : tab === 'post'
-                      ? 'text-violet-600'
+                      ? 'border-lamp-glow bg-lamp-glow text-ink shadow-[0_0_20px_rgba(227,45,212,0.45)]'
                       : tab === 'triage'
-                        ? 'text-orange-500'
-                        : 'text-blue-600'
+                        ? 'border-app-gold bg-app-gold text-ink shadow-[0_0_20px_rgba(255,191,0,0.4)]'
+                        : 'border-blue-400 bg-blue-400 text-ink shadow-[0_0_20px_rgba(68,157,209,0.4)]'
               const label = tab
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? activeColor : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`px-4 py-2 rounded-xl border-2 font-display text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === tab ? activeClass : 'border-slate-200 text-slate-500 hover:border-slate-400 hover:text-white'}`}
                 >
                   {label}
                 </button>
@@ -813,7 +813,7 @@ export default function Board({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setNewsletterOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-black uppercase tracking-widest"
+              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-display text-[10px] font-bold uppercase tracking-wider"
             >
               <Newspaper size={11} /> Next issue
             </button>

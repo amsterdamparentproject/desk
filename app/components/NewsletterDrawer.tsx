@@ -347,8 +347,8 @@ export function NewsletterDrawer({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
-      <div className="relative w-full max-w-2xl bg-white h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+    <div className="fixed inset-0 bg-ink/70 backdrop-blur-sm z-50 flex justify-end">
+      <div className="relative w-full max-w-2xl bg-surface h-full overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         {/* Header */}
         <div className="sticky top-0 bg-green-600 border-b border-green-700 p-4 flex items-center justify-between z-20">
           <div className="flex items-center gap-3 ml-3">
@@ -371,7 +371,7 @@ export function NewsletterDrawer({
         {/* Body */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="flex items-center gap-2 mb-5">
-            <label className="text-[9px] font-black uppercase tracking-widest text-green-600 shrink-0">
+            <label className="text-[9px] font-black uppercase tracking-widest text-green-300 shrink-0">
               Issue date
             </label>
             <input
@@ -388,7 +388,7 @@ export function NewsletterDrawer({
           ) : (
             <>
               <div className="flex items-center justify-between mb-5">
-                <span className="text-[9px] font-black uppercase tracking-widest text-green-600">
+                <span className="text-[9px] font-black uppercase tracking-widest text-green-300">
                   {nextActivities.length} activit
                   {nextActivities.length === 1 ? 'y' : 'ies'}
                 </span>
@@ -406,7 +406,7 @@ export function NewsletterDrawer({
                 </pre>
               ) : (
                 <div
-                  className="text-sm text-black [&_ul]:list-disc [&_ul]:pl-5 [&_p]:m-0 [&_a]:text-blue-600 [&_a]:underline [&_b]:font-black"
+                  className="text-sm text-slate-900 [&_ul]:list-disc [&_ul]:pl-5 [&_p]:m-0 [&_a]:text-blue-300 [&_a]:underline [&_b]:font-black"
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               )}
@@ -415,7 +415,7 @@ export function NewsletterDrawer({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 p-6 z-20 space-y-3">
+        <div className="sticky bottom-0 bg-surface border-t border-slate-100 p-6 z-20 space-y-3">
           {confirming ? (
             <>
               <p className="text-center text-xs font-black text-slate-600 uppercase tracking-widest">
@@ -446,7 +446,7 @@ export function NewsletterDrawer({
             <button
               onClick={() => setConfirming(true)}
               disabled={nextActivities.length === 0}
-              className="w-full font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs bg-slate-900 text-white hover:bg-green-600 disabled:opacity-40"
+              className="w-full font-black py-4 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs bg-app-gold text-ink hover:bg-green-600 disabled:opacity-40"
             >
               <Check size={18} strokeWidth={3} /> Finish issue
             </button>
