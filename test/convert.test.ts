@@ -24,7 +24,7 @@ describe('convertRow', () => {
     expect(insert.tagline).toBeUndefined()
     expect(insert.calendar_skip).toBeUndefined()
     expect(insert.title).toBe('Book on Lap')
-    expect(patch.list_id).toBe('new_resources')
+    expect(patch).not.toHaveProperty('list_id')
     expect(patch.services).toEqual(['newsletter'])
     expect(patch.postpartum_post).toBe(false)
   })
@@ -49,21 +49,22 @@ describe('convertRow', () => {
     expect(patch.services).toEqual(['newsletter'])
   })
 
-  it('leaves other lists alone', () => {
-    const { patch } = convertRow(
+  it('leaves the list alone', () => {
+    const { insert, patch } = convertRow(
       { ...event, list_id: 'inbox' },
       'resource',
       '2026-11-13'
     )
-    expect(patch.list_id).toBe('inbox')
+    expect(insert.list_id).toBe('inbox')
+    expect(patch).not.toHaveProperty('list_id')
   })
 
-  it('resource -> event sets a placeholder date and moves list', () => {
+  it('resource -> event sets a placeholder date', () => {
     const { insert, patch } = convertRow(
       {
         id: 'b',
         title: 'Guide',
-        list_id: 'new_resources',
+        list_id: 'inbox',
         services: ['newsletter'],
         postpartum_post: false,
         parse_warnings: [],
@@ -72,7 +73,8 @@ describe('convertRow', () => {
       '2026-11-13'
     )
     expect(insert.start_date).toBe('2026-11-13')
-    expect(patch.list_id).toBe('refined')
+    expect(insert.list_id).toBe('inbox')
+    expect(patch).not.toHaveProperty('list_id')
     expect(insert.services).toEqual(['newsletter'])
     expect(insert.parse_warnings).toEqual([
       'Converted from a resource. Set the real date and time.',

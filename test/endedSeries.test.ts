@@ -15,6 +15,7 @@ describe('endedSeriesPatch', () => {
       services: [],
       postpartum_post: false,
       list_id: 'done',
+      in_next_issue: false,
     })
   })
 
@@ -56,6 +57,6 @@ describe('endedSeriesPatch', () => {
   it('moves an already-empty-services row to done', () => {
     expect(
       endedSeriesPatch({ ...base, services: null, repeat_next_date: null })
-    ).toEqual({ list_id: 'done' })
+    ).toEqual({ list_id: 'done', in_next_issue: false })
   })
 })

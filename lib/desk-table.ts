@@ -157,7 +157,8 @@ export function isPostEligible(a: DeskActivity): boolean {
     a.type === 'event' &&
     a.services.includes('postpartum_post') &&
     a.list_id === 'refined' &&
-    a.status !== 'archived'
+    a.status !== 'archived' &&
+    a.status !== 'failed'
   )
 }
 
