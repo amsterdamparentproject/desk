@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
-import type { Occurrence } from '@/lib/occurrences'
+import { ChevronLeft, ChevronRight, Copy, Plus, X } from 'lucide-react'
+import { distinctDates, type Occurrence } from '@/lib/occurrences'
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 const MONTH_NAMES = [
@@ -32,7 +32,8 @@ const label = (date: string) =>
 
 // Pick any set of dates on a calendar and give each its own start/end time.
 // Click a day to add it (it copies the times of the day before it, which is
-// usually what you want) or click it again to remove it.
+// usually what you want) or click it again to remove it. A day can have
+// several sessions: "Add time" gives it another start/end pair.
 export function OccurrencePicker({
   value,
   onChange,
@@ -49,6 +50,7 @@ export function OccurrencePicker({
   }))
 
   const selected = new Set(value.map((o) => o.date))
+  const days = distinctDates(value)
   const today = new Date().toLocaleDateString('en-CA')
 
   // Monday-first grid with leading blanks.
@@ -73,38 +75,71 @@ export function OccurrencePicker({
       )
       return
     }
-    const before = [...value].reverse().find((o) => o.date < date)
-    const template = before ?? value[0]
-    const added: Occurrence = {
+    // A new day copies the previous day's sessions.
+    const prevDate = [...distinctDates(value)].reverse().find((d) => d < date)
+    const template = value.filter(
+      (o) => o.date === (prevDate ?? value[0]?.date)
+    )
+    const added: Occurrence[] = (
+      template.length > 0
+        ? template
+        : [{ date, start_time: null, end_time: null }]
+    ).map((t) => ({
       date,
-      start_time: template?.start_time ?? null,
-      end_time: template?.end_time ?? null,
-    }
+      start_time: t.start_time,
+      end_time: t.end_time,
+    }))
     onChange(
-      [...value, added].sort((a, b) => a.date.localeCompare(b.date)),
+      [...value, ...added].sort((a, b) => a.date.localeCompare(b.date)),
       true
     )
   }
 
+  // Edits address a session by its index in `value`, so two sessions on one
+  // day stay independent.
   const setTime = (
-    date: string,
+    index: number,
     field: 'start_time' | 'end_time',
     time: string
   ) =>
     onChange(
-      value.map((o) => (o.date === date ? { ...o, [field]: time || null } : o)),
+      value.map((o, i) => (i === index ? { ...o, [field]: time || null } : o)),
       false
     )
 
-  const copyFirstToAll = () => {
-    const f = value[0]
-    if (!f) return
+  const addSession = (date: string) => {
+    const last = value.map((o) => o.date).lastIndexOf(date)
+    const next = [...value]
+    next.splice(last + 1, 0, { date, start_time: null, end_time: null })
+    onChange(next, true)
+  }
+
+  const removeSession = (index: number) => {
+    const date = value[index].date
+    // Removing a day's only session removes the day.
+    if (value.filter((o) => o.date === date).length === 1) {
+      toggle(date)
+      return
+    }
     onChange(
-      value.map((o) => ({
-        ...o,
-        start_time: f.start_time,
-        end_time: f.end_time,
-      })),
+      value.filter((_, i) => i !== index),
+      true
+    )
+  }
+
+  // Every day gets the first day's sessions.
+  const copyFirstToAll = () => {
+    const firstDate = value[0]?.date
+    if (!firstDate) return
+    const sessions = value.filter((o) => o.date === firstDate)
+    onChange(
+      distinctDates(value).flatMap((date) =>
+        sessions.map((t) => ({
+          date,
+          start_time: t.start_time,
+          end_time: t.end_time,
+        }))
+      ),
       true
     )
   }
@@ -179,9 +214,9 @@ export function OccurrencePicker({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-black uppercase tracking-widest text-green-600">
-              {value.length} {value.length === 1 ? 'date' : 'dates'}
+              {days.length} {days.length === 1 ? 'date' : 'dates'}
             </span>
-            {value.length > 1 && (
+            {days.length > 1 && (
               <button
                 type="button"
                 onClick={copyFirstToAll}
@@ -191,40 +226,64 @@ export function OccurrencePicker({
               </button>
             )}
           </div>
-          {value.map((o) => (
-            <div
-              key={o.date}
-              className="grid grid-cols-[minmax(0,1fr)_6.5rem_6.5rem_2rem] items-center gap-2"
-            >
-              <span className="truncate text-sm font-black text-slate-700">
-                {label(o.date)}
-              </span>
-              <input
-                type="time"
-                lang="nl"
-                aria-label={`Start time ${label(o.date)}`}
-                value={o.start_time ?? ''}
-                onChange={(e) => setTime(o.date, 'start_time', e.target.value)}
-                className={timeStyle}
-              />
-              <input
-                type="time"
-                lang="nl"
-                aria-label={`End time ${label(o.date)}`}
-                value={o.end_time ?? ''}
-                onChange={(e) => setTime(o.date, 'end_time', e.target.value)}
-                className={timeStyle}
-              />
-              <button
-                type="button"
-                onClick={() => toggle(o.date)}
-                aria-label={`Remove ${label(o.date)}`}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
+          {days.map((date) => {
+            const sessions = value
+              .map((o, index) => ({ o, index }))
+              .filter(({ o }) => o.date === date)
+            return (
+              <div key={date} className="space-y-1.5">
+                {sessions.map(({ o, index }, n) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-[minmax(0,1fr)_6.5rem_6.5rem_2rem] items-center gap-2"
+                  >
+                    <span className="truncate text-sm font-black text-slate-700">
+                      {n === 0 ? label(date) : ''}
+                    </span>
+                    <input
+                      type="time"
+                      lang="nl"
+                      aria-label={`Start time ${label(date)}${sessions.length > 1 ? ` (${n + 1})` : ''}`}
+                      value={o.start_time ?? ''}
+                      onChange={(e) =>
+                        setTime(index, 'start_time', e.target.value)
+                      }
+                      className={timeStyle}
+                    />
+                    <input
+                      type="time"
+                      lang="nl"
+                      aria-label={`End time ${label(date)}${sessions.length > 1 ? ` (${n + 1})` : ''}`}
+                      value={o.end_time ?? ''}
+                      onChange={(e) =>
+                        setTime(index, 'end_time', e.target.value)
+                      }
+                      className={timeStyle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeSession(index)}
+                      aria-label={
+                        sessions.length > 1
+                          ? `Remove time ${n + 1} on ${label(date)}`
+                          : `Remove ${label(date)}`
+                      }
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addSession(date)}
+                  className="ml-0 inline-flex items-center gap-1 text-[11px] font-black text-slate-400 hover:text-slate-900"
+                >
+                  <Plus size={11} /> Add time
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

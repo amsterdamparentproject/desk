@@ -19,21 +19,43 @@ const TIME_RE = /^\d{2}:\d{2}/
 const cleanTime = (v: unknown): string | null =>
   typeof v === 'string' && TIME_RE.test(v) ? v.slice(0, 5) : null
 
-// Validates, de-duplicates by date (a later entry wins) and sorts by date.
+// Validates, de-duplicates and sorts by date, then start time. A date can
+// appear several times with different start times (same day, several
+// sessions); an identical date + start time is a duplicate (a later entry wins).
 export function normalizeOccurrences(input: unknown): Occurrence[] {
   if (!Array.isArray(input)) return []
-  const byDate = new Map<string, Occurrence>()
+  const byKey = new Map<string, Occurrence>()
   for (const raw of input) {
     if (!raw || typeof raw !== 'object') continue
     const r = raw as Record<string, unknown>
     if (typeof r.date !== 'string' || !DATE_RE.test(r.date)) continue
-    byDate.set(r.date, {
+    const start_time = cleanTime(r.start_time)
+    byKey.set(`${r.date}|${start_time ?? ''}`, {
       date: r.date,
-      start_time: cleanTime(r.start_time),
+      start_time,
       end_time: cleanTime(r.end_time),
     })
   }
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+  return [...byKey.values()].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      (a.start_time ?? '').localeCompare(b.start_time ?? '')
+  )
+}
+
+// The distinct dates of an occurrence list, in order.
+export const distinctDates = (occ: Occurrence[]): string[] => [
+  ...new Set(occ.map((o) => o.date)),
+]
+
+// "10:00–11:30 & 14:00" for the sessions of one day (shared by card and drawer).
+export function formatDayTimes(
+  occ: Pick<Occurrence, 'start_time' | 'end_time'>[]
+): string {
+  return occ
+    .filter((o) => o.start_time)
+    .map((o) => `${o.start_time}${o.end_time ? `–${o.end_time}` : ''}`)
+    .join(' & ')
 }
 
 // The single-range columns implied by an occurrence list.
@@ -110,7 +132,7 @@ const MONTHS = [
 // "3, 10 & 17 Dec" / "28 Nov, 3 & 10 Dec" — compact list of dates.
 export function formatOccurrenceDates(occ: Occurrence[]): string {
   const groups: { month: number; days: number[] }[] = []
-  for (const { date } of occ) {
+  for (const date of distinctDates(occ)) {
     const month = Number(date.slice(5, 7)) - 1
     const day = Number(date.slice(8, 10))
     const last = groups[groups.length - 1]

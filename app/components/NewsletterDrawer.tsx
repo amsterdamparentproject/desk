@@ -4,7 +4,12 @@ import { useState } from 'react'
 import { X, Check, Newspaper, Archive } from 'lucide-react'
 import { DeskActivity } from '../types/activity'
 import { parseRrule, computeNextDate } from '../utils/rrule'
-import { hasOccurrences, nextOccurrence } from '@/lib/occurrences'
+import {
+  distinctDates,
+  formatDayTimes,
+  hasOccurrences,
+  nextOccurrence,
+} from '@/lib/occurrences'
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
@@ -112,12 +117,14 @@ function getDateDisplay(
     const inWindow = all.filter(
       (o) => o.date >= windowStart && o.date <= windowEnd
     )
-    return (inWindow.length > 0 ? inWindow : all)
-      .map((o) => {
-        const time = o.start_time
-          ? ` @ ${o.start_time}${o.end_time ? `-${o.end_time}` : ''}`
-          : ''
-        return fmtFull(parseLocal(o.date)) + time
+    const shown = inWindow.length > 0 ? inWindow : all
+    return distinctDates(shown)
+      .map((date) => {
+        // Hyphen, like single-date events.
+        const times = formatDayTimes(
+          shown.filter((o) => o.date === date)
+        ).replaceAll('–', '-')
+        return fmtFull(parseLocal(date)) + (times ? ` @ ${times}` : '')
       })
       .join(', ')
   }

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { formatOccurrenceDates } from '@/lib/occurrences'
+import { formatDayTimes, formatOccurrenceDates } from '@/lib/occurrences'
 import {
   Edit,
   MapPin,
@@ -49,9 +49,15 @@ export function Card({
         : `${formatDate(activity.start_date)} – ${formatDate(activity.end_date)}`
     : 'No date'
 
-  const displayTime = activity.start_time
-    ? `${activity.start_time} - ${activity.end_time ?? ''}`
-    : ''
+  const firstDayTimes = (activity.occurrences ?? []).filter(
+    (o) => o.date === activity.occurrences![0].date
+  )
+  const displayTime =
+    firstDayTimes.length > 1
+      ? formatDayTimes(firstDayTimes)
+      : activity.start_time
+        ? `${activity.start_time} - ${activity.end_time ?? ''}`
+        : ''
 
   return (
     <div
