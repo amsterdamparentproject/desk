@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { LocationCard } from './Column'
 import { DeskTable } from './DeskTable'
 import { isHeld, isPostEligible } from '@/lib/desk-table'
-import { ActivityCard } from './card'
 import {
   CaptureDataProps,
   createNewActivity,
@@ -957,61 +956,6 @@ export default function Board({
     .filter((a) => a.type === 'resource')
     .sort(byUpdatedDesc)
 
-  // Post tab: events tagged postpartum_post, still active in Upcoming. Post
-  // never takes resources — the Postpartum Post matcher only queries events,
-  // locations, and playgrounds — so this pool (and everything derived from
-  // it below) is events-only, unlike Newsletter's dual-type Upcoming.
-  // Note: 'published' here means "went out in a newsletter issue" — that's a
-  // newsletter-cycle concept, not a Post one, so it must NOT exclude items.
-  // A recurring (or even single) event tagged postpartum_post stays eligible
-  // for Post regardless of its newsletter status; only an explicit archive
-  // (rejected) or leaving 'refined' (aged out via sweepStaleUpcoming,
-  // or moved to 'done') removes it.
-  const postEffectiveDate = (a: DeskActivity) =>
-    a.repeat_next_date ?? a.start_date ?? null
-  const byPostDate = (a: DeskActivity, b: DeskActivity) =>
-    (postEffectiveDate(a) ?? '').localeCompare(postEffectiveDate(b) ?? '')
-  const postEvents = activities.filter(isPostEligible)
-  // Every card shows up in exactly one Post column, and stays included
-  // unless explicitly removed: recurring events live only in "Recurring"
-  // (repeat_rrule is the authoritative "does this event recur" flag);
-  // non-recurring events are split between "This match" (due by the end of
-  // this month, including anything overdue that hasn't been swept yet) and
-  // "Future match" (everything after that, with no upper bound) — so a
-  // single event can never silently fall through a gap between columns
-  // regardless of how far out (or overdue) its date is.
-  const postRecurringEvents = postEvents
-    .filter((a) => !!a.repeat_rrule)
-    .sort(byPostDate)
-  const postSingleEvents = postEvents.filter((a) => !a.repeat_rrule)
-  // Last day of the current month as YYYY-MM-DD. Derived in a fixed zone (the
-  // server renders in UTC, the browser in Amsterdam) with pure UTC math after
-  // that, so server and client agree — building it from local Date setters and
-  // then toISOString() made them differ by a day, which moved month-end events
-  // between sections and caused a hydration text mismatch (React #418).
-  const matchThisMonthEnd = (() => {
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/Amsterdam',
-      year: 'numeric',
-      month: 'numeric',
-    }).formatToParts(new Date())
-    const y = Number(parts.find((p) => p.type === 'year')?.value)
-    const m = Number(parts.find((p) => p.type === 'month')?.value)
-    return new Date(Date.UTC(y, m, 0)).toISOString().split('T')[0]
-  })()
-  const matchThisMonth = postSingleEvents
-    .filter((a) => {
-      const d = postEffectiveDate(a)
-      return !!d && d <= matchThisMonthEnd
-    })
-    .sort(byPostDate)
-  const matchNextMonth = postSingleEvents
-    .filter((a) => {
-      const d = postEffectiveDate(a)
-      return !!d && d > matchThisMonthEnd
-    })
-    .sort(byPostDate)
-
   // Locations tab groups
   const inboxLocations = locations.filter((l) => l.list_id === 'inbox')
   const goneLocations = locations.filter(
@@ -1405,64 +1349,15 @@ export default function Board({
           onArchive={handleArchiveEvent}
           onToggleService={handleToggleService}
         />
-      ) : (
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
-          {activeTab === 'post' && (
-            <>
-              {(
-                [
-                  {
-                    key: 'post-this-match',
-                    label: 'This match',
-                    items: matchThisMonth,
-                  },
-                  {
-                    key: 'post-future-match',
-                    label: 'Future match',
-                    items: matchNextMonth,
-                  },
-                  {
-                    key: 'post-recurring',
-                    label: 'Recurring',
-                    items: postRecurringEvents,
-                  },
-                ] as const
-              ).map(({ key, label, items }) => (
-                <div key={key} className="w-full md:flex-1 md:basis-0 min-w-0">
-                  <section className="flex flex-col rounded-t-lg overflow-hidden flex-1">
-                    <div className="p-4 bg-violet-600 flex items-center justify-between">
-                      <h2 className="text-[10px] font-black uppercase tracking-widest text-white">
-                        {label}
-                      </h2>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-700 text-white">
-                        {items.length}
-                      </span>
-                    </div>
-                    <div className="p-3 space-y-3 bg-slate-100">
-                      {items.length === 0 ? (
-                        <div className="py-8 text-center text-[10px] tracking-wide text-slate-400 italic">
-                          Nothing to see here 🌬️
-                        </div>
-                      ) : (
-                        items.map((activity) => (
-                          <ActivityCard
-                            key={activity.id}
-                            activity={activity}
-                            onDetails={openActivity}
-                            onArchive={handleArchiveEvent}
-                            onToggleService={handleToggleService}
-                            showNotInPost
-                          />
-                        ))
-                      )}
-                    </div>
-                  </section>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      ) : activeTab === 'post' ? (
+        <DeskTable
+          mode="post"
+          rows={activities.filter(isPostEligible)}
+          onOpen={openActivity}
+          onArchive={handleArchiveEvent}
+          onToggleService={handleToggleService}
+        />
+      ) : null}
 
       {newsletterOpen && (
         <NewsletterDrawer

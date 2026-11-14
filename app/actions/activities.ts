@@ -860,13 +860,11 @@ export async function getIssueDate(): Promise<string> {
   const stored = data?.value ?? null
   const rolled = rollIssueDate(stored, amsterdamToday())
   if (rolled !== stored) {
-    await supabase
-      .from('desk_settings')
-      .upsert({
-        key: ISSUE_DATE_KEY,
-        value: rolled,
-        updated_at: new Date().toISOString(),
-      })
+    await supabase.from('desk_settings').upsert({
+      key: ISSUE_DATE_KEY,
+      value: rolled,
+      updated_at: new Date().toISOString(),
+    })
   }
   return rolled
 }
@@ -874,12 +872,10 @@ export async function getIssueDate(): Promise<string> {
 export async function saveIssueDate(date: string): Promise<void> {
   if (!isIsoDate(date)) throw new Error('Invalid issue date')
   const supabase = createAdminClient()
-  const { error } = await supabase
-    .from('desk_settings')
-    .upsert({
-      key: ISSUE_DATE_KEY,
-      value: date,
-      updated_at: new Date().toISOString(),
-    })
+  const { error } = await supabase.from('desk_settings').upsert({
+    key: ISSUE_DATE_KEY,
+    value: date,
+    updated_at: new Date().toISOString(),
+  })
   if (error) throw new Error(error.message)
 }

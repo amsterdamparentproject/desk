@@ -26,6 +26,9 @@ import {
   isPastEvent,
   sortRows,
   effectiveStart,
+  matchMonthEnd,
+  postGroup,
+  type PostGroup,
   type SortDir,
   type SortKey,
   type TypeFilter,
@@ -57,13 +60,15 @@ const addedLabel = (createdAt: string, today: string) => {
   return dayMonth(day)
 }
 
-type StageFilter = 'all' | 'next' | 'candidates'
+type StageFilter = 'all' | 'next' | 'candidates' | PostGroup
 
 interface DeskTableProps {
   // 'triage' = held rows + capture bar + Done refining.
   // 'newsletter' = refined rows tagged Newsletter, with "Next newsletter"
   // (in_next_issue) highlighted and an Add to next / Remove action.
-  mode?: 'triage' | 'newsletter'
+  // 'post' = refined events tagged Post, grouped This match / Future match /
+  // Recurring.
+  mode?: 'triage' | 'newsletter' | 'post'
   rows: DeskActivity[]
   onOpen: (activity: DeskActivity) => void
   onAdd?: (data: CaptureDataProps) => void
@@ -84,10 +89,10 @@ export function DeskTable({
   onToggleService,
 }: DeskTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(
-    mode === 'newsletter' ? 'start' : 'created'
+    mode === 'triage' ? 'created' : 'start'
   )
   const [sortDir, setSortDir] = useState<SortDir>(
-    mode === 'newsletter' ? 'asc' : 'desc'
+    mode === 'triage' ? 'desc' : 'asc'
   )
   const [stage, setStage] = useState<StageFilter>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -108,20 +113,40 @@ export function DeskTable({
   const problemCount = rows.filter((a) => needsAttention(a, today)).length
 
   const nextCount = rows.filter((a) => a.in_next_issue).length
+  const monthEnd = matchMonthEnd()
+  const postCounts = {
+    this: rows.filter((a) => postGroup(a, monthEnd) === 'this').length,
+    future: rows.filter((a) => postGroup(a, monthEnd) === 'future').length,
+    recurring: rows.filter((a) => postGroup(a, monthEnd) === 'recurring')
+      .length,
+  }
 
   const visible = useMemo(
     () =>
       sortRows(
         filterRows(
-          rows.filter(
-            (a) => stage === 'all' || (stage === 'next') === a.in_next_issue
-          ),
+          rows.filter((a) => {
+            if (stage === 'all') return true
+            if (mode === 'post') return postGroup(a, monthEnd) === stage
+            return (stage === 'next') === a.in_next_issue
+          }),
           { type: typeFilter, query, onlyProblems, today }
         ),
         sortKey,
         sortDir
       ),
-    [rows, stage, typeFilter, query, onlyProblems, today, sortKey, sortDir]
+    [
+      rows,
+      stage,
+      mode,
+      monthEnd,
+      typeFilter,
+      query,
+      onlyProblems,
+      today,
+      sortKey,
+      sortDir,
+    ]
   )
 
   const toggleSort = (key: SortKey) => {
@@ -176,6 +201,44 @@ export function DeskTable({
                   }`}
                 >
                   {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {mode === 'post' && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-violet-200 bg-violet-50 px-3 py-2.5">
+            <Mail size={16} className="text-violet-600" />
+            <span className="text-sm font-black text-violet-900">
+              Postpartum Post
+            </span>
+            <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-black text-white">
+              {rows.length}
+            </span>
+            <span className="text-[11px] font-bold text-violet-700">
+              {rows.length === 1 ? 'event' : 'events'} available for matching
+            </span>
+            <div className="ml-auto inline-flex rounded-lg bg-white p-0.5 border border-violet-100">
+              {(
+                [
+                  ['all', 'All', rows.length],
+                  ['this', 'This match', postCounts.this],
+                  ['future', 'Future match', postCounts.future],
+                  ['recurring', 'Recurring', postCounts.recurring],
+                ] as const
+              ).map(([key, label, n]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStage(key)}
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                    stage === key
+                      ? 'bg-violet-600 text-white'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {label} <span className="opacity-60">{n}</span>
                 </button>
               ))}
             </div>
@@ -287,7 +350,9 @@ export function DeskTable({
               {rows.length === 0
                 ? mode === 'newsletter'
                   ? 'Nothing refined for the newsletter yet. Use "Done refining" on Triage.'
-                  : 'Nothing held yet. Capture something above 🌬️'
+                  : mode === 'post'
+                    ? 'No refined events tagged Post yet. Use "Done refining" on Triage.'
+                    : 'Nothing held yet. Capture something above 🌬️'
                 : 'No rows match these filters'}
             </div>
           ) : (
@@ -358,7 +423,7 @@ function Row({
   today: string
   fresh: boolean
   onOpen: (a: DeskActivity) => void
-  mode: 'triage' | 'newsletter'
+  mode: 'triage' | 'newsletter' | 'post'
   onDoneRefining?: (id: string) => void
   onToggleNextIssue?: (id: string, inNext: boolean) => void
   onArchive: (id: string) => void

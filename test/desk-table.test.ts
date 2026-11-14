@@ -5,6 +5,7 @@ import {
   isHeld,
   isPastEvent,
   isPostEligible,
+  postGroup,
   needsAttention,
   effectiveStart,
   sortRows,
@@ -134,6 +135,33 @@ describe('filterRows / isHeld', () => {
     expect(isHeld(row({ list_id: 'inbox' }))).toBe(true)
     expect(isHeld(row({ list_id: 'refined' }))).toBe(false)
     expect(isHeld(row({ list_id: 'inbox', status: 'archived' }))).toBe(false)
+  })
+})
+
+describe('postGroup', () => {
+  const end = '2026-11-30'
+  it('puts recurring events in recurring, regardless of date', () => {
+    expect(
+      postGroup(
+        {
+          repeat_rrule: 'FREQ=WEEKLY',
+          repeat_next_date: '2027-01-01',
+          start_date: null,
+        },
+        end
+      )
+    ).toBe('recurring')
+  })
+  it('splits single events by month end, overdue and undated included', () => {
+    const g = (d: string | null) =>
+      postGroup(
+        { repeat_rrule: null, repeat_next_date: null, start_date: d },
+        end
+      )
+    expect(g('2026-11-30')).toBe('this')
+    expect(g('2026-10-01')).toBe('this')
+    expect(g('2026-12-01')).toBe('future')
+    expect(g(null)).toBe('future')
   })
 })
 

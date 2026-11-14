@@ -123,3 +123,34 @@ export function isPostEligible(a: DeskActivity): boolean {
     a.status !== 'archived'
   )
 }
+
+export type PostGroup = 'this' | 'future' | 'recurring'
+
+// Last day of the current month (YYYY-MM-DD) in Amsterdam time. Pure UTC math
+// after the zone lookup so server and browser agree (avoids hydration drift).
+export function matchMonthEnd(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now)
+  const y = Number(parts.find((p) => p.type === 'year')?.value)
+  const m = Number(parts.find((p) => p.type === 'month')?.value)
+  return new Date(Date.UTC(y, m, 0)).toISOString().split('T')[0]
+}
+
+// Every Post event lands in exactly one group: recurring events live in
+// "recurring"; single events are "this" match (due by month end, including
+// anything overdue) or "future" (everything later, or undated).
+export function postGroup(
+  a: {
+    repeat_rrule?: string | null
+    repeat_next_date?: string | null
+    start_date?: string | null
+  },
+  monthEnd: string
+): PostGroup {
+  if (a.repeat_rrule) return 'recurring'
+  const d = a.repeat_next_date ?? a.start_date ?? null
+  return d && d <= monthEnd ? 'this' : 'future'
+}
