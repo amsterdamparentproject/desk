@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-yarn dev          # start dev server
+yarn dev          # start dev server (port 3002)
 yarn build        # production build
 yarn test         # run all tests (vitest)
 yarn lint         # eslint
