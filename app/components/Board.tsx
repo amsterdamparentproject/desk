@@ -9,6 +9,8 @@ import {
 } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Column, LocationCard } from './Column'
+import { DeskTable } from './DeskTable'
+import { isHeld, isPostEligible } from '@/lib/desk-table'
 import { ActivityCard } from './card'
 import {
   CaptureDataProps,
@@ -174,8 +176,14 @@ function subscribePublishDate(onChange: () => void) {
     window.removeEventListener(PUBLISH_DATE_EVENT, onChange)
   }
 }
-const getPublishDateSnapshot = () =>
-  localStorage.getItem(PUBLISH_DATE_KEY) ?? ''
+// Falls back to today when nothing valid is saved (new browser, cleared
+// storage, phone vs laptop), so the issue window is never empty or NaN.
+const getPublishDateSnapshot = () => {
+  const saved = localStorage.getItem(PUBLISH_DATE_KEY) ?? ''
+  return /^\d{4}-\d{2}-\d{2}$/.test(saved)
+    ? saved
+    : new Date().toLocaleDateString('en-CA')
+}
 const getPublishDateServerSnapshot = () => ''
 
 interface BoardProps {
@@ -370,6 +378,70 @@ export default function Board({
       }
     } catch (err) {
       console.error('Finish editing failed:', err)
+    }
+  }
+
+  // Table action "Done refining": the held row leaves Desk for the refined
+  // pipeline (Upcoming events / New resources). Newsletter and Post tabs then
+  // pick it up from its services, so they only ever hold refined items.
+  // Newsletter table action: move a refined row in/out of "Next newsletter".
+  const handleMoveList = async (id: string, target: ListId) => {
+    const activity = activities.find((e) => e.id === id)
+    if (!activity) return
+    const delta = newsletterLastDelta(
+      activity.list_id,
+      target,
+      activity.newsletter_last
+    )
+    const patch = {
+      list_id: target,
+      status: 'accepted' as const,
+      ...(delta !== undefined ? { newsletter_last: delta } : {}),
+    }
+    setActivities((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...patch } : e))
+    )
+    try {
+      await saveActivity(id, activity.type, patch)
+    } catch (err) {
+      console.error('Move failed:', err)
+      setActivities((prev) => prev.map((e) => (e.id === id ? activity : e)))
+    }
+  }
+
+  const handleDoneRefining = async (id: string) => {
+    const activity = activities.find((e) => e.id === id)
+    if (!activity) return
+    if (activity.services.length === 0) return
+    const services: Service[] = activity.services
+    const target: ListId =
+      activity.type === 'event' ? 'upcoming_events' : 'new_resources'
+    const delta = newsletterLastDelta(
+      activity.list_id,
+      target,
+      activity.newsletter_last
+    )
+    const patch = {
+      list_id: target,
+      status: 'accepted' as const,
+      ...(delta !== undefined ? { newsletter_last: delta } : {}),
+    }
+    setActivities((prev) =>
+      prev.map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              ...patch,
+              postpartum_post: services.includes('postpartum_post'),
+            }
+          : e
+      )
+    )
+    try {
+      await saveActivity(id, activity.type, patch)
+    } catch (err) {
+      console.error('Done refining failed:', err)
+      setActivities((prev) => prev.map((e) => (e.id === id ? activity : e)))
     }
   }
 
@@ -1051,13 +1123,7 @@ export default function Board({
     a.repeat_next_date ?? a.start_date ?? null
   const byPostDate = (a: DeskActivity, b: DeskActivity) =>
     (postEffectiveDate(a) ?? '').localeCompare(postEffectiveDate(b) ?? '')
-  const postEvents = activities.filter(
-    (a) =>
-      a.type === 'event' &&
-      a.list_id === 'upcoming_events' &&
-      a.status !== 'archived' &&
-      a.services.includes('postpartum_post')
-  )
+  const postEvents = activities.filter(isPostEligible)
   // Every card shows up in exactly one Post column, and stays included
   // unless explicitly removed: recurring events live only in "Recurring"
   // (repeat_rrule is the authoritative "does this event recur" flag);
@@ -1496,6 +1562,36 @@ export default function Board({
             </section>
           </div>
         </div>
+      ) : activeTab === 'triage' ? (
+        <DeskTable
+          rows={activities.filter(isHeld)}
+          onOpen={openActivity}
+          onAdd={handleAddEvent}
+          onDoneRefining={handleDoneRefining}
+          onArchive={handleArchiveEvent}
+          onToggleService={handleToggleService}
+        />
+      ) : activeTab === 'newsletter' ? (
+        <DeskTable
+          mode="newsletter"
+          rows={activities.filter(
+            (e) =>
+              e.services.includes('newsletter') &&
+              (
+                [
+                  'upcoming_events',
+                  'new_resources',
+                  'next_newsletter',
+                ] as ListId[]
+              ).includes(e.list_id) &&
+              e.status !== 'archived' &&
+              e.status !== 'published'
+          )}
+          onOpen={openActivity}
+          onMoveList={handleMoveList}
+          onArchive={handleArchiveEvent}
+          onToggleService={handleToggleService}
+        />
       ) : (
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
           {currentColumns.map((col) => (
@@ -1522,24 +1618,6 @@ export default function Board({
                       e.status !== 'archived' &&
                       e.status !== 'published'
                   )
-                  // Newsletter-owned stages only show items still tagged 'newsletter' —
-                  // dropping the service (Skip issue) hides it here without moving
-                  // list_id, since it may still be alive for Post.
-                  .filter((e) => {
-                    if (
-                      activeTab === 'newsletter' &&
-                      (
-                        [
-                          'upcoming_events',
-                          'new_resources',
-                          'next_newsletter',
-                        ] as ListId[]
-                      ).includes(col.id)
-                    ) {
-                      return e.services.includes('newsletter')
-                    }
-                    return true
-                  })
                   .filter(
                     (e) =>
                       col.id !== 'review' ||
@@ -1625,7 +1703,7 @@ export default function Board({
                 onArchive={handleArchiveEvent}
                 onToggleService={handleToggleService}
                 publishDate={publishDate}
-                color={activeTab === 'newsletter' ? 'blue' : 'orange'}
+                color="orange"
               />
             </div>
           ))}

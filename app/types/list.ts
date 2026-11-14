@@ -42,25 +42,25 @@ export const TRIAGE_LISTS: ListProps[] = [
   {
     id: 'ideas',
     label: 'Capture',
-    finishLabel: 'Send to review',
-    finishTarget: () => 'review',
+    finishLabel: 'Done refining',
+    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
   },
   {
     id: 'review',
     label: 'To review',
-    finishLabel: 'Accept',
-    finishTarget: () => 'refine',
+    finishLabel: 'Done refining',
+    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
   },
   {
     id: 'error',
     label: 'Errors',
-    finishLabel: 'Accept',
-    finishTarget: () => 'refine',
+    finishLabel: 'Done refining',
+    finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
   },
   {
     id: 'refine',
     label: 'Refine',
-    finishLabel: 'Add to Upcoming',
+    finishLabel: 'Done refining',
     finishTarget: (t) => (t === 'event' ? 'upcoming_events' : 'new_resources'),
   },
 ]

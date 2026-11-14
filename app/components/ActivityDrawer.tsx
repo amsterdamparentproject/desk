@@ -1287,13 +1287,17 @@ export function ActivityDrawer({
                 <button
                   onClick={() => onFinishEditing(formData)}
                   disabled={
-                    formData.list_id === 'refine' &&
+                    formData.list_id !== 'upcoming_events' &&
+                    formData.list_id !== 'new_resources' &&
+                    formData.list_id !== 'next_newsletter' &&
                     (formData.services ?? []).length === 0
                   }
                   title={
-                    formData.list_id === 'refine' &&
+                    formData.list_id !== 'upcoming_events' &&
+                    formData.list_id !== 'new_resources' &&
+                    formData.list_id !== 'next_newsletter' &&
                     (formData.services ?? []).length === 0
-                      ? 'Choose Newsletter and/or Post before adding'
+                      ? 'Choose Newsletter and/or Post first'
                       : undefined
                   }
                   className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-green-700 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs disabled:opacity-40 disabled:hover:bg-green-600 disabled:cursor-not-allowed disabled:shadow-none"

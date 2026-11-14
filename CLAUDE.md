@@ -29,6 +29,10 @@ Two Supabase tables in the `activities` schema: `events` and `resources`. Both s
 
 Key status lifecycle: `new` → `processing` (AI in-flight) → `processed` → `edited` → archived. The `list_id` field (type `ListId`) drives which kanban column the card appears in.
 
+### Triage tab: Desk table
+
+The Triage tab is a single sortable table (`app/components/DeskTable.tsx`, logic in `lib/desk-table.ts`), not kanban columns. It shows every "held" row (`list_id` in ideas / capture / review / error / refine; the database lists are unchanged, only the UI merges them). Capture is one bar at the top; rows sort by Added, Date (resources always last) or Title. Refinement happens in the table: the "Use for" column toggles Newsletter / Post, and "Done refining" (shown only once at least one service is selected) moves the row to `upcoming_events` / `new_resources` with status `accepted`. Newsletter and Post tabs therefore only hold refined items; `isPostEligible` excludes held rows. The Date column shows the next occurrence for recurring events (`effectiveStart` recomputes it when the stored `repeat_next_date` is missing or stale). The Newsletter tab uses the same component in `mode="newsletter"`: rows are refined items tagged Newsletter (`upcoming_events` / `new_resources` / `next_newsletter`), rows in `next_newsletter` are highlighted with a "Next issue" badge, and the row action "Add to next" / "Remove" moves them in and out (`handleMoveList` in Board). The Post tab is not yet a table.
+
 ### Page → Board → Column → Card
 
 `app/page.tsx` is a server component that verifies the `app_desk_session` cookie (checked against `DESK_PASSWORD` env var, see Auth below), fetches all activities from Supabase using the admin client, and passes them to `<Board>` as `initialActivities`.
@@ -65,8 +69,8 @@ Custom RRULE parser/builder — no external library. Supported frequencies: `dai
 
 Single shared-password login, not per-user accounts, and no Supabase Auth involved — the admin client bypasses RLS entirely.
 
-- `/login` (`app/login/page.tsx`) renders a password form that posts to the `login` server action (`app/actions/auth.ts`).
-- `login` compares the submitted password to `DESK_PASSWORD` and, on success, sets the `app_desk_session` cookie to that same secret value with `maxAge` = 10 years (`COOKIE_MAX_AGE` in `app/utils/auth-gate.ts`) — sessions are meant to rarely expire.
+- `/login` (`app/login/page.tsx`) renders a password form that posts to `POST /api/login` (a route handler, not a Server Action: `proxy.ts` 401s any Server Action without a valid session, so a login action could never work for a signed-out user).
+- `/api/login` compares the submitted password to `DESK_PASSWORD` and, on success, sets the `app_desk_session` cookie to that same secret value with `maxAge` = 10 years (`COOKIE_MAX_AGE` in `app/utils/auth-gate.ts`) — sessions are meant to rarely expire.
 - `verifyDeskSession` (`app/utils/auth-gate.ts`) just checks that cookie value against `DESK_PASSWORD`; every protected page/layout (`app/page.tsx`, `app/finances/layout.tsx`, `app/customers/layout.tsx`, `app/sources/page.tsx`, `app/share/page.tsx`) calls it directly and `redirect('/login')`s if it fails. Page loads have no centralized gate; Server Actions do (see `proxy.ts` below).
 - `logout` (`app/actions/auth.ts`) clears the cookie and redirects to `/login`; wired up as a "Log out" button in `DeskNav`.
 - `proxy.ts` (Next 16's replacement for `middleware.ts`) gates Server Actions: any POST carrying a `next-action` header gets a 401 unless the `app_desk_session` cookie matches `DESK_PASSWORD`. Without it, only page loads would be protected, since Server Actions are independently invocable POST endpoints. API routes (no `next-action` header) do their own auth (`verifyDeskSession` or the n8n webhook secret). The old `?token=` magic-link flow is gone, replaced by the login page.

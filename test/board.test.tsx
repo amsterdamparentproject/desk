@@ -100,18 +100,19 @@ beforeEach(() => {
 // ─── Capture via AI ───────────────────────────────────────────────────────────
 
 describe('capture via AI', () => {
+  const PLACEHOLDER = /paste a link, type a title/i
+
   it.each([['event'], ['resource']] as const)(
     'creates %s without file',
     async (type) => {
       const user = userEvent.setup()
       render(<Board initialActivities={[]} />)
 
-      const sectionLabel = type === 'resource' ? 'Resource' : 'Event'
-      const heading = await screen.findByText(sectionLabel, { selector: 'p' })
-      const form = heading.closest('form')!
-      const textarea = within(form).getByPlaceholderText(
-        'Paste links, type titles, or add notes...'
-      )
+      const textarea = await screen.findByPlaceholderText(PLACEHOLDER)
+      const form = textarea.closest('form')!
+      if (type === 'resource') {
+        await user.click(within(form).getByRole('button', { name: 'resource' }))
+      }
       await user.type(textarea, 'Test description')
 
       fireEvent.submit(form)
@@ -140,12 +141,11 @@ describe('capture via AI', () => {
       const user = userEvent.setup()
       render(<Board initialActivities={[]} />)
 
-      const sectionLabel = type === 'resource' ? 'Resource' : 'Event'
-      const heading = await screen.findByText(sectionLabel, { selector: 'p' })
-      const form = heading.closest('form')!
-      const textarea = within(form).getByPlaceholderText(
-        'Paste links, type titles, or add notes...'
-      )
+      const textarea = await screen.findByPlaceholderText(PLACEHOLDER)
+      const form = textarea.closest('form')!
+      if (type === 'resource') {
+        await user.click(within(form).getByRole('button', { name: 'resource' }))
+      }
       await user.type(textarea, 'Description with file')
 
       const fileInput = form.querySelector(
@@ -176,11 +176,8 @@ describe('capture via AI', () => {
     const user = userEvent.setup()
     render(<Board initialActivities={[]} />)
 
-    const heading = await screen.findByText('Event', { selector: 'p' })
-    const form = heading.closest('form')!
-    const textarea = within(form).getByPlaceholderText(
-      'Paste links, type titles, or add notes...'
-    )
+    const textarea = await screen.findByPlaceholderText(PLACEHOLDER)
+    const form = textarea.closest('form')!
     await user.type(textarea, 'Multi-event description')
     fireEvent.submit(form)
 
@@ -210,13 +207,55 @@ describe('card actions', () => {
     const user = userEvent.setup()
     render(<Board initialActivities={[activity()]} />)
 
-    // Board starts on triage — 'Archive' button is on the card (exact case avoids
+    // Board starts on triage — the row's Archive button (exact name avoids
     // matching the 'archived (0)' tab label)
     await user.click(await screen.findByRole('button', { name: 'Archive' }))
 
     await waitFor(() =>
       expect(archiveActivity).toHaveBeenCalledWith('act-1', 'event')
     )
+  })
+})
+
+describe('desk table', () => {
+  it('moves a held row with services to upcoming events on Done refining', async () => {
+    const user = userEvent.setup()
+    render(
+      <Board
+        initialActivities={[
+          activity({ start_date: '2099-01-01', services: ['newsletter'] }),
+        ]}
+      />
+    )
+
+    const row = (await screen.findByText('Test Event')).closest('li')!
+    await user.click(within(row).getByRole('button', { name: 'Done refining' }))
+
+    await waitFor(() =>
+      expect(saveActivity).toHaveBeenCalledWith(
+        'act-1',
+        'event',
+        expect.objectContaining({
+          list_id: 'upcoming_events',
+          status: 'accepted',
+        })
+      )
+    )
+  })
+
+  it('shows refine, review and error rows in one table', async () => {
+    render(
+      <Board
+        initialActivities={[
+          activity({ id: 'a', title: 'Alpha', list_id: 'refine' }),
+          activity({ id: 'b', title: 'Bravo', list_id: 'error' }),
+          activity({ id: 'c', title: 'Charlie', list_id: 'next_newsletter' }),
+        ]}
+      />
+    )
+    expect(await screen.findByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByText('Bravo')).toBeInTheDocument()
+    expect(screen.queryByText('Charlie')).not.toBeInTheDocument()
   })
 })
 
@@ -227,8 +266,8 @@ describe('ActivityDrawer', () => {
     const user = userEvent.setup()
     render(<Board initialActivities={[activity()]} />)
 
-    // Board starts on triage; activity is in 'review' column
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    // Board starts on triage; clicking the row opens the drawer
+    await user.click(await screen.findByText('Test Event'))
 
     const blurb = await screen.findByPlaceholderText(/newsletter snippet/i)
     await user.clear(blurb)
@@ -251,7 +290,7 @@ describe('ActivityDrawer', () => {
     const user = userEvent.setup()
     render(<Board initialActivities={[activity()]} />)
 
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(await screen.findByText('Test Event'))
 
     await user.click(
       await screen.findByRole('button', { name: /delete record permanently/i })
@@ -269,7 +308,7 @@ describe('ActivityDrawer', () => {
     const user = userEvent.setup()
     render(<Board initialActivities={[activity()]} />)
 
-    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(await screen.findByText('Test Event'))
 
     const frequency = (await screen.findAllByRole('combobox')).find((el) =>
       within(el).queryByRole('option', { name: 'Weekly' })

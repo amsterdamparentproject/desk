@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifyDeskSession } from '@/app/utils/auth-gate'
-import { login } from '@/app/actions/auth'
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>
@@ -25,7 +24,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <p className="text-sm text-slate-500 mt-2 mb-6 max-w-xs mx-auto">
           Enter the team password to access the workspace.
         </p>
-        <form action={login} className="space-y-3 text-left">
+        <form action="/api/login" method="post" className="space-y-3 text-left">
           <input
             type="password"
             name="password"

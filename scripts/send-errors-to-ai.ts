@@ -15,8 +15,16 @@
  * isn't hit with every execution at once. Runs against whatever Supabase
  * project NEXT_PUBLIC_SUPABASE_URL points at, and the PRODUCTION webhook.
  *
+ * With --triage-events it instead re-sends every EVENT held in the Triage
+ * table (list_id ideas / capture / review / error / refine; skips archived and
+ * rows already processing), to refresh stale details before a newsletter pass.
+ * Same payload as the drawer's "Send to AI", so it re-parses exactly like that
+ * button does.
+ *
  * Usage:
  *   yarn tsx scripts/send-errors-to-ai.ts            # dry run — lists what would be sent
+ *   yarn tsx scripts/send-errors-to-ai.ts --triage-events            # dry run, all held events
+ *   yarn tsx scripts/send-errors-to-ai.ts --triage-events --apply
  *   yarn tsx scripts/send-errors-to-ai.ts --apply    # actually sends
  *   yarn tsx scripts/send-errors-to-ai.ts --apply --delay=5000   # ms between cards (default 3000)
  */
@@ -29,6 +37,7 @@ import { createClient } from '@supabase/supabase-js'
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') })
 
 const APPLY = process.argv.includes('--apply')
+const TRIAGE_EVENTS = process.argv.includes('--triage-events')
 const delayArg = process.argv.find((a) => a.startsWith('--delay='))
 const DELAY_MS = delayArg ? Number(delayArg.split('=')[1]) : 3000
 
@@ -78,18 +87,23 @@ const label = (row: Record<string, unknown>) =>
 
 async function main() {
   const cards: { table: Table; row: Record<string, unknown> }[] = []
-  for (const table of ['events', 'resources'] as Table[]) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .eq('list_id', 'error')
-      .order('created_at', { ascending: true })
+  const tables: Table[] = TRIAGE_EVENTS ? ['events'] : ['events', 'resources']
+  for (const table of tables) {
+    let query = supabase.from(table).select('*')
+    query = TRIAGE_EVENTS
+      ? query
+          .in('list_id', ['ideas', 'capture', 'review', 'error', 'refine'])
+          .not('status', 'in', '(processing,archived)')
+      : query.eq('list_id', 'error')
+    const { data, error } = await query.order('created_at', {
+      ascending: true,
+    })
     if (error) throw new Error(`${table}: ${error.message}`)
     for (const row of data ?? []) cards.push({ table, row })
   }
 
   console.log(
-    `${cards.length} card(s) in the Error list ` +
+    `${cards.length} card(s) in ${TRIAGE_EVENTS ? 'the Triage table (events)' : 'the Error list'} ` +
       `(${APPLY ? 'SENDING' : 'dry run — pass --apply to send'}):\n`
   )
 

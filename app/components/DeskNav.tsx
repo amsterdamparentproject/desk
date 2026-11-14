@@ -16,9 +16,9 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
   const pathname = usePathname()
 
   return (
-    <nav className="shrink-0 flex items-center justify-between h-14 py-6 px-5 bg-black border-b border-black/10">
+    <nav className="shrink-0 flex items-center justify-between gap-2 h-14 py-6 px-3 md:px-5 bg-black border-b border-black/10">
       {/* Wordmark + badge */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-2.5">
         <Image
           src="/app_desk_logo.png"
           alt="Amsterdam Parent Project"
@@ -38,7 +38,7 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
       </div>
 
       {/* Links */}
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto md:gap-1">
         {NAV_LINKS.map(({ href, label }) => {
           const isActive =
             href === '/' ? pathname === '/' : pathname.startsWith(href)
@@ -46,7 +46,7 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
             <Link
               key={href}
               href={href}
-              className={`px-3.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`whitespace-nowrap px-2.5 md:px-3.5 py-1.5 rounded-md text-[13px] md:text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-app-gold text-black'
                   : 'text-white hover:bg-app-charcoal/10'
@@ -60,7 +60,7 @@ export function DeskNav({ isLoggedIn }: { isLoggedIn: boolean }) {
           <form action={logout}>
             <button
               type="submit"
-              className="ml-1 px-3 py-1.5 rounded-md text-sm font-medium text-white/60 hover:text-white hover:bg-app-charcoal/10 transition-colors"
+              className="ml-0 md:ml-1 whitespace-nowrap px-2 md:px-3 py-1.5 rounded-md text-[13px] md:text-sm font-medium text-white/60 hover:text-white hover:bg-app-charcoal/10 transition-colors"
             >
               Log out
             </button>

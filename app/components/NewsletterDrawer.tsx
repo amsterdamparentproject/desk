@@ -411,7 +411,9 @@ export function NewsletterDrawer({
                 </button>
                 <button
                   onClick={handleFinish}
-                  disabled={finishing}
+                  disabled={
+                    finishing || !/^\d{4}-\d{2}-\d{2}$/.test(publishDate)
+                  }
                   className="flex-1 py-3 rounded-2xl bg-green-600 text-white text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Archive size={14} strokeWidth={3} />{' '}

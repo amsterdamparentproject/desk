@@ -38,3 +38,13 @@ input[type='time']::-webkit-datetime-edit-milliseconds-field {
 button {
   cursor: pointer;
 }
+
+/* iOS Safari zooms the page when a focused field is under 16px. Keep fields
+   at 16px on phones so capture and refinement don't jump around. */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
