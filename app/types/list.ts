@@ -1,11 +1,4 @@
-export type Tab =
-  | 'triage'
-  | 'newsletter'
-  | 'post'
-  | 'locations'
-  | 'published'
-  | 'included'
-  | 'archived'
+export type Tab = 'triage' | 'newsletter' | 'post' | 'locations' | 'done'
 
 // Stage only (where a row is in the process); health lives in `status`.
 //   inbox   - captured, still in Desk triage
@@ -50,6 +43,6 @@ export const ALL_LISTS: ListProps[] = [
 export function getListTab(listId: ListId): Tab {
   if (listId === 'inbox') return 'triage'
   if (listId === 'refined') return 'newsletter'
-  // 'done' belongs in Published/Included/Archived, never Triage.
-  return 'archived'
+  // 'done' belongs in the Done tab, never Triage.
+  return 'done'
 }

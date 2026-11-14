@@ -6,6 +6,8 @@ import {
   isPastEvent,
   isPostEligible,
   postGroup,
+  doneGroup,
+  isDoneRow,
   needsAttention,
   effectiveStart,
   sortRows,
@@ -162,6 +164,27 @@ describe('postGroup', () => {
     expect(g('2026-10-01')).toBe('this')
     expect(g('2026-12-01')).toBe('future')
     expect(g(null)).toBe('future')
+  })
+})
+
+describe('doneGroup / isDoneRow', () => {
+  it('splits rows into published, included and archived', () => {
+    expect(doneGroup({ status: 'published', list_id: 'refined' })).toBe(
+      'published'
+    )
+    expect(doneGroup({ status: 'published', list_id: 'done' })).toBe(
+      'published'
+    )
+    expect(doneGroup({ status: 'processed', list_id: 'refined' })).toBe(
+      'included'
+    )
+    expect(doneGroup({ status: 'archived', list_id: 'done' })).toBe('archived')
+    expect(doneGroup({ status: 'processed', list_id: 'done' })).toBe('archived')
+  })
+  it('leaves inbox rows out of Done', () => {
+    expect(isDoneRow({ status: 'processed', list_id: 'inbox' })).toBe(false)
+    expect(isDoneRow({ status: 'failed', list_id: 'inbox' })).toBe(false)
+    expect(isDoneRow({ status: 'processed', list_id: 'refined' })).toBe(true)
   })
 })
 

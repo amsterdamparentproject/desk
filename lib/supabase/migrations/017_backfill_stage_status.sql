@@ -6,21 +6,21 @@
 --
 -- Each UPDATE reads only OLD column values on its right-hand side, so the
 -- CASE expressions below are all evaluated against the pre-update row.
--- status is compared as text so this also runs where the 'edited' enum value
--- still exists (the dev database).
+-- status and list_id are compared as text so this also runs where old enum values
+-- (edited, refine, gone, ...) don't exist (the dev database).
 BEGIN;
 
 -- Events and resources
 UPDATE activities.events SET
   in_next_issue = (
-    list_id = 'next_newsletter'
+    list_id::text = 'next_newsletter'
     AND status::text NOT IN ('published', 'archived')
     AND 'newsletter' = ANY (services)
   ),
   status = (CASE
     WHEN status::text = 'archived' THEN 'archived'
-    WHEN list_id = 'error' AND status::text <> 'processing' THEN 'failed'
-    WHEN list_id IN ('ideas', 'capture', 'review', 'refine')
+    WHEN list_id::text = 'error' AND status::text <> 'processing' THEN 'failed'
+    WHEN list_id::text IN ('ideas', 'capture', 'review', 'refine')
          AND parse_error IS NOT NULL
          AND status::text <> 'processing' THEN 'failed'
     WHEN status::text IN ('accepted', 'edited', 'snoozed') THEN 'processed'
@@ -28,22 +28,22 @@ UPDATE activities.events SET
   END)::activities.triage_status,
   list_id = (CASE
     WHEN status::text = 'archived' THEN 'done'
-    WHEN list_id = 'gone' THEN 'done'
-    WHEN list_id IN ('ideas', 'capture', 'review', 'refine', 'error') THEN 'inbox'
+    WHEN list_id::text = 'gone' THEN 'done'
+    WHEN list_id::text IN ('ideas', 'capture', 'review', 'refine', 'error') THEN 'inbox'
     WHEN status::text = 'published' AND cardinality(services) = 0 THEN 'done'
     ELSE 'refined'
   END)::activities.desk_list;
 
 UPDATE activities.resources SET
   in_next_issue = (
-    list_id = 'next_newsletter'
+    list_id::text = 'next_newsletter'
     AND status::text NOT IN ('published', 'archived')
     AND 'newsletter' = ANY (services)
   ),
   status = (CASE
     WHEN status::text = 'archived' THEN 'archived'
-    WHEN list_id = 'error' AND status::text <> 'processing' THEN 'failed'
-    WHEN list_id IN ('ideas', 'capture', 'review', 'refine')
+    WHEN list_id::text = 'error' AND status::text <> 'processing' THEN 'failed'
+    WHEN list_id::text IN ('ideas', 'capture', 'review', 'refine')
          AND parse_error IS NOT NULL
          AND status::text <> 'processing' THEN 'failed'
     WHEN status::text IN ('accepted', 'edited', 'snoozed') THEN 'processed'
@@ -51,8 +51,8 @@ UPDATE activities.resources SET
   END)::activities.triage_status,
   list_id = (CASE
     WHEN status::text = 'archived' THEN 'done'
-    WHEN list_id = 'gone' THEN 'done'
-    WHEN list_id IN ('ideas', 'capture', 'review', 'refine', 'error') THEN 'inbox'
+    WHEN list_id::text = 'gone' THEN 'done'
+    WHEN list_id::text IN ('ideas', 'capture', 'review', 'refine', 'error') THEN 'inbox'
     WHEN status::text = 'published' AND cardinality(services) = 0 THEN 'done'
     ELSE 'refined'
   END)::activities.desk_list;
@@ -68,8 +68,8 @@ UPDATE activities.locations SET
   END)::activities.triage_status,
   list_id = (CASE
     WHEN status::text = 'archived' THEN 'done'
-    WHEN list_id = 'gone' AND postpartum_post THEN 'refined'
-    WHEN list_id = 'gone' THEN 'done'
+    WHEN list_id::text = 'gone' AND postpartum_post THEN 'refined'
+    WHEN list_id::text = 'gone' THEN 'done'
     ELSE 'inbox'
   END)::activities.desk_list;
 

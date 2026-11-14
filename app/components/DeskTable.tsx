@@ -16,6 +16,7 @@ import {
   Send,
   Sparkles,
   Trash2,
+  Undo2,
   X,
 } from 'lucide-react'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
@@ -28,6 +29,8 @@ import {
   effectiveStart,
   matchMonthEnd,
   postGroup,
+  doneGroup,
+  type DoneGroup,
   type PostGroup,
   type SortDir,
   type SortKey,
@@ -60,7 +63,7 @@ const addedLabel = (createdAt: string, today: string) => {
   return dayMonth(day)
 }
 
-type StageFilter = 'all' | 'next' | 'candidates' | PostGroup
+type StageFilter = 'all' | 'next' | 'candidates' | PostGroup | DoneGroup
 
 interface DeskTableProps {
   // 'triage' = held rows + capture bar + Done refining.
@@ -68,12 +71,14 @@ interface DeskTableProps {
   // (in_next_issue) highlighted and an Add to next / Remove action.
   // 'post' = refined events tagged Post, grouped This match / Future match /
   // Recurring.
-  mode?: 'triage' | 'newsletter' | 'post'
+  mode?: 'triage' | 'newsletter' | 'post' | 'done'
   rows: DeskActivity[]
   onOpen: (activity: DeskActivity) => void
   onAdd?: (data: CaptureDataProps) => void
   onDoneRefining?: (id: string) => void
   onToggleNextIssue?: (id: string, inNext: boolean) => void
+  onRestore?: (id: string) => void
+  onDelete?: (id: string, type: 'event' | 'resource') => void
   onArchive: (id: string) => void
   onToggleService: (id: string, service: Service, enabled: boolean) => void
 }
@@ -85,6 +90,8 @@ export function DeskTable({
   onAdd,
   onDoneRefining,
   onToggleNextIssue,
+  onRestore,
+  onDelete,
   onArchive,
   onToggleService,
 }: DeskTableProps) {
@@ -120,6 +127,11 @@ export function DeskTable({
     recurring: rows.filter((a) => postGroup(a, monthEnd) === 'recurring')
       .length,
   }
+  const doneCounts = {
+    published: rows.filter((a) => doneGroup(a) === 'published').length,
+    included: rows.filter((a) => doneGroup(a) === 'included').length,
+    archived: rows.filter((a) => doneGroup(a) === 'archived').length,
+  }
 
   const visible = useMemo(
     () =>
@@ -128,6 +140,7 @@ export function DeskTable({
           rows.filter((a) => {
             if (stage === 'all') return true
             if (mode === 'post') return postGroup(a, monthEnd) === stage
+            if (mode === 'done') return doneGroup(a) === stage
             return (stage === 'next') === a.in_next_issue
           }),
           { type: typeFilter, query, onlyProblems, today }
@@ -245,6 +258,36 @@ export function DeskTable({
           </div>
         )}
 
+        {mode === 'done' && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5">
+            <Check size={16} className="text-green-600" />
+            <span className="text-sm font-black text-slate-900">Done</span>
+            <div className="ml-auto inline-flex rounded-lg bg-slate-100 p-0.5">
+              {(
+                [
+                  ['all', 'All', rows.length],
+                  ['published', 'Published', doneCounts.published],
+                  ['included', 'Included', doneCounts.included],
+                  ['archived', 'Archived', doneCounts.archived],
+                ] as const
+              ).map(([key, label, n]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStage(key)}
+                  className={`px-3 py-1.5 rounded-md text-[11px] font-black uppercase tracking-wide transition-colors ${
+                    stage === key
+                      ? 'bg-slate-900 text-white'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {label} <span className="opacity-60">{n}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg bg-white border border-slate-200 p-0.5">
@@ -341,7 +384,7 @@ export function DeskTable({
               dir={sortDir}
               onClick={() => toggleSort('created')}
             />
-            <span>Use for</span>
+            <span>{mode === 'done' ? 'Status' : 'Use for'}</span>
             <span className="text-right">Actions</span>
           </div>
 
@@ -352,7 +395,9 @@ export function DeskTable({
                   ? 'Nothing refined for the newsletter yet. Use "Done refining" on Triage.'
                   : mode === 'post'
                     ? 'No refined events tagged Post yet. Use "Done refining" on Triage.'
-                    : 'Nothing held yet. Capture something above 🌬️'
+                    : mode === 'done'
+                      ? 'Nothing done yet.'
+                      : 'Nothing held yet. Capture something above 🌬️'
                 : 'No rows match these filters'}
             </div>
           ) : (
@@ -370,6 +415,8 @@ export function DeskTable({
                   mode={mode}
                   onDoneRefining={onDoneRefining}
                   onToggleNextIssue={onToggleNextIssue}
+                  onRestore={onRestore}
+                  onDelete={onDelete}
                   onArchive={onArchive}
                   onToggleService={onToggleService}
                 />
@@ -416,6 +463,8 @@ function Row({
   mode,
   onDoneRefining,
   onToggleNextIssue,
+  onRestore,
+  onDelete,
   onArchive,
   onToggleService,
 }: {
@@ -423,7 +472,9 @@ function Row({
   today: string
   fresh: boolean
   onOpen: (a: DeskActivity) => void
-  mode: 'triage' | 'newsletter' | 'post'
+  mode: 'triage' | 'newsletter' | 'post' | 'done'
+  onRestore?: (id: string) => void
+  onDelete?: (id: string, type: 'event' | 'resource') => void
   onDoneRefining?: (id: string) => void
   onToggleNextIssue?: (id: string, inNext: boolean) => void
   onArchive: (id: string) => void
@@ -436,6 +487,8 @@ function Row({
   const start = effectiveStart(a, today)
   const services = a.services ?? []
   const stop = (e: React.MouseEvent) => e.stopPropagation()
+  const group = doneGroup(a)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const dateText =
     a.type === 'resource'
@@ -551,40 +604,63 @@ function Row({
         {addedLabel(a.created_at, today)}
       </div>
 
-      {/* Services */}
-      <div
-        className="mt-2 flex items-center gap-1.5 md:mt-0 md:gap-1"
-        onClick={stop}
-      >
-        <ServiceButton
-          on={services.includes('newsletter')}
-          label="Newsletter"
-          activeClass="bg-blue-600 text-white"
-          onClick={() =>
-            onToggleService(
-              a.id,
-              'newsletter',
-              !services.includes('newsletter')
-            )
-          }
-          icon={<Newspaper size={14} />}
-        />
-        {a.type === 'event' && (
+      {/* Services / Status */}
+      {mode === 'done' ? (
+        <div className="mt-2 md:mt-0">
+          <span
+            className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${
+              group === 'published'
+                ? 'bg-green-50 text-green-700'
+                : group === 'included'
+                  ? 'bg-indigo-50 text-indigo-700'
+                  : 'bg-red-50 text-red-600'
+            }`}
+            title={
+              group === 'published' && a.newsletter_last
+                ? `Sent in the ${a.newsletter_last} issue`
+                : undefined
+            }
+          >
+            {group === 'published' && a.newsletter_last
+              ? `Sent ${dayMonth(a.newsletter_last)}`
+              : group}
+          </span>
+        </div>
+      ) : (
+        <div
+          className="mt-2 flex items-center gap-1.5 md:mt-0 md:gap-1"
+          onClick={stop}
+        >
           <ServiceButton
-            on={services.includes('postpartum_post')}
-            label="Post"
-            activeClass="bg-violet-600 text-white"
+            on={services.includes('newsletter')}
+            label="Newsletter"
+            activeClass="bg-blue-600 text-white"
             onClick={() =>
               onToggleService(
                 a.id,
-                'postpartum_post',
-                !services.includes('postpartum_post')
+                'newsletter',
+                !services.includes('newsletter')
               )
             }
-            icon={<Mail size={14} />}
+            icon={<Newspaper size={14} />}
           />
-        )}
-      </div>
+          {a.type === 'event' && (
+            <ServiceButton
+              on={services.includes('postpartum_post')}
+              label="Post"
+              activeClass="bg-violet-600 text-white"
+              onClick={() =>
+                onToggleService(
+                  a.id,
+                  'postpartum_post',
+                  !services.includes('postpartum_post')
+                )
+              }
+              icon={<Mail size={14} />}
+            />
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div
@@ -634,7 +710,37 @@ function Row({
               <Check size={13} strokeWidth={3} /> Done refining
             </button>
           )}
-        {!processing && (
+        {mode === 'done' && onRestore && a.list_id === 'done' && (
+          <button
+            type="button"
+            onClick={() => onRestore(a.id)}
+            title="Restore to the inbox"
+            className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-2.5 md:px-2.5 md:py-1.5 text-[11px] font-black uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-700 hover:text-white"
+          >
+            <Undo2 size={13} strokeWidth={3} /> Restore
+          </button>
+        )}
+        {mode === 'done' && onDelete && a.list_id === 'done' && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirmDelete) onDelete(a.id, a.type)
+              else setConfirmDelete(true)
+            }}
+            onBlur={() => setConfirmDelete(false)}
+            title="Delete permanently"
+            aria-label="Delete permanently"
+            className={`inline-flex items-center gap-1 rounded-lg p-2.5 md:p-2 text-[11px] font-black uppercase transition-colors ${
+              confirmDelete
+                ? 'bg-red-600 text-white'
+                : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
+            }`}
+          >
+            <Trash2 size={13} />
+            {confirmDelete && 'Confirm'}
+          </button>
+        )}
+        {!processing && (mode !== 'done' || a.list_id !== 'done') && (
           <button
             type="button"
             onClick={() => onArchive(a.id)}

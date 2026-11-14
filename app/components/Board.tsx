@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { LocationCard } from './Column'
 import { DeskTable } from './DeskTable'
-import { isHeld, isPostEligible } from '@/lib/desk-table'
+import { isDoneRow, isHeld, isPostEligible } from '@/lib/desk-table'
 import {
   CaptureDataProps,
   createNewActivity,
@@ -33,122 +33,8 @@ import {
   sweepStaleUpcoming,
   uploadActivityFile,
 } from '../actions/activities'
-import {
-  Check,
-  Newspaper,
-  RotateCcw,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react'
-import { Card } from './card/Card'
+import { Newspaper, ChevronDown, ChevronRight } from 'lucide-react'
 import { NewsletterDrawer } from './NewsletterDrawer'
-
-function ArchivedCard({
-  activity,
-  onDetails,
-  onRestore,
-  onDelete,
-  isSelected,
-  onToggleSelect,
-}: {
-  activity: DeskActivity
-  onDetails: (a: DeskActivity) => void
-  onRestore: (id: string) => void
-  onDelete: (id: string, type: 'event' | 'resource') => void
-  isSelected: boolean
-  onToggleSelect: () => void
-}) {
-  const [confirm, setConfirm] = useState(false)
-
-  const checkbox = (
-    <button
-      onClick={onToggleSelect}
-      className={`flex items-center justify-center w-5 h-5 rounded transition-colors ${isSelected ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-blue-600'}`}
-    >
-      {isSelected ? (
-        <Check size={11} />
-      ) : (
-        <div className="w-3 h-3 rounded border-2 border-current" />
-      )}
-    </button>
-  )
-
-  // Archived tab mixes explicit triage rejects with items that just aged out
-  // without ever being rejected — status is the only thing that tells them apart.
-  const agedOutBadge =
-    activity.status !== 'archived' && activity.status !== 'published'
-
-  return (
-    <Card activity={activity} onDetails={onDetails} detailsAction={checkbox}>
-      {agedOutBadge && (
-        <div className="px-3">
-          <span className="inline-block text-[9px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-            Timed out, not rejected
-          </span>
-        </div>
-      )}
-      <div className="mt-auto flex h-10 px-2 py-1.5 gap-1.5">
-        <button
-          onClick={() => onRestore(activity.id)}
-          className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white transition-colors uppercase"
-        >
-          <RotateCcw size={12} /> Restore
-        </button>
-        {confirm ? (
-          <>
-            <button
-              onClick={() => onDelete(activity.id, activity.type)}
-              className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors uppercase"
-            >
-              <Trash2 size={12} /> Confirm
-            </button>
-            <button
-              onClick={() => setConfirm(false)}
-              className="px-3 flex rounded-lg items-center justify-center text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
-            >
-              ×
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={() => setConfirm(true)}
-            className="flex-1 flex rounded-lg items-center justify-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-600 hover:text-white transition-colors uppercase"
-          >
-            <Trash2 size={12} /> Delete
-          </button>
-        )}
-      </div>
-    </Card>
-  )
-}
-
-// Included tab is a cross-cutting "what's currently live, regardless of stage"
-// overview — the status badge is the whole point, since accepted vs published
-// is the only thing distinguishing "still pending" from "already sent".
-function IncludedCard({
-  activity,
-  onDetails,
-}: {
-  activity: DeskActivity
-  onDetails: (a: DeskActivity) => void
-}) {
-  const badgeClass =
-    activity.status === 'published'
-      ? 'text-teal-600 bg-teal-50 border-teal-200'
-      : 'text-green-600 bg-green-50 border-green-200'
-  return (
-    <Card activity={activity} onDetails={onDetails}>
-      <div className="px-3 pb-3">
-        <span
-          className={`inline-block text-[9px] font-black uppercase tracking-widest border rounded px-1.5 py-0.5 ${badgeClass}`}
-        >
-          {activity.status}
-        </span>
-      </div>
-    </Card>
-  )
-}
 
 interface BoardProps {
   initialActivities: DeskActivity[]
@@ -182,10 +68,6 @@ export default function Board({
   const searchParams = useSearchParams()
   const [locations, setLocations] = useState<Location[]>(initialLocations)
   const [activeTab, setActiveTab] = useState<Tab>('triage')
-  const [selectedArchiveIds, setSelectedArchiveIds] = useState<Set<string>>(
-    new Set()
-  )
-  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   // Falls back to today if the server couldn't supply one, so the issue
   // window is never empty or NaN.
   const [publishDate, setPublishDate] = useState(() =>
@@ -420,27 +302,6 @@ export default function Board({
             : e
         )
       )
-    }
-  }
-
-  const toggleArchiveSelect = (id: string) =>
-    setSelectedArchiveIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-
-  const handleBulkDelete = async () => {
-    const toDelete = activities.filter((a) => selectedArchiveIds.has(a.id))
-    setSelectedArchiveIds(new Set())
-    setConfirmBulkDelete(false)
-    setActivities((prev) => prev.filter((a) => !selectedArchiveIds.has(a.id)))
-    try {
-      await Promise.all(toDelete.map((a) => deleteActivity(a.id, a.type)))
-    } catch (err) {
-      console.error('Bulk delete failed:', err)
-      setActivities((prev) => [...prev, ...toDelete])
     }
   }
 
@@ -910,52 +771,6 @@ export default function Board({
   // Post has no ListProps entry — its three sections (Upcoming events,
   // Recurring Events, Match) are computed splits rendered as bespoke lists
   // further down, not through the generic Column component.
-  const byUpdatedDesc = (a: DeskActivity, b: DeskActivity) =>
-    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-
-  // Published = actually sent in a newsletter issue (status independent of list_id —
-  // a dual-tagged item can be 'published' for newsletter while list_id stays put
-  // because it's still alive for Post). Archived = fully exited (list_id 'done')
-  // and never published — this bucket mixes explicit triage rejects (status:
-  // archived) with items that just aged out without ever being rejected (status:
-  // accepted); the ArchivedCard badge distinguishes the two.
-  const publishedActivities = activities
-    .filter((e) => e.status === 'published')
-    .sort(byUpdatedDesc)
-  const archivedActivities = activities
-    .filter((e) => e.list_id === 'done' && e.status !== 'published')
-    .sort(byUpdatedDesc)
-  const activeTabItems =
-    activeTab === 'published'
-      ? publishedActivities
-      : activeTab === 'archived'
-        ? archivedActivities
-        : []
-
-  // Group published activities by the newsletter issue they went out in, newest first.
-  const publishedByIssue: [string, DeskActivity[]][] = (() => {
-    const groups = new Map<string, DeskActivity[]>()
-    for (const a of publishedActivities) {
-      const key = a.newsletter_last ?? 'unknown'
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(a)
-    }
-    return [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0]))
-  })()
-
-  // Included: a cross-cutting view of everything currently "live" regardless of
-  // pipeline stage — status accepted or published. Just two flat groups,
-  // most recently modified first.
-  const includedActivities = activities.filter(
-    (a) => a.list_id === 'refined' || a.status === 'published'
-  )
-  const includedEvents = includedActivities
-    .filter((a) => a.type === 'event')
-    .sort(byUpdatedDesc)
-  const includedResources = includedActivities
-    .filter((a) => a.type === 'resource')
-    .sort(byUpdatedDesc)
-
   // Locations tab groups
   const inboxLocations = locations.filter((l) => l.list_id === 'inbox')
   const goneLocations = locations.filter(
@@ -970,38 +785,24 @@ export default function Board({
         <div className="flex px-4 gap-8 items-center justify-between">
           <div className="flex gap-8 overflow-x-auto">
             {(
-              [
-                'triage',
-                'newsletter',
-                'post',
-                'locations',
-                'published',
-                'included',
-                'archived',
-              ] as Tab[]
+              ['triage', 'newsletter', 'post', 'locations', 'done'] as Tab[]
             ).map((tab) => {
-              const isDesktopOnly =
-                tab === 'published' || tab === 'included' || tab === 'archived'
               const activeColor =
-                tab === 'archived'
-                  ? 'text-red-500'
-                  : tab === 'published'
-                    ? 'text-green-600'
-                    : tab === 'included'
-                      ? 'text-indigo-600'
-                      : tab === 'locations'
-                        ? 'text-fuchsia-600'
-                        : tab === 'post'
-                          ? 'text-violet-600'
-                          : tab === 'triage'
-                            ? 'text-orange-500'
-                            : 'text-blue-600'
+                tab === 'done'
+                  ? 'text-green-600'
+                  : tab === 'locations'
+                    ? 'text-fuchsia-600'
+                    : tab === 'post'
+                      ? 'text-violet-600'
+                      : tab === 'triage'
+                        ? 'text-orange-500'
+                        : 'text-blue-600'
               const label = tab
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${isDesktopOnly ? 'hidden md:block' : ''} ${activeTab === tab ? activeColor : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`py-4 text-xs sm:text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? activeColor : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   {label}
                 </button>
@@ -1019,214 +820,16 @@ export default function Board({
         </div>
       </header>
 
-      {activeTab === 'published' ||
-      activeTab === 'included' ||
-      activeTab === 'archived' ? (
-        <div className="flex-1 overflow-y-auto">
-          {activeTab !== 'included' && selectedArchiveIds.size > 0 && (
-            <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3">
-              <span className="text-xs font-black text-slate-700">
-                {selectedArchiveIds.size} selected
-              </span>
-              <button
-                onClick={() =>
-                  setSelectedArchiveIds(
-                    new Set(activeTabItems.map((a) => a.id))
-                  )
-                }
-                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                Select all
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedArchiveIds(new Set())
-                  setConfirmBulkDelete(false)
-                }}
-                className="text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                Clear
-              </button>
-              <div className="ml-auto flex items-center gap-2">
-                {confirmBulkDelete ? (
-                  <>
-                    <span className="text-xs font-black text-red-600">
-                      Delete {selectedArchiveIds.size} records?
-                    </span>
-                    <button
-                      onClick={handleBulkDelete}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={11} /> Yes, delete all
-                    </button>
-                    <button
-                      onClick={() => setConfirmBulkDelete(false)}
-                      className="px-3 py-1.5 text-xs font-black text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => setConfirmBulkDelete(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
-                  >
-                    <Trash2 size={11} /> Delete {selectedArchiveIds.size}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {activeTab === 'published' ? (
-            <div className="p-2 space-y-2">
-              {publishedByIssue.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400 italic">
-                  Nothing published yet
-                </div>
-              ) : (
-                publishedByIssue.map(([issueDate, items]) => {
-                  const key = `issue-${issueDate}`
-                  const collapsed = collapsedSections.has(key)
-                  const issueLabel =
-                    issueDate === 'unknown'
-                      ? 'Unknown issue'
-                      : new Date(issueDate + 'T00:00:00').toLocaleDateString(
-                          'en-GB',
-                          { day: 'numeric', month: 'long', year: 'numeric' }
-                        )
-                  return (
-                    <div
-                      key={issueDate}
-                      className="bg-slate-100 rounded-xl overflow-hidden"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(key)}
-                        className="w-full p-4 bg-green-600 flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          {collapsed ? (
-                            <ChevronRight size={14} className="text-white" />
-                          ) : (
-                            <ChevronDown size={14} className="text-white" />
-                          )}
-                          <h2 className="text-[10px] font-black uppercase tracking-widest text-white">
-                            {issueLabel}
-                          </h2>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-700 text-white">
-                          {items.length}
-                        </span>
-                      </button>
-                      {!collapsed && (
-                        <div className="p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {items.map((activity) => (
-                            <ArchivedCard
-                              key={activity.id}
-                              activity={activity}
-                              onDetails={openActivity}
-                              onRestore={handleRestoreEvent}
-                              onDelete={handleDeleteActivity}
-                              isSelected={selectedArchiveIds.has(activity.id)}
-                              onToggleSelect={() =>
-                                toggleArchiveSelect(activity.id)
-                              }
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          ) : activeTab === 'included' ? (
-            <div className="p-2 space-y-2">
-              {includedEvents.length === 0 && includedResources.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400 italic">
-                  Nothing included yet
-                </div>
-              ) : (
-                (
-                  [
-                    {
-                      key: 'included-events',
-                      label: 'Events',
-                      items: includedEvents,
-                    },
-                    {
-                      key: 'included-resources',
-                      label: 'Resources',
-                      items: includedResources,
-                    },
-                  ] as const
-                ).map(({ key, label, items }) => {
-                  if (items.length === 0) return null
-                  const collapsed = collapsedSections.has(key)
-                  return (
-                    <div
-                      key={key}
-                      className="bg-slate-100 rounded-xl overflow-hidden"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(key)}
-                        className="w-full p-4 bg-indigo-600 flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          {collapsed ? (
-                            <ChevronRight size={14} className="text-white" />
-                          ) : (
-                            <ChevronDown size={14} className="text-white" />
-                          )}
-                          <h2 className="text-[10px] font-black uppercase tracking-widest text-white">
-                            {label}
-                          </h2>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-700 text-white">
-                          {items.length}
-                        </span>
-                      </button>
-                      {!collapsed && (
-                        <div className="p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                          {items.map((activity) => (
-                            <IncludedCard
-                              key={activity.id}
-                              activity={activity}
-                              onDetails={openActivity}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-          ) : (
-            <div className="p-2">
-              {archivedActivities.length === 0 ? (
-                <div className="py-16 text-center text-xs text-slate-400 italic">
-                  None
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {archivedActivities.map((activity) => (
-                    <ArchivedCard
-                      key={activity.id}
-                      activity={activity}
-                      onDetails={openActivity}
-                      onRestore={handleRestoreEvent}
-                      onDelete={handleDeleteActivity}
-                      isSelected={selectedArchiveIds.has(activity.id)}
-                      onToggleSelect={() => toggleArchiveSelect(activity.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+      {activeTab === 'done' ? (
+        <DeskTable
+          mode="done"
+          rows={activities.filter(isDoneRow)}
+          onOpen={openActivity}
+          onRestore={handleRestoreEvent}
+          onDelete={handleDeleteActivity}
+          onArchive={handleArchiveEvent}
+          onToggleService={handleToggleService}
+        />
       ) : activeTab === 'locations' ? (
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-x-auto bg-slate-100 gap-2 p-2">
           {/* Inbox */}

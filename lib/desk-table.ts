@@ -154,3 +154,20 @@ export function postGroup(
   const d = a.repeat_next_date ?? a.start_date ?? null
   return d && d <= monthEnd ? 'this' : 'future'
 }
+
+export type DoneGroup = 'published' | 'included' | 'archived'
+
+// Mutually exclusive status groups for the Done tab: sent in an issue, still
+// live (refined), or out of the pipeline without ever being published.
+export function doneGroup(
+  a: Pick<DeskActivity, 'status' | 'list_id'>
+): DoneGroup {
+  if (a.status === 'published') return 'published'
+  if (a.list_id === 'done' || a.status === 'archived') return 'archived'
+  return 'included'
+}
+
+export const isDoneRow = (
+  a: Pick<DeskActivity, 'status' | 'list_id'>
+): boolean =>
+  a.list_id === 'done' || a.list_id === 'refined' || a.status === 'published'
