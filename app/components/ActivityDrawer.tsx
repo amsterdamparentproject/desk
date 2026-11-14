@@ -148,14 +148,15 @@ export function ActivityDrawer({
 }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => {
     const initial = sanitizeActivityInputs(activity)
-    // A legacy multi-day range becomes a list of dates (same times each day);
-    // it's only saved once something is edited.
+    // One-off events edit their dates in the calendar picker, so a single
+    // date or legacy range is seeded as a list of dates (same times each day);
+    // it's only saved once something is edited. Recurring events keep a single
+    // start date as the series anchor.
     if (
       initial.type === 'event' &&
+      !initial.repeat_rrule &&
       (initial.occurrences?.length ?? 0) === 0 &&
-      initial.start_date &&
-      initial.end_date &&
-      initial.end_date > initial.start_date
+      initial.start_date
     ) {
       initial.occurrences = occurrencesFromRange(initial)
     }
@@ -286,10 +287,6 @@ export function ActivityDrawer({
     untilDate: repeatUntil,
   })
 
-  const [isMultiDate, setIsMultiDate] = useState(
-    () => (formData.occurrences?.length ?? 0) > 0
-  )
-
   // Applies a new list of dates and keeps start/end date and the first date's
   // times in sync. Discrete actions (add/remove a day) save straight away;
   // typed time changes save on blur.
@@ -298,27 +295,11 @@ export function ActivityDrawer({
     const updated: DeskActivity = {
       ...latestFormData.current,
       occurrences: next,
-      ...(range ?? {}),
+      ...(range ?? { end_date: null }),
     }
     latestFormData.current = updated
     setFormData(updated)
     if (commit) onSaveDraft(updated)
-  }
-
-  const handleMultiDateToggle = (on: boolean) => {
-    setIsMultiDate(on)
-    if (on) {
-      setOccurrences(occurrencesFromRange(latestFormData.current), true)
-    } else {
-      const updated: DeskActivity = {
-        ...latestFormData.current,
-        occurrences: [],
-        end_date: null,
-      }
-      latestFormData.current = updated
-      setFormData(updated)
-      onSaveDraft(updated)
-    }
   }
 
   const blurbRef = useAutosizeTextArea(formData.newsletter_description)
@@ -662,15 +643,8 @@ export function ActivityDrawer({
                 <h2 className="text-slate-700 text-base md:text-xl font-black whitespace-nowrap">
                   Date & time
                 </h2>
-                <div className="ml-auto">
-                  <Toggle
-                    label="Multiple dates"
-                    checked={isMultiDate}
-                    onChange={handleMultiDateToggle}
-                  />
-                </div>
               </div>
-              {isMultiDate ? (
+              {!repeatFrequency ? (
                 <div onBlur={handleBlurSave}>
                   <OccurrencePicker
                     value={formData.occurrences ?? []}
@@ -754,6 +728,16 @@ export function ActivityDrawer({
                     onChange={(e) => {
                       const next = e.target.value
                       setRepeatFrequency(next)
+                      // Recurring events anchor on one start date; one-off
+                      // events use the date picker.
+                      {
+                        const cur = latestFormData.current
+                        if (next && (cur.occurrences?.length ?? 0) > 0) {
+                          setOccurrences([], true)
+                        } else if (!next && cur.start_date) {
+                          setOccurrences(occurrencesFromRange(cur), true)
+                        }
+                      }
                       if (next !== 'weekly' && next !== 'biweekly') {
                         setRepeatDays([])
                       } else if (formData.start_date) {
