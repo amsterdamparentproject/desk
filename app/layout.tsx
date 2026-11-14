@@ -1,5 +1,5 @@
 // app/layout.tsx
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { DM_Mono, DM_Sans, Unbounded } from 'next/font/google'
 import { cookies } from 'next/headers'
 import './globals.css'
@@ -23,6 +23,10 @@ const unbounded = Unbounded({
   subsets: ['latin'],
   weight: ['500', '700', '800'],
 })
+
+export const viewport: Viewport = {
+  themeColor: '#231f21',
+}
 
 export const metadata: Metadata = {
   title: 'The APP Desk',
