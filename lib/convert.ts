@@ -2,6 +2,8 @@
 // Pure row transformation; the server action in app/actions/activities.ts
 // does the insert + delete. Nothing here touches the database.
 
+import { formatOccurrenceDates, normalizeOccurrences } from '@/lib/occurrences'
+
 type Row = Record<string, unknown>
 export type ActivityKind = 'event' | 'resource'
 
@@ -13,6 +15,7 @@ const EVENT_ONLY = [
   'end_time',
   'day_of_week',
   'duration_minutes',
+  'occurrences',
   'repeat_rrule',
   'repeat_frequency',
   'repeat_next_date',
@@ -37,6 +40,8 @@ export function describeSchedule(row: Row): string | null {
   if (end && end !== start) text += ` to ${end}`
   if (from) text += ` ${from}${to ? `–${to}` : ''}`
   if (rrule) text += ` (repeats: ${rrule})`
+  const occ = normalizeOccurrences(row.occurrences)
+  if (occ.length > 1) text += ` (dates: ${formatOccurrenceDates(occ)})`
   return text
 }
 

@@ -40,6 +40,12 @@ import {
 } from '../utils/rrule'
 import { upsertLocation, dismissParseNotice } from '../actions/activities'
 import { ParseNotice } from './card/ParseNotice'
+import { OccurrencePicker } from './OccurrencePicker'
+import {
+  occurrencesFromRange,
+  rangeFromOccurrences,
+  type Occurrence,
+} from '@/lib/occurrences'
 
 const AREAS = [
   'West',
@@ -140,9 +146,21 @@ export function ActivityDrawer({
   onLocationSaved,
   onToggleService,
 }: ActivityDrawerProps) {
-  const [formData, setFormData] = useState<DeskActivity>(() =>
-    sanitizeActivityInputs(activity)
-  )
+  const [formData, setFormData] = useState<DeskActivity>(() => {
+    const initial = sanitizeActivityInputs(activity)
+    // A legacy multi-day range becomes a list of dates (same times each day);
+    // it's only saved once something is edited.
+    if (
+      initial.type === 'event' &&
+      (initial.occurrences?.length ?? 0) === 0 &&
+      initial.start_date &&
+      initial.end_date &&
+      initial.end_date > initial.start_date
+    ) {
+      initial.occurrences = occurrencesFromRange(initial)
+    }
+    return initial
+  })
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [pendingLocation, setPendingLocation] = useState<Location | null>(null)
   const [locationSaveState, setLocationSaveState] = useState<
@@ -268,16 +286,39 @@ export function ActivityDrawer({
     untilDate: repeatUntil,
   })
 
-  const [isMultiDay, setIsMultiDay] = useState(() => {
-    const s = activity.start_date,
-      e = activity.end_date
-    return !!(s && e && e > s)
-  })
+  const [isMultiDate, setIsMultiDate] = useState(
+    () => (formData.occurrences?.length ?? 0) > 0
+  )
 
-  const handleMultiDayToggle = (on: boolean) => {
-    setIsMultiDay(on)
-    if (!on) handleChange('end_date', null)
-    else if (!formData.end_date) handleChange('end_date', formData.start_date)
+  // Applies a new list of dates and keeps start/end date and the first date's
+  // times in sync. Discrete actions (add/remove a day) save straight away;
+  // typed time changes save on blur.
+  const setOccurrences = (next: Occurrence[], commit: boolean) => {
+    const range = rangeFromOccurrences(next)
+    const updated: DeskActivity = {
+      ...latestFormData.current,
+      occurrences: next,
+      ...(range ?? {}),
+    }
+    latestFormData.current = updated
+    setFormData(updated)
+    if (commit) onSaveDraft(updated)
+  }
+
+  const handleMultiDateToggle = (on: boolean) => {
+    setIsMultiDate(on)
+    if (on) {
+      setOccurrences(occurrencesFromRange(latestFormData.current), true)
+    } else {
+      const updated: DeskActivity = {
+        ...latestFormData.current,
+        occurrences: [],
+        end_date: null,
+      }
+      latestFormData.current = updated
+      setFormData(updated)
+      onSaveDraft(updated)
+    }
   }
 
   const blurbRef = useAutosizeTextArea(formData.newsletter_description)
@@ -623,59 +664,59 @@ export function ActivityDrawer({
                 </h2>
                 <div className="ml-auto">
                   <Toggle
-                    label="Multi-day"
-                    checked={isMultiDay}
-                    onChange={handleMultiDayToggle}
+                    label="Multiple dates"
+                    checked={isMultiDate}
+                    onChange={handleMultiDateToggle}
                   />
                 </div>
               </div>
-              <div
-                className={`grid gap-4 ${isMultiDay ? 'grid-cols-2' : 'grid-cols-1'}`}
-              >
-                <Field label="Start Date">
-                  <DateInput
-                    value={formData.start_date ?? ''}
-                    onChange={(v) => handleDateChange('start_date', v)}
-                    onBlur={handleBlurSave}
+              {isMultiDate ? (
+                <div onBlur={handleBlurSave}>
+                  <OccurrencePicker
+                    value={formData.occurrences ?? []}
+                    onChange={setOccurrences}
                   />
-                </Field>
-                {isMultiDay && (
-                  <Field label="End Date">
-                    <DateInput
-                      value={formData.end_date ?? ''}
-                      onChange={(v) => handleDateChange('end_date', v)}
-                      onBlur={handleBlurSave}
-                    />
-                  </Field>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-2 md:gap-4">
-                <Field label="Start Time">
-                  <TimeInput
-                    value={formData.start_time ?? ''}
-                    onChange={(v) => handleDateChange('start_time', v)}
-                    onBlur={handleBlurSave}
-                  />
-                </Field>
-                <Field label="End Time">
-                  <TimeInput
-                    value={formData.end_time ?? ''}
-                    onChange={(v) => handleDateChange('end_time', v)}
-                    onBlur={handleBlurSave}
-                  />
-                </Field>
-                <Field label="Duration (min)">
-                  <input
-                    type="number"
-                    value={formData.duration_minutes ?? 0}
-                    onChange={(e) =>
-                      handleDateChange('duration_minutes', e.target.value)
-                    }
-                    onBlur={handleBlurSave}
-                    className={inputStyle}
-                  />
-                </Field>
-              </div>
+                </div>
+              ) : (
+                <>
+                  <div className={`grid gap-4 grid-cols-1`}>
+                    <Field label="Start Date">
+                      <DateInput
+                        value={formData.start_date ?? ''}
+                        onChange={(v) => handleDateChange('start_date', v)}
+                        onBlur={handleBlurSave}
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 md:gap-4">
+                    <Field label="Start Time">
+                      <TimeInput
+                        value={formData.start_time ?? ''}
+                        onChange={(v) => handleDateChange('start_time', v)}
+                        onBlur={handleBlurSave}
+                      />
+                    </Field>
+                    <Field label="End Time">
+                      <TimeInput
+                        value={formData.end_time ?? ''}
+                        onChange={(v) => handleDateChange('end_time', v)}
+                        onBlur={handleBlurSave}
+                      />
+                    </Field>
+                    <Field label="Duration (min)">
+                      <input
+                        type="number"
+                        value={formData.duration_minutes ?? 0}
+                        onChange={(e) =>
+                          handleDateChange('duration_minutes', e.target.value)
+                        }
+                        onBlur={handleBlurSave}
+                        className={inputStyle}
+                      />
+                    </Field>
+                  </div>
+                </>
+              )}
               <Toggle
                 label="Skip calendar"
                 icon={

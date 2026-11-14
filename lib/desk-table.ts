@@ -3,6 +3,7 @@ import type { DeskActivity } from '@/app/types/activity'
 import type { ListId } from '@/app/types/list'
 import { computeNextDate, parseRrule } from '@/app/utils/rrule'
 import { addDays } from '@/lib/issue-date'
+import { hasOccurrences, nextOccurrence } from '@/lib/occurrences'
 
 // The Triage table shows everything still in the inbox: captured, parsed,
 // waiting until its date is relevant.
@@ -56,12 +57,19 @@ function occurrenceOnOrAfter(
 export function effectiveStart(
   a: Pick<
     DeskActivity,
-    'type' | 'start_date' | 'repeat_next_date' | 'repeat_rrule'
+    'type' | 'start_date' | 'repeat_next_date' | 'repeat_rrule' | 'occurrences'
   >,
   today?: string,
   from?: string
 ): string | null {
   if (a.type === 'resource') return null
+  // Specific dates: the next one on or after the reference day, else the last.
+  if (!a.repeat_rrule && hasOccurrences(a)) {
+    const occ = a.occurrences!
+    const t = today ?? new Date().toLocaleDateString('en-CA')
+    const ref = from && from > t ? from : t
+    return (nextOccurrence(occ, ref) ?? occ[occ.length - 1]).date
+  }
   const stored = a.repeat_next_date?.slice(0, 10) || null
   if (a.repeat_rrule) {
     // The stored next date can be missing or stale (the refresh cron hasn't
@@ -212,6 +220,11 @@ export function inIssueWindow(
   if (a.repeat_rrule) {
     const next = effectiveStart(a, today, windowStart)
     return !!next && next >= windowStart && next <= windowEnd
+  }
+  if (hasOccurrences(a)) {
+    return a.occurrences!.some(
+      (o) => o.date >= windowStart && o.date <= windowEnd
+    )
   }
   if (!a.start_date) return false
   const end = a.end_date ?? a.start_date

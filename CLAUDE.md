@@ -90,3 +90,7 @@ Single shared-password login, not per-user accounts, and no Supabase Auth involv
 | `N8N_DESK_WEBHOOK_URL`          | Production n8n webhook                                                                         |
 | `TEST_N8N_DESK_WEBHOOK_URL`     | Dev/test n8n webhook (workflow must be listening)                                              |
 | `DESK_PASSWORD`                 | Shared login password; also the value stored in the `app_desk_session` cookie                  |
+
+### Multiple dates per event
+
+Events can have specific dates, each with its own start/end time: `events.occurrences` (jsonb, migration `018_event_occurrences.sql`), edited with the calendar picker (`OccurrencePicker`) behind the "Multiple dates" toggle in the drawer. Helpers live in `lib/occurrences.ts`. When the list is non-empty, `saveActivity` keeps `start_date` / `end_date` / `start_time` / `end_time` in sync (first date, last date, first date's times) so single-range consumers keep working; an empty list means the legacy start/end range. A legacy multi-day range is shown as a list of dates in the picker and converted when saved. The table Date column, the next-issue window check, the newsletter text and `effectiveStart` all read the individual dates.

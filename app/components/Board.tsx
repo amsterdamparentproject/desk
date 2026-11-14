@@ -324,6 +324,7 @@ export default function Board({
               end_time: null,
               day_of_week: null,
               duration_minutes: null,
+              occurrences: [],
               repeat_rrule: null,
               repeat_frequency: null,
               repeat_next_date: null,

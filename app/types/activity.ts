@@ -23,6 +23,8 @@ export interface Location {
   created_at: string
   updated_at: string
 }
+import type { Occurrence } from '@/lib/occurrences'
+
 export type DayName =
   | 'Monday'
   | 'Tuesday'
@@ -99,6 +101,8 @@ export interface EventActivity extends BaseActivity {
   end_time: string | null
   day_of_week: DayName | null
   duration_minutes: number | null
+  // Specific dates with their own times; empty = single start/end range.
+  occurrences: Occurrence[]
 
   // APP Website
   tagline: string | null
@@ -148,6 +152,7 @@ export type DeskActivity = BaseActivity & {
   end_time?: string | null
   day_of_week?: DayName | null
   duration_minutes?: number | null
+  occurrences?: Occurrence[]
   repeat_rrule?: string | null
   repeat_frequency?: RepeatFrequency | null
   repeat_next_date?: string | null
@@ -200,6 +205,7 @@ export const DEFAULT_DESK_ACTIVITY: DeskActivity = {
   end_time: '',
   day_of_week: null, // Select dropdown can handle null or '' safely depending on setup
   duration_minutes: 0,
+  occurrences: [],
   repeat_rrule: '',
   repeat_frequency: null,
   repeat_next_date: '',

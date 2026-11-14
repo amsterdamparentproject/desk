@@ -36,7 +36,10 @@ CREATE TABLE activities.events (
   repeat_rrule text,
   repeat_frequency activities.repeat_frequency,
   repeat_next_date timestamptz,
-  
+
+  -- Specific dates, each with its own times (see 018_event_occurrences.sql).
+  occurrences jsonb NOT NULL DEFAULT '[]'::jsonb,
+
   -- APP Website
   tagline text,
 

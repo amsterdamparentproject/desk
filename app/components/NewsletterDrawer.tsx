@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { X, Check, Newspaper, Archive } from 'lucide-react'
 import { DeskActivity } from '../types/activity'
 import { parseRrule, computeNextDate } from '../utils/rrule'
+import { hasOccurrences, nextOccurrence } from '@/lib/occurrences'
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
@@ -38,6 +39,11 @@ function getEffectiveStart(
 ): string {
   const { start_date, repeat_frequency, repeat_rrule } = activity
   if (!start_date) return ''
+  if (!repeat_rrule && hasOccurrences(activity)) {
+    return (
+      nextOccurrence(activity.occurrences!, windowStart)?.date ?? start_date
+    )
+  }
   if (start_date >= windowStart) return start_date
   if (!repeat_frequency || !repeat_rrule) return start_date
 
@@ -98,6 +104,23 @@ function getDateDisplay(
 ): string {
   const effectiveStart = getEffectiveStart(activity, windowStart)
   if (!effectiveStart) return ''
+
+  // Specific dates: list the ones inside this issue's window, each with its
+  // own time (falls back to all of them if none land in the window).
+  if (!activity.repeat_rrule && (activity.occurrences?.length ?? 0) > 1) {
+    const all = activity.occurrences!
+    const inWindow = all.filter(
+      (o) => o.date >= windowStart && o.date <= windowEnd
+    )
+    return (inWindow.length > 0 ? inWindow : all)
+      .map((o) => {
+        const time = o.start_time
+          ? ` @ ${o.start_time}${o.end_time ? `-${o.end_time}` : ''}`
+          : ''
+        return fmtFull(parseLocal(o.date)) + time
+      })
+      .join(', ')
+  }
 
   const sd = parseLocal(effectiveStart)
 

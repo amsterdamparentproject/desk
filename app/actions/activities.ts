@@ -16,6 +16,7 @@ import {
 } from '@/app/types/activity'
 import { ListId } from '@/app/types/list'
 import { parseRrule, computeNextDate } from '@/app/utils/rrule'
+import { normalizeOccurrences, rangeFromOccurrences } from '@/lib/occurrences'
 import { postDesk } from '@/lib/PostToWebhook'
 import { geocodeAddress } from '@/app/utils/geocode'
 import { safeFileName } from '@/lib/parse/files'
@@ -177,6 +178,7 @@ const EVENT_FIELDS = [
   'end_time',
   'day_of_week',
   'duration_minutes',
+  'occurrences',
   'repeat_rrule',
   'repeat_frequency',
   'repeat_next_date',
@@ -476,6 +478,14 @@ export async function saveActivity(
   const update: Record<string, unknown> = {
     ...pickFields(normalized, fields),
     updated_at: new Date().toISOString(),
+  }
+
+  // Specific dates: validate the list and keep the single-range columns in
+  // sync (first date, last date, first date's times) for older consumers.
+  if (type === 'event' && 'occurrences' in update) {
+    const occ = normalizeOccurrences(update.occurrences)
+    update.occurrences = occ
+    Object.assign(update, rangeFromOccurrences(occ) ?? {})
   }
 
   // Keep postpartum_post synced with services — additive, since the separate

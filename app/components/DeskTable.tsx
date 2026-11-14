@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react'
 import { addDays } from '@/lib/issue-date'
+import { formatOccurrenceDates } from '@/lib/occurrences'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
 import { ParseNotice } from './card/ParseNotice'
 import {
@@ -544,11 +545,13 @@ function Row({
   const dateText =
     a.type === 'resource'
       ? '—'
-      : start
-        ? a.end_date && a.end_date !== a.start_date && !a.repeat_rrule
-          ? `${dayMonth(a.start_date ?? start)} – ${dayMonth(a.end_date)}`
-          : dayMonth(start)
-        : 'No date'
+      : (a.occurrences?.length ?? 0) > 1
+        ? formatOccurrenceDates(a.occurrences!)
+        : start
+          ? a.end_date && a.end_date !== a.start_date && !a.repeat_rrule
+            ? `${dayMonth(a.start_date ?? start)} – ${dayMonth(a.end_date)}`
+            : dayMonth(start)
+          : 'No date'
 
   return (
     <li

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { formatOccurrenceDates } from '@/lib/occurrences'
 import {
   Edit,
   MapPin,
@@ -41,9 +42,11 @@ export function Card({
 
   // 2. Formatting Display Strings cleanly using our unified DeskActivity properties
   const displayDate = hasDate
-    ? !activity.end_date || activity.start_date === activity.end_date
-      ? formatDate(activity.start_date)
-      : `${formatDate(activity.start_date)} – ${formatDate(activity.end_date)}`
+    ? (activity.occurrences?.length ?? 0) > 1
+      ? formatOccurrenceDates(activity.occurrences!)
+      : !activity.end_date || activity.start_date === activity.end_date
+        ? formatDate(activity.start_date)
+        : `${formatDate(activity.start_date)} – ${formatDate(activity.end_date)}`
     : 'No date'
 
   const displayTime = activity.start_time
