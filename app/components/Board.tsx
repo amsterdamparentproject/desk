@@ -1082,6 +1082,7 @@ export default function Board({
           onToggleService={(service, enabled) =>
             handleToggleService(selectedActivity.id, service, enabled)
           }
+          onToggleNextIssue={handleToggleNextIssue}
         />
       )}
 

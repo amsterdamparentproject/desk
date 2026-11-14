@@ -37,6 +37,7 @@ import {
   parsePositionalDay,
 } from '../utils/rrule'
 import { upsertLocation, dismissParseNotice } from '../actions/activities'
+import { isPastEvent } from '@/lib/desk-table'
 import { ParseNotice } from './card/ParseNotice'
 import { OccurrencePicker } from './OccurrencePicker'
 import { AreaPills } from './AreaPills'
@@ -94,7 +95,14 @@ interface ActivityDrawerProps {
   locations?: Location[]
   onLocationSaved?: (loc: Location) => void
   onToggleService?: (service: Service, enabled: boolean) => void
+  onToggleNextIssue?: (id: string, inNext: boolean) => void
 }
+
+// Same fixed-zone date the table uses, so the two agree on "past".
+const todayInAmsterdam = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(
+    new Date()
+  )
 
 const WEEKDAYS = [
   { label: 'Mon', abbr: 'MO' },
@@ -137,6 +145,7 @@ export function ActivityDrawer({
   locations = [],
   onLocationSaved,
   onToggleService,
+  onToggleNextIssue,
 }: ActivityDrawerProps) {
   const [formData, setFormData] = useState<DeskActivity>(() => {
     const initial = sanitizeActivityInputs(activity)
@@ -171,6 +180,24 @@ export function ActivityDrawer({
   const handleBlurSave = () => onSaveDraft(latestFormData.current)
 
   const [converting, setConverting] = useState(false)
+  // Same rule as the row button on the Newsletter tab.
+  const today = todayInAmsterdam()
+  const canToggleNext =
+    !!onToggleNextIssue &&
+    !readOnly &&
+    formData.list_id === 'refined' &&
+    (formData.services ?? []).includes('newsletter') &&
+    formData.status !== 'archived' &&
+    formData.status !== 'published' &&
+    (formData.in_next_issue || !isPastEvent(formData, today))
+
+  const handleToggleNext = () => {
+    if (!onToggleNextIssue) return
+    const next = !formData.in_next_issue
+    onToggleNextIssue(formData.id, next)
+    setFormData((prev) => ({ ...prev, in_next_issue: next }))
+  }
+
   const handleConvert = async () => {
     if (!onConvertType || converting) return
     const to = formData.type === 'event' ? 'resource' : 'event'
@@ -1276,9 +1303,33 @@ export function ActivityDrawer({
           </div>
         ) : (
           ((onSendToAI && getListTab(formData.list_id) === 'triage') ||
+            canToggleNext ||
             !!ALL_LISTS.find((l) => l.id === formData.list_id)
               ?.finishLabel) && (
             <div className="sticky bottom-0 bg-surface border-t border-slate-100 p-6 z-20 flex gap-4">
+              {canToggleNext && (
+                <button
+                  type="button"
+                  onClick={handleToggleNext}
+                  className={`w-full font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-xs ${
+                    formData.in_next_issue
+                      ? 'border-2 border-app-gold bg-transparent text-amber-300 hover:bg-app-gold hover:text-ink'
+                      : 'bg-app-gold text-ink shadow-[4px_4px_0_rgba(227,45,212,0.85)] hover:-translate-y-0.5 active:translate-x-0.5 active:translate-y-0.5 active:shadow-none'
+                  }`}
+                >
+                  {formData.in_next_issue ? (
+                    <>
+                      <X size={18} strokeWidth={3} /> Remove from next
+                      newsletter
+                    </>
+                  ) : (
+                    <>
+                      <Newspaper size={18} strokeWidth={3} /> Add to next
+                      newsletter
+                    </>
+                  )}
+                </button>
+              )}
               {onSendToAI && getListTab(formData.list_id) === 'triage' && (
                 <button
                   onClick={() => onSendToAI(formData)}
