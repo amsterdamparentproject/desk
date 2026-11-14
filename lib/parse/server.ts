@@ -17,6 +17,8 @@ export interface FoundActivity {
   list_id: string
   status: string
   file_url: string | null
+  /** The text the card was captured with (empty for image-only captures). */
+  description: string
 }
 
 /**
@@ -32,7 +34,7 @@ export async function resolveActivity(
   for (const type of ['event', 'resource'] as const) {
     const { data } = await supabase
       .from(tableFor(type))
-      .select('list_id, status, file_url')
+      .select('list_id, status, file_url, description')
       .eq('id', id)
       .maybeSingle()
     if (data) {
@@ -41,6 +43,7 @@ export async function resolveActivity(
         list_id: data.list_id,
         status: data.status,
         file_url: data.file_url ?? null,
+        description: data.description ?? '',
       }
     }
   }

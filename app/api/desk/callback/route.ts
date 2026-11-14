@@ -84,8 +84,17 @@ export async function POST(request: NextRequest) {
   const warnings = [...validated.warnings]
 
   // 4. Save the first (seed) record. file_url is never taken from the AI.
+  // `description` is the raw text the card was captured with (a pasted group
+  // message, say) so it can be referenced without opening the source. The AI's
+  // version only fills in when the capture had no text (e.g. image-only).
+  const rawDescription = found?.description?.trim() ? found.description : null
+
   if (found) {
-    await saveEnrichedCallback(id, type, validated.data)
+    const { description: aiDescription, ...enriched } = validated.data
+    await saveEnrichedCallback(id, type, {
+      ...enriched,
+      ...(rawDescription ? {} : { description: aiDescription }),
+    })
   } else {
     // The seed row never made it into the database; create it rather than
     // letting the result vanish.
@@ -139,7 +148,8 @@ export async function POST(request: NextRequest) {
     try {
       const { inserted } = (await upsertEnrichedActivity(childId, childType, {
         ...v.data,
-        description: v.data.description ?? v.data.title ?? '',
+        // Split-out events keep the whole original capture for reference.
+        description: rawDescription ?? v.data.description ?? v.data.title ?? '',
         // Same flyer/screenshot as the parent capture.
         ...(found?.file_url ? { file_url: found.file_url } : {}),
         list_id: 'inbox',
