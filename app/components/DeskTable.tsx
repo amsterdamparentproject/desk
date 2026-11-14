@@ -129,7 +129,6 @@ export function DeskTable({
   }
   const doneCounts = {
     published: rows.filter((a) => doneGroup(a) === 'published').length,
-    included: rows.filter((a) => doneGroup(a) === 'included').length,
     archived: rows.filter((a) => doneGroup(a) === 'archived').length,
   }
 
@@ -267,7 +266,6 @@ export function DeskTable({
                 [
                   ['all', 'All', rows.length],
                   ['published', 'Published', doneCounts.published],
-                  ['included', 'Included', doneCounts.included],
                   ['archived', 'Archived', doneCounts.archived],
                 ] as const
               ).map(([key, label, n]) => (
@@ -611,9 +609,7 @@ function Row({
             className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${
               group === 'published'
                 ? 'bg-green-50 text-green-700'
-                : group === 'included'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'bg-red-50 text-red-600'
+                : 'bg-red-50 text-red-600'
             }`}
             title={
               group === 'published' && a.newsletter_last
