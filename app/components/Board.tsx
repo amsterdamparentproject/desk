@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useSyncExternalStore,
-} from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { LocationCard } from './Column'
 import { DeskTable } from './DeskTable'
@@ -20,6 +14,7 @@ import {
   Service,
 } from '../types/activity'
 import { ListId, Tab } from '../types/list'
+import { isIsoDate } from '@/lib/issue-date'
 import { ActivityDrawer } from './ActivityDrawer'
 import { LocationDrawer } from './LocationDrawer'
 import { LocationForm } from './card'
@@ -28,6 +23,7 @@ import {
   convertActivityType,
   createActivity,
   createLocation,
+  saveIssueDate,
   decideLocationPost,
   deleteActivity,
   deleteLocation,
@@ -155,32 +151,11 @@ function IncludedCard({
   )
 }
 
-const PUBLISH_DATE_KEY = 'desk_publish_date'
-const PUBLISH_DATE_EVENT = 'desk-publish-date-change'
-
-// The publish date lives in localStorage; read it as an external store so the
-// server render and hydration use '' and the client then picks up the saved value.
-function subscribePublishDate(onChange: () => void) {
-  window.addEventListener('storage', onChange)
-  window.addEventListener(PUBLISH_DATE_EVENT, onChange)
-  return () => {
-    window.removeEventListener('storage', onChange)
-    window.removeEventListener(PUBLISH_DATE_EVENT, onChange)
-  }
-}
-// Falls back to today when nothing valid is saved (new browser, cleared
-// storage, phone vs laptop), so the issue window is never empty or NaN.
-const getPublishDateSnapshot = () => {
-  const saved = localStorage.getItem(PUBLISH_DATE_KEY) ?? ''
-  return /^\d{4}-\d{2}-\d{2}$/.test(saved)
-    ? saved
-    : new Date().toLocaleDateString('en-CA')
-}
-const getPublishDateServerSnapshot = () => ''
-
 interface BoardProps {
   initialActivities: DeskActivity[]
   initialLocations?: Location[]
+  // Shared issue date from the DB (already rolled forward server-side).
+  initialPublishDate?: string
 }
 
 // /api/desk/send forwards n8n's outcome in its JSON body; fold it into the
@@ -202,6 +177,7 @@ async function webhookFailure(res: Response): Promise<Error> {
 export default function Board({
   initialActivities,
   initialLocations = [],
+  initialPublishDate = '',
 }: BoardProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -211,15 +187,19 @@ export default function Board({
     new Set()
   )
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
-  const publishDate = useSyncExternalStore(
-    subscribePublishDate,
-    getPublishDateSnapshot,
-    getPublishDateServerSnapshot
+  // Falls back to today if the server couldn't supply one, so the issue
+  // window is never empty or NaN.
+  const [publishDate, setPublishDate] = useState(() =>
+    isIsoDate(initialPublishDate)
+      ? initialPublishDate
+      : new Date().toLocaleDateString('en-CA')
   )
 
   const handlePublishDateChange = (date: string) => {
-    localStorage.setItem(PUBLISH_DATE_KEY, date)
-    window.dispatchEvent(new Event(PUBLISH_DATE_EVENT))
+    setPublishDate(date)
+    saveIssueDate(date).catch((err) =>
+      console.error('Saving issue date failed:', err)
+    )
   }
 
   const [activities, setActivities] =

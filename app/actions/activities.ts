@@ -1,5 +1,11 @@
 'use server'
 
+import {
+  ISSUE_DATE_KEY,
+  amsterdamToday,
+  isIsoDate,
+  rollIssueDate,
+} from '@/lib/issue-date'
 import { createAdminClient } from '@/app/utils/supabase/server'
 import {
   DeskActivity,
@@ -837,4 +843,43 @@ export async function upsertLocation(data: {
     .single()
   if (error) throw new Error(error.message)
   return row
+}
+
+// --- Newsletter issue date (shared across devices) --------------------------
+
+// Reads the stored issue date, rolling it forward (and persisting the roll)
+// when it has passed. Falls back to the default cadence if the settings table
+// isn't available yet.
+export async function getIssueDate(): Promise<string> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('desk_settings')
+    .select('value')
+    .eq('key', ISSUE_DATE_KEY)
+    .maybeSingle()
+  const stored = data?.value ?? null
+  const rolled = rollIssueDate(stored, amsterdamToday())
+  if (rolled !== stored) {
+    await supabase
+      .from('desk_settings')
+      .upsert({
+        key: ISSUE_DATE_KEY,
+        value: rolled,
+        updated_at: new Date().toISOString(),
+      })
+  }
+  return rolled
+}
+
+export async function saveIssueDate(date: string): Promise<void> {
+  if (!isIsoDate(date)) throw new Error('Invalid issue date')
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('desk_settings')
+    .upsert({
+      key: ISSUE_DATE_KEY,
+      value: date,
+      updated_at: new Date().toISOString(),
+    })
+  if (error) throw new Error(error.message)
 }

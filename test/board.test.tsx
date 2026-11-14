@@ -34,6 +34,7 @@ vi.mock('../app/actions/activities', () => ({
   convertActivityType: vi.fn().mockResolvedValue({}),
   dismissParseNotice: vi.fn().mockResolvedValue(undefined),
   pollForUpdates: vi.fn().mockResolvedValue([]),
+  saveIssueDate: vi.fn().mockResolvedValue(undefined),
 }))
 
 const fetchMock = vi.fn()
@@ -83,8 +84,6 @@ function activity(overrides: Partial<DeskActivity> = {}): DeskActivity {
   }
 }
 
-const DEFAULT_PUBLISH_DATE = '2026-05-18'
-
 beforeEach(() => {
   vi.clearAllMocks()
   mockSearch = ''
@@ -95,7 +94,6 @@ beforeEach(() => {
   vi.mocked(uploadActivityFile).mockResolvedValue(FILE_URL)
   fetchMock.mockResolvedValue({ ok: true } as Response)
   localStorage.clear()
-  localStorage.setItem('desk_publish_date', DEFAULT_PUBLISH_DATE)
 })
 
 // ─── Capture via AI ───────────────────────────────────────────────────────────

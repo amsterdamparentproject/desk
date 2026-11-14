@@ -6,7 +6,7 @@ import Board from './components/Board'
 import { CaptureShell } from './components/CaptureShell'
 import { verifyDeskSession } from './utils/auth-gate'
 import { createAdminClient } from './utils/supabase/server'
-import { getLocations } from './actions/activities'
+import { getIssueDate, getLocations } from './actions/activities'
 import { sweepStuckCards } from '@/lib/parse/server'
 
 async function BoardWithData() {
@@ -35,17 +35,19 @@ async function BoardWithData() {
       .lt('newsletter_last', today),
   ])
 
-  const [eventsResult, resourcesResult, locations] = await Promise.all([
-    supabase
-      .from('events')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('resources')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    getLocations().catch(() => []),
-  ])
+  const [eventsResult, resourcesResult, locations, issueDate] =
+    await Promise.all([
+      supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('resources')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      getLocations().catch(() => []),
+      getIssueDate().catch(() => ''),
+    ])
 
   await cleanupPromise
 
@@ -88,6 +90,7 @@ async function BoardWithData() {
     <Board
       initialActivities={activities as DeskActivity[]}
       initialLocations={locations}
+      initialPublishDate={issueDate}
     />
   )
 }
