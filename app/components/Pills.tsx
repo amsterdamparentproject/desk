@@ -52,7 +52,7 @@ export function Pill({
   onBlur?: () => void
   color?: PillColor
   index?: number
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
   role?: 'radio' | 'checkbox'
   children: ReactNode
 }) {
@@ -67,7 +67,11 @@ export function Pill({
       onBlur={onBlur}
       style={{ ['--tilt' as string]: TILTS[index % TILTS.length] }}
       className={`relative rounded-full border-2 font-display font-bold transition-[colors,box-shadow] duration-150 active:scale-95 ${
-        size === 'sm' ? 'px-2.5 py-1 text-[10px]' : 'px-3.5 py-1.5 text-[11px]'
+        size === 'sm'
+          ? 'px-2.5 py-1 text-[10px]'
+          : size === 'lg'
+            ? 'px-5 py-3 text-sm'
+            : 'px-3.5 py-1.5 text-[11px]'
       } ${
         active
           ? `pill-on ${c.on}`

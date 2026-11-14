@@ -2,8 +2,24 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Send, Sparkles, ImagePlus, X } from 'lucide-react'
-import { LavaSpinner } from '@/app/components/Lava'
+import { BookOpen, CalendarDays, ImagePlus, X } from 'lucide-react'
+import { LavaLamp, LavaSpinner } from '@/app/components/Lava'
+import { GooToggle } from '@/app/components/GooToggle'
+import { Pill } from '@/app/components/Pills'
+import { randomAffirmation } from './affirmations'
+
+type Bubble = { id: number; dx: number; dy: number; size: number; dur: number }
+let burstId = 0
+
+function makeBurst(count: number): Bubble[] {
+  return Array.from({ length: count }, () => ({
+    id: ++burstId,
+    dx: Math.round((Math.random() - 0.5) * 260),
+    dy: -Math.round(120 + Math.random() * 260),
+    size: Math.round(8 + Math.random() * 22),
+    dur: 1 + Math.random() * 0.9,
+  }))
+}
 
 interface ShareFormProps {
   initialDescription: string
@@ -25,6 +41,9 @@ export function ShareForm({
   const [type, setType] = useState<'event' | 'resource'>('event')
   const [useAi, setUseAi] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [caught, setCaught] = useState(false)
+  const [affirmation, setAffirmation] = useState('')
+  const [bubbles, setBubbles] = useState<Bubble[]>([])
 
   // File already uploaded to Supabase by the POST share handler
   const [uploadedId, setUploadedId] = useState<string | null>(initialFileId)
@@ -102,120 +121,173 @@ export function ShareForm({
         body,
       })
       if (!res.ok) throw new Error(`Submit failed: ${res.status}`)
-      router.push('/')
+      // Celebrate, then head back to the Desk.
+      setBubbles(makeBurst(22))
+      setAffirmation(randomAffirmation())
+      setCaught(true)
+      navigator.vibrate?.([30, 40, 30])
+      setTimeout(() => router.push('/'), 4200)
     } catch (err) {
       console.error('Share capture failed:', err)
       setSubmitting(false)
     }
   }
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-surface border border-slate-200 rounded-xl p-3 shadow-sm"
-    >
-      <textarea
-        autoFocus
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Paste links, type titles, or add notes..."
-        rows={4}
-        className="w-full text-sm text-slate-800 border-none p-2 focus:ring-0 resize-none placeholder:text-slate-400"
-      />
-
-      {displayImageUrl && (
-        <div className="relative mx-2 mb-2">
-          {/* eslint-disable-next-line @next/next/no-img-element -- local blob/object URL preview can't use next/image */}
-          <img
-            src={displayImageUrl}
-            alt="Selected image"
-            className="w-full max-h-48 object-cover rounded-lg"
-          />
+  if (caught) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-base p-4"
+      >
+        <div className="relative flex w-full max-w-md flex-col items-center justify-center gap-5 overflow-hidden rounded-3xl bg-lamp-glow/90 p-8 text-center text-ink">
+          <div className="relative flex flex-col items-center">
+            <LavaLamp
+              width={130}
+              height={270}
+              glow="#ed45df"
+              glowOpacity={1}
+              outline="#1d1a1b"
+              strokeWidth={4}
+              label="Caught"
+            />
+            {bubbles.map((b) => (
+              <span
+                key={b.id}
+                aria-hidden="true"
+                className="bubble-burst pointer-events-none absolute left-1/2 top-24 rounded-full bg-amber-300"
+                style={
+                  {
+                    width: b.size,
+                    height: b.size,
+                    marginLeft: -b.size / 2,
+                    '--dx': `${b.dx}px`,
+                    '--dy': `${b.dy}px`,
+                    '--dur': `${b.dur}s`,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+          </div>
+          <p className="font-display text-xl font-extrabold">Caught it!</p>
+          <p className="reveal max-w-xs text-sm font-semibold leading-relaxed">
+            {affirmation}
+          </p>
           <button
             type="button"
-            onClick={removeImage}
-            className="absolute top-1.5 right-1.5 bg-black/50 text-white rounded-full p-0.5 hover:bg-black/70 transition-colors"
+            onClick={() => router.push('/')}
+            className="rounded-xl border-2 border-ink px-4 py-2 text-xs font-black uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-lamp-glow"
           >
-            <X size={14} />
+            Open the Desk
           </button>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="rounded-2xl border-2 border-slate-200 bg-surface p-3 transition-shadow focus-within:border-violet-400 focus-within:shadow-[0_0_24px_rgba(227,45,212,0.35)]">
+        <textarea
+          autoFocus
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="What did you find? Paste links, names, dates…"
+          rows={5}
+          className="w-full resize-none border-none bg-transparent p-2 text-base text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+        />
 
-      <div className="flex items-center justify-between border-t border-slate-100 pt-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setUseAi((v) => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-              useAi
-                ? 'bg-blue-50 text-blue-300 hover:bg-blue-100'
-                : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-            }`}
-          >
-            <Sparkles size={14} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              Use AI
-            </span>
-          </button>
-
-          <div className="flex rounded-lg overflow-hidden border border-slate-200">
+        {displayImageUrl && (
+          <div className="relative mx-2 mb-2">
+            {/* eslint-disable-next-line @next/next/no-img-element -- local blob/object URL preview can't use next/image */}
+            <img
+              src={displayImageUrl}
+              alt="Selected image"
+              className="max-h-56 w-full rounded-xl object-cover"
+            />
             <button
               type="button"
-              onClick={() => setType('event')}
-              className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                type === 'event'
-                  ? 'bg-blue-50 text-blue-300'
-                  : 'bg-surface text-slate-400 hover:bg-slate-50'
-              }`}
+              onClick={removeImage}
+              aria-label="Remove image"
+              className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white transition-colors hover:bg-black/80"
             >
-              Event
-            </button>
-            <button
-              type="button"
-              onClick={() => setType('resource')}
-              className={`px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors ${
-                type === 'resource'
-                  ? 'bg-blue-50 text-blue-300'
-                  : 'bg-surface text-slate-400 hover:bg-slate-50'
-              }`}
-            >
-              Resource
+              <X size={16} />
             </button>
           </div>
+        )}
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${
-              displayImageUrl
-                ? 'bg-blue-50 text-blue-300 hover:bg-blue-100'
-                : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-            }`}
-          >
-            <ImagePlus size={14} />
-          </button>
-        </div>
-
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          onChange={handleFileChange}
+        />
         <button
-          type="submit"
-          disabled={!canSubmit}
-          className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-300 transition-all shadow-md active:scale-95"
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className={`mx-1 mb-1 flex items-center gap-2 rounded-xl border-2 px-3 py-2 text-xs font-black uppercase tracking-widest transition-colors ${
+            displayImageUrl
+              ? 'border-blue-400 text-blue-300'
+              : 'border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-300'
+          }`}
         >
-          {submitting ? (
-            <LavaSpinner color="#fff8eb" width={30} height={15} label="Sending" />
-          ) : (
-            <Send size={16} strokeWidth={3} />
-          )}
+          <ImagePlus size={16} />
+          {displayImageUrl ? 'Swap image' : 'Add image'}
         </button>
       </div>
+
+      <div
+        role="radiogroup"
+        aria-label="What is it?"
+        className="grid grid-cols-2 gap-3"
+      >
+        <Pill
+          role="radio"
+          color="blue"
+          size="lg"
+          index={0}
+          active={type === 'event'}
+          onClick={() => setType('event')}
+        >
+          <span className="flex items-center justify-center gap-2 py-1.5">
+            <CalendarDays size={20} strokeWidth={2.4} />
+            Event
+          </span>
+        </Pill>
+        <Pill
+          role="radio"
+          color="magenta"
+          size="lg"
+          index={1}
+          active={type === 'resource'}
+          onClick={() => setType('resource')}
+        >
+          <span className="flex items-center justify-center gap-2 py-1.5">
+            <BookOpen size={20} strokeWidth={2.4} />
+            Resource
+          </span>
+        </Pill>
+      </div>
+
+      <GooToggle
+        checked={useAi}
+        onChange={setUseAi}
+        onLabel="Use AI"
+        offLabel="No AI"
+      />
+
+      <button
+        type="submit"
+        disabled={!canSubmit}
+        className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-app-gold bg-app-gold px-6 py-4 font-display text-lg font-extrabold text-ink shadow-[4px_4px_0_rgba(227,45,212,0.9)] transition-all active:translate-x-1 active:translate-y-1 active:shadow-none disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-300 disabled:shadow-none motion-reduce:transition-none"
+      >
+        {submitting ? (
+          <LavaSpinner color="#1d1a1b" width={44} height={22} label="Sending" />
+        ) : (
+          'Capture it'
+        )}
+      </button>
     </form>
   )
 }

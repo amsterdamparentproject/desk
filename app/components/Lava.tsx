@@ -242,15 +242,19 @@ export function LavaSpinner({
 export function LavaLoader({
   message = 'Warming up the wax…',
   fill = true,
+  delay = 1,
 }: {
   message?: string
   fill?: boolean
+  /** Seconds to wait before fading in (0 = show immediately). */
+  delay?: number
 }) {
   return (
     <div
       role="status"
       aria-live="polite"
-      className={`${fill ? 'min-h-[60vh] flex-1' : 'py-12'} flex flex-col items-center justify-center gap-5 rounded-3xl bg-lamp-glow/90 p-8 text-ink [animation:lava-fade-in_.3s_ease_1s_both]`}
+      className={`${fill ? 'min-h-[60vh] flex-1' : 'py-12'} flex flex-col items-center justify-center gap-5 rounded-3xl bg-lamp-glow/90 p-8 text-ink `}
+      style={{ animation: `lava-fade-in .3s ease ${delay}s both` }}
     >
       <LavaLamp
         width={130}

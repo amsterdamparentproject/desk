@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { verifyDeskSession } from '@/app/utils/auth-gate'
+import { LavaLamp } from '@/app/components/Lava'
 import { ShareForm } from './ShareForm'
 
 interface SharePageProps {
@@ -29,13 +30,28 @@ export default async function SharePage({ searchParams }: SharePageProps) {
   const initialDescription = [title, url, text].filter(Boolean).join('\n')
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-start justify-center pt-16 px-4">
-      <div className="w-full max-w-md space-y-3">
-        <div className="px-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Capture to Ideas
-          </p>
-        </div>
+    <div className="flex min-h-[100dvh] items-start justify-center px-4 pb-10 pt-8">
+      <div className="w-full max-w-md space-y-5">
+        <header className="flex items-center gap-4">
+          <div className="relative shrink-0">
+            <div className="pointer-events-none absolute inset-0 -z-10 scale-150 rounded-full bg-lamp-glow/40 blur-2xl" />
+            <LavaLamp
+              width={44}
+              height={92}
+              glow="#e32dd4"
+              glowOpacity={0.8}
+              label="Lava lamp"
+            />
+          </div>
+          <div>
+            <h1 className="font-display text-base font-extrabold leading-snug text-app-gold">
+              Bubble, bubble, toil, and trouble…
+            </h1>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Something bubbled up? Capture it now.
+            </p>
+          </div>
+        </header>
         <ShareForm
           initialDescription={initialDescription}
           url={url}
@@ -45,7 +61,7 @@ export default async function SharePage({ searchParams }: SharePageProps) {
         />
         <Link
           href="/"
-          className="block text-center text-xs text-slate-400 hover:text-slate-600 transition-colors pt-1"
+          className="block pt-1 text-center text-xs font-semibold text-slate-400 transition-colors hover:text-slate-600"
         >
           Cancel
         </Link>
