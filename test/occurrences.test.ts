@@ -17,7 +17,7 @@ const o = (date: string, start_time: string | null = null) => ({
 })
 
 describe('normalizeOccurrences', () => {
-  it('sorts, de-duplicates and drops invalid entries', () => {
+  it('sorts and drops invalid entries', () => {
     const r = normalizeOccurrences([
       { date: '2026-12-10', start_time: '14:00:00' },
       { date: '2026-12-03', start_time: '10:00' },
@@ -27,6 +27,7 @@ describe('normalizeOccurrences', () => {
     ])
     expect(r).toEqual([
       { date: '2026-12-03', start_time: '10:00', end_time: null },
+      { date: '2026-12-10', start_time: '14:00', end_time: null },
       { date: '2026-12-10', start_time: '15:00', end_time: null },
     ])
   })

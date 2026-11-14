@@ -312,12 +312,12 @@ describe('ActivityDrawer', () => {
 
     await user.click(await screen.findByText('Test Event'))
 
-    const frequency = (await screen.findAllByRole('combobox')).find((el) =>
-      within(el).queryByRole('option', { name: 'Weekly' })
-    )!
-    await user.selectOptions(frequency, 'weekly')
-    await user.click(await screen.findByRole('button', { name: 'Mon' }))
-    fireEvent.blur(frequency)
+    await user.click(await screen.findByRole('radio', { name: 'Weekly' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Mon' }))
+    // Weekday pills are saved by the next field's blur, like the rest of the drawer.
+    const lastRepeat = (await screen.findByText('Last repeat (inclusive)'))
+      .parentElement!.querySelector('input')!
+    fireEvent.blur(lastRepeat)
 
     await waitFor(() =>
       expect(saveActivity).toHaveBeenCalledWith(
