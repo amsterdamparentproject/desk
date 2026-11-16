@@ -111,7 +111,6 @@ export interface EventActivity extends BaseActivity {
   repeat_rrule: string | null
   repeat_frequency: RepeatFrequency | null
   repeat_next_date: string | null
-
 }
 
 // Purely uses BaseActivity fields right now (e.g., title, description, url, organization)

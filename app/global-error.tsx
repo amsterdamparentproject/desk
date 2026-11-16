@@ -20,7 +20,7 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <html lang='en'>
+    <html lang="en">
       <body
         style={{
           fontFamily: 'system-ui, sans-serif',
@@ -35,7 +35,11 @@ export default function GlobalError({
       >
         <h1>Something went wrong</h1>
         <p>Sorry, an unexpected error occurred. Please try again.</p>
-        {error?.digest && <p style={{ fontSize: '0.75rem', opacity: 0.7 }}>Reference: {error.digest}</p>}
+        {error?.digest && (
+          <p style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+            Reference: {error.digest}
+          </p>
+        )}
         <button onClick={reset}>Try again</button>
       </body>
     </html>
