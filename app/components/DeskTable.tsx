@@ -1062,8 +1062,8 @@ function CaptureBar({ onAdd }: { onAdd: (data: CaptureDataProps) => void }) {
           </button>
         </div>
       )}
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center justify-between gap-2 md:justify-start">
           <input
             ref={fileRef}
             type="file"
@@ -1102,14 +1102,14 @@ function CaptureBar({ onAdd }: { onAdd: (data: CaptureDataProps) => void }) {
         <button
           type="submit"
           disabled={!canSubmit}
-          className={`shrink-0 rounded-2xl px-5 py-3 md:px-9 md:py-4 font-display text-sm font-extrabold transition-all active:scale-95 disabled:opacity-40 ${
+          className={`w-full shrink-0 rounded-2xl px-5 py-3 md:w-auto md:px-9 md:py-4 font-display text-sm font-extrabold transition-all active:scale-95 disabled:opacity-40 ${
             useAi
               ? 'bg-lamp-glow text-ink shadow-[0_0_34px_rgba(227,45,212,0.6)] hover:brightness-110'
               : 'border-2 border-white text-white hover:bg-slate-100'
           }`}
         >
           {useAi ? (
-            <span className="inline-flex items-center gap-2">
+            <span className="inline-flex items-center justify-center gap-2">
               <Sparkles size={16} /> Capture with AI
             </span>
           ) : (
