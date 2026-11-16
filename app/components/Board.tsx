@@ -90,6 +90,31 @@ export default function Board({
 
   const [activities, setActivities] =
     useState<DeskActivity[]>(initialActivities)
+  // A server refresh (router.refresh, navigating back to the Desk) hands the
+  // Board a fresh list. useState ignores new props, so without this the Board
+  // kept whatever it first mounted with. Take the server's version of every row
+  // it knows about, and keep rows that only exist locally (a capture that is
+  // still saving).
+  const lastInitial = useRef(initialActivities)
+  useEffect(() => {
+    if (lastInitial.current === initialActivities) return
+    lastInitial.current = initialActivities
+    setActivities((prev) => {
+      const server = new Map(initialActivities.map((a) => [a.id, a]))
+      const keptLocal = prev.filter(
+        (a) => !server.has(a.id) && (a.status === 'processing' || a.file)
+      )
+      return [
+        ...keptLocal,
+        ...initialActivities.map((a) => {
+          const local = prev.find((p) => p.id === a.id)
+          return local
+            ? { ...a, file: local.file, preview_url: local.preview_url }
+            : a
+        }),
+      ]
+    })
+  }, [initialActivities])
   // URL-driven drawer: ?type=event|resource|location&id=<uuid>
   const urlId = searchParams.get('id')
   const urlType = searchParams.get('type')
