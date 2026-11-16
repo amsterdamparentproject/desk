@@ -198,6 +198,7 @@ export function LavaSpinner({
   return (
     <svg
       className="lamp-anim shrink-0"
+      style={{ overflow: 'visible' }}
       viewBox="0 0 54 26"
       width={width}
       height={height}
