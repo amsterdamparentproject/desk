@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { oneOf, usePersistedState } from '../hooks/usePersistedState'
 import { LocationCard } from './Column'
 import { DeskTable } from './DeskTable'
 import { isDoneRow, isHeld, isPostEligible } from '@/lib/desk-table'
@@ -67,7 +68,11 @@ export default function Board({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [locations, setLocations] = useState<Location[]>(initialLocations)
-  const [activeTab, setActiveTab] = useState<Tab>('triage')
+  const [activeTab, setActiveTab] = usePersistedState<Tab>(
+    'desk:tab',
+    'triage',
+    oneOf(['triage', 'newsletter', 'post', 'locations', 'done'] as const)
+  )
   // Falls back to today if the server couldn't supply one, so the issue
   // window is never empty or NaN.
   const [publishDate, setPublishDate] = useState(() =>

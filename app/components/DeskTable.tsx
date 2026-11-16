@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { addDays } from '@/lib/issue-date'
 import { GooPill, LavaSpinner } from './Lava'
+import { isBool, oneOf, usePersistedState } from '../hooks/usePersistedState'
 import { AREA_FIRST, AREA_LAST, AREA_PENULTIMATE } from './NewsletterDrawer'
 import { formatOccurrenceDates } from '@/lib/occurrences'
 import type { CaptureDataProps, DeskActivity, Service } from '../types/activity'
@@ -104,18 +105,44 @@ export function DeskTable({
   onArchive,
   onToggleService,
 }: DeskTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>(
-    mode === 'triage' ? 'created' : 'start'
+  // Filters and sort are remembered per tab across refreshes. The search text
+  // is not: a stale query that hides every row after a reload is worse than
+  // retyping it.
+  const k = (name: string) => `desk:${mode}:${name}`
+  const [sortKey, setSortKey] = usePersistedState<SortKey>(
+    k('sort'),
+    mode === 'triage' ? 'created' : 'start',
+    oneOf(['created', 'start', 'title'] as const)
   )
-  const [sortDir, setSortDir] = useState<SortDir>(
-    mode === 'triage' ? 'desc' : 'asc'
+  const [sortDir, setSortDir] = usePersistedState<SortDir>(
+    k('dir'),
+    mode === 'triage' ? 'desc' : 'asc',
+    oneOf(['asc', 'desc'] as const)
   )
-  const [stage, setStage] = useState<StageFilter>(
-    mode === 'newsletter' && issueDate ? 'potential' : 'all'
+  const stageOptions: readonly StageFilter[] =
+    mode === 'newsletter'
+      ? ['all', 'potential', 'selected']
+      : mode === 'post'
+        ? ['all', 'this', 'future', 'recurring']
+        : mode === 'done'
+          ? ['all', 'published', 'archived']
+          : ['all']
+  const [stage, setStage] = usePersistedState<StageFilter>(
+    k('stage'),
+    mode === 'newsletter' && issueDate ? 'potential' : 'all',
+    oneOf(stageOptions)
   )
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [typeFilter, setTypeFilter] = usePersistedState<TypeFilter>(
+    k('type'),
+    'all',
+    oneOf(['all', 'event', 'resource'] as const)
+  )
   const [query, setQuery] = useState('')
-  const [onlyProblems, setOnlyProblems] = useState(false)
+  const [onlyProblems, setOnlyProblems] = usePersistedState<boolean>(
+    k('problems'),
+    false,
+    isBool
+  )
   // Set after mount so "just added" highlighting can't cause a hydration mismatch.
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
@@ -213,7 +240,7 @@ export function DeskTable({
 
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     } else {
       setSortKey(key)
       // Newest first for "Added", soonest first for dates, A-Z for titles.
@@ -386,7 +413,7 @@ export function DeskTable({
           {problemCount > 0 && (
             <button
               type="button"
-              onClick={() => setOnlyProblems((v) => !v)}
+              onClick={() => setOnlyProblems(!onlyProblems)}
               className={`inline-flex items-center gap-1.5 rounded-xl border-2 px-3 py-2 font-display text-[10px] font-bold uppercase tracking-wide transition-colors ${
                 onlyProblems
                   ? 'border-red-500 bg-red-600 text-white shadow-[0_0_16px_rgba(255,59,79,0.45)]'
