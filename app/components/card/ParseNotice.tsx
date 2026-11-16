@@ -3,18 +3,24 @@ import type { DeskActivity } from '../../types/activity'
 
 /**
  * Shows why the AI parse failed (red) or what to double-check after a
- * successful one (amber). Renders nothing for a clean card.
+ * successful one (amber). Renders nothing for a clean card, and nothing once
+ * the record has left the inbox: the notes are triage context, so moving to
+ * Refined (or Done) retires them without deleting anything.
  */
 export function ParseNotice({
   activity,
   compact = false,
   onDismiss,
 }: {
-  activity: Pick<DeskActivity, 'parse_error' | 'parse_warnings' | 'status'>
+  activity: Pick<
+    DeskActivity,
+    'parse_error' | 'parse_warnings' | 'status' | 'list_id'
+  >
   compact?: boolean
   onDismiss?: () => void
 }) {
   if (activity.status === 'processing') return null
+  if (activity.list_id && activity.list_id !== 'inbox') return null
   const warnings = activity.parse_warnings ?? []
   if (!activity.parse_error && warnings.length === 0) return null
 

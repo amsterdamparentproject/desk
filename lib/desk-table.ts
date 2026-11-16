@@ -122,10 +122,12 @@ export function sortRows(
 }
 
 // Anything that needs a look: a failed parse, or an event whose date has passed.
+// Parse notes only count while the record is still in the inbox; once it is
+// refined they are retired (see ParseNotice).
 export function needsAttention(a: DeskActivity, today?: string): boolean {
   return (
     a.status === 'failed' ||
-    !!a.parse_error ||
+    (!!a.parse_error && (!a.list_id || a.list_id === 'inbox')) ||
     (today !== undefined && isPastEvent(a, today))
   )
 }
