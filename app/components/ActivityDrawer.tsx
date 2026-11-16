@@ -38,6 +38,7 @@ import {
 } from '../utils/rrule'
 import { upsertLocation, dismissParseNotice } from '../actions/activities'
 import { isPastEvent } from '@/lib/desk-table'
+import { androidChromeIntent } from '@/lib/open-external'
 import { ParseNotice } from './card/ParseNotice'
 import { OccurrencePicker } from './OccurrencePicker'
 import { AreaPills } from './AreaPills'
@@ -568,6 +569,13 @@ export function ActivityDrawer({
                     href={formData.url}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={(e) => {
+                      const intent = androidChromeIntent(formData.url ?? '')
+                      if (intent) {
+                        e.preventDefault()
+                        window.location.href = intent
+                      }
+                    }}
                     className="group flex items-center gap-1.5 whitespace-nowrap rounded-xl border-2 border-app-gold bg-app-gold px-3.5 py-2 font-display text-xs font-bold text-ink shadow-[3px_3px_0_rgba(227,45,212,0.85)] transition-all duration-200 hover:-translate-y-0.5 hover:-rotate-2 hover:shadow-[5px_5px_0_rgba(227,45,212,0.85),0_0_18px_rgba(255,191,0,0.55)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none motion-reduce:transition-none"
                   >
                     Check it out
