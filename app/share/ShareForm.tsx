@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, CalendarDays, ImagePlus, X } from 'lucide-react'
 import { LavaLamp, LavaSpinner } from '@/app/components/Lava'
@@ -44,6 +44,9 @@ export function ShareForm({
   const [caught, setCaught] = useState(false)
   const [affirmation, setAffirmation] = useState('')
   const [bubbles, setBubbles] = useState<Bubble[]>([])
+  // After sending: keep the celebration up until the AI has finished the card.
+  const [cardId, setCardId] = useState<string | null>(null)
+  const [phase, setPhase] = useState<'reading' | 'done' | 'failed'>('reading')
 
   // File already uploaded to Supabase by the POST share handler
   const [uploadedId, setUploadedId] = useState<string | null>(initialFileId)
@@ -121,17 +124,70 @@ export function ShareForm({
         body,
       })
       if (!res.ok) throw new Error(`Submit failed: ${res.status}`)
-      // Celebrate, then head back to the Desk.
+      // Celebrate, then wait here until the AI has finished the card.
+      const saved = (await res.json().catch(() => ({}))) as { id?: string }
+      setCardId(saved.id ?? null)
+      setPhase(useAi && saved.id ? 'reading' : 'done')
       setBubbles(makeBurst(22))
       setAffirmation(randomAffirmation())
       setCaught(true)
       navigator.vibrate?.([30, 40, 30])
-      setTimeout(() => router.push('/'), 4200)
     } catch (err) {
       console.error('Share capture failed:', err)
       setSubmitting(false)
     }
   }
+
+  // Navigate, then ask the server for fresh data so the Desk never shows a
+  // cached copy from before this capture.
+  const goToDesk = useCallback(() => {
+    router.push('/')
+    router.refresh()
+  }, [router])
+
+  // Poll until the card leaves "processing" (give up after three minutes and
+  // let the Desk's own stuck-card handling take over).
+  useEffect(() => {
+    if (!caught || phase !== 'reading' || !cardId) return
+    let cancelled = false
+    const startedAt = Date.now()
+    const tick = async () => {
+      try {
+        const res = await fetch(
+          `/api/share/status?id=${encodeURIComponent(cardId)}`,
+          { cache: 'no-store' }
+        )
+        const data = (await res.json()) as { status?: string; failed?: boolean }
+        if (cancelled) return
+        if (data.status && data.status !== 'processing') {
+          setBubbles(makeBurst(14))
+          navigator.vibrate?.(30)
+          setPhase(data.failed ? 'failed' : 'done')
+          return
+        }
+      } catch {
+        // Network blip: keep waiting.
+      }
+      if (cancelled) return
+      if (Date.now() - startedAt > 3 * 60 * 1000) {
+        setPhase('done')
+        return
+      }
+      timer = setTimeout(tick, 2000)
+    }
+    let timer = setTimeout(tick, 1500)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [caught, phase, cardId])
+
+  // Once the card is finished, linger a moment, then head to the Desk.
+  useEffect(() => {
+    if (!caught || phase === 'reading') return
+    const t = setTimeout(goToDesk, phase === 'failed' ? 4500 : 2600)
+    return () => clearTimeout(t)
+  }, [caught, phase, goToDesk])
 
   if (caught) {
     return (
@@ -173,9 +229,26 @@ export function ShareForm({
           <p className="reveal max-w-xs text-sm font-semibold leading-relaxed">
             {affirmation}
           </p>
+          <div className="flex min-h-6 items-center gap-2 text-xs font-black uppercase tracking-widest">
+            {phase === 'reading' ? (
+              <>
+                <LavaSpinner
+                  color="#1d1a1b"
+                  width={44}
+                  height={22}
+                  label="Reading"
+                />
+                Reading it now
+              </>
+            ) : phase === 'failed' ? (
+              'The AI hit a snag. It is in your inbox with a note.'
+            ) : (
+              'All done. Opening the Desk…'
+            )}
+          </div>
           <button
             type="button"
-            onClick={() => router.push('/')}
+            onClick={goToDesk}
             className="rounded-xl border-2 border-ink px-4 py-2 text-xs font-black uppercase tracking-widest text-ink transition-colors hover:bg-ink hover:text-lamp-glow"
           >
             Open the Desk
